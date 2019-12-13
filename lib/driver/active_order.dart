@@ -14,6 +14,13 @@ class ActiveOrder extends StatelessWidget {
   final Set<Marker> markers = Set<Marker>();
   final Set<Polyline> polylines = Set<Polyline>();
   static bool orderConfirmed = false;
+
+  ActiveOrder(){
+    orderConfirmed = false;
+    cancelOrderConfirmationShown = false;
+    deliveryDonePopUpShown = false;
+  }
+
   getLocation(context) async {
     myLocation = await Utils.getMyLocation();
     LatLng starting = LatLng(31.6537497, 74.2824057);
@@ -476,8 +483,8 @@ class _CancelOrderPopUpState extends State<_CancelOrderPopUp> {
                     ),
                     onPressed: () {
                       ActiveOrder.cancelOrderConfirmationShown = false;
-                      // widget.parent.setState(() {});
-                      setState(() {});
+                      widget.parent.setState(() {});
+                      // setState(() {});
                     },
                   ),
                   RaisedButton(
@@ -491,8 +498,8 @@ class _CancelOrderPopUpState extends State<_CancelOrderPopUp> {
                     onPressed: () {
                       ActiveOrder.cancelOrderConfirmationShown = false;
                       Navigator.pop(context);
-                      // widget.parent.setState(() {});
-                      setState(() {});
+                      widget.parent.setState(() {});
+                      // setState(() {});
                     },
                   ),
                 ],

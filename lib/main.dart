@@ -34,8 +34,8 @@ Future<void> locationInitializer() async {
 }
 
 main() async {
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   locationInitializer();
   runApp(MyApp());
 }
