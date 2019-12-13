@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:sennit/main.dart';
 
 class DriverSignInRoute extends StatelessWidget {
   @override
@@ -102,7 +103,9 @@ class _DriverSignInState extends State<DriverSignIn> {
                 shape: RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.all(Radius.elliptical(100, 100))),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).popAndPushNamed(MyApp.driverHome);
+                },
                 padding:
                     EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
                 color: Theme.of(context).accentColor,

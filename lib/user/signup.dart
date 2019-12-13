@@ -4,19 +4,34 @@ import 'package:intl/intl.dart';
 import 'package:place_picker/place_picker.dart';
 import 'package:sennit/main.dart';
 
-class UserSignUpRoute extends StatefulWidget {
+class UserSignUpRoute extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('User Sign Up'),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: UserSignUpRouteBody(),
+      ),
+    );
+  }
+}
+
+class UserSignUpRouteBody extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return UserSignUpRouteState();
   }
 
-  final _formKey = GlobalKey<FormState>();
-  final passwordController = TextEditingController();
+  // final _formKey = GlobalKey<FormState>();
+  // final passwordController = TextEditingController();
 }
 
-class UserSignUpRouteState extends State<UserSignUpRoute> {
-  Color defaultColor = Color.fromARGB(0xff, 0x5d, 0x5d, 0x5d);
-  Color defaultHeighlightedColor = Color.fromARGB(0xff, 0x5d, 0x5d, 0x5d);
+class UserSignUpRouteState extends State<UserSignUpRouteBody> {
+  Color defaultColor = Colors.white;
+  Color defaultHeighlightedColor = Colors.white;
   Color defaultBtnBackgroundColor = Colors.white;
   double btnPaddingTop;
   double btnPaddingBottom;
@@ -25,14 +40,16 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
   String dateInitialText;
   bool dateSelected = false;
 
-  Color defaultHeighlightedColorDOB = Color.fromARGB(255, 57, 59, 82);
+  Color dateOfBirthHeadingColor;
+  Color dateOfBirthTextColor;
 
   String dateText;
-
   bool tapped = false;
 
   String address = "Not Available";
+  final _formKey = GlobalKey<FormState>();
 
+  final passwordController = TextEditingController();
   @override
   void initState() {
     btnPaddingTop = 10;
@@ -41,28 +58,20 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
     btnPaddingRight = 25;
     dateInitialText = 'Tap to select';
     dateText = dateInitialText;
+    dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
+    dateOfBirthTextColor = Colors.white;
     super.initState();
-    // defaultHeighlightedColorDOB = Theme.of(context).accentColor;
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (!Navigator.canPop(context)) {
-          Navigator.of(context).popAndPushNamed(MyApp.startPage);
-        }
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('User Sign Up'),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: Form(
-            key: widget._formKey,
-            child: Padding(
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
               padding: EdgeInsets.only(left: 8, right: 8, bottom: 20),
               child: SingleChildScrollView(
                 child: Column(
@@ -113,6 +122,7 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                       style: Theme.of(context).textTheme.body1,
                     ),
                     TextFormField(
+                      controller: passwordController,
                       obscureText: true,
                       maxLines: 1,
                       decoration: InputDecoration(labelText: 'Password'),
@@ -133,8 +143,7 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                       validator: (rePassword) {
                         if (rePassword.isEmpty) {
                           return "Please confirm your password";
-                        } else if (rePassword !=
-                            widget.passwordController.text) {
+                        } else if (rePassword != passwordController.text) {
                           return "Password does not match";
                         }
                         return null;
@@ -154,7 +163,7 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                     // ),
                     Text(
                       'Date of Birth: ',
-                      style: TextStyle(color: defaultHeighlightedColorDOB),
+                      style: TextStyle(color: dateOfBirthHeadingColor),
                       textAlign: TextAlign.start,
                     ),
                     Row(
@@ -168,35 +177,21 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                           shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.all(Radius.elliptical(100, 100)),
-                            // side: BorderSide(
-                            //     color: Theme.of(context).accentColor,
-                            //     width: 3),
                           ),
                           child: Row(
                             children: <Widget>[
                               Icon(
                                 FontAwesomeIcons.calendarDay,
-                                color: defaultHeighlightedColorDOB,
+                                color: dateOfBirthTextColor,
                               ),
                               Text(
                                 '   $dateText',
                                 style: TextStyle(
-                                    color: defaultHeighlightedColorDOB),
+                                  color: dateOfBirthTextColor,
+                                ),
                               ),
                             ],
                           ),
-                          // highlightColor: Theme.of(context).primaryColor,
-                          // onHighlightChanged: (isHeighlighted) {
-                          //   if (!tapped || dateSelected) {
-                          //     if (isHeighlighted) {
-                          //       defaultHeighlightedColorDOB = Colors.white;
-                          //     } else {
-                          //       defaultHeighlightedColorDOB =
-                          //           Theme.of(context).primaryColor;
-                          //     }
-                          //   }
-                          //   setState(() {});
-                          // },
                           onPressed: () async {
                             DateTime selectedDate = await showDatePicker(
                               firstDate: DateFormat("yyyy/MM/dd", "en_US")
@@ -211,8 +206,9 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                             if (selectedDate != null) {
                               setState(() {
                                 dateSelected = true;
-                                defaultHeighlightedColorDOB =
-                                    Theme.of(context).accentColor;
+                                dateOfBirthTextColor =
+                                    Colors.white;
+                                dateOfBirthHeadingColor = Theme.of(context).primaryColor;
                                 dateText = DateFormat("dd-MMM-yyyy", "en_US")
                                     .format(selectedDate)
                                     .toString();
@@ -228,14 +224,16 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                           ? (dateSelected
                               ? () {
                                   setState(() {
-                                    defaultHeighlightedColorDOB =
+                                    dateOfBirthHeadingColor =
                                         Theme.of(context).primaryColor;
+                                    dateOfBirthTextColor = Colors.white;
                                   });
                                   return null;
                                 }()
                               : () {
                                   setState(() {
-                                    defaultHeighlightedColorDOB = Colors.red;
+                                    dateOfBirthHeadingColor = Colors.red;
+                                    dateOfBirthTextColor = Colors.red;
                                   });
                                   return Padding(
                                     padding: EdgeInsets.only(top: 10),
@@ -248,63 +246,6 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                                 }())
                           : null,
                     ),
-                    // TextFormField(
-                    //   maxLines: 1,
-                    //   decoration: InputDecoration(labelText: 'Street Address'),
-                    //   validator: (street) {
-                    //     if (street.isEmpty) {
-                    //       return "Adress is required";
-                    //     }
-                    //     return null;
-                    //   },
-                    //   style: Theme.of(context).textTheme.body1,
-                    // ),
-                    // TextFormField(
-                    //   maxLines: 1,
-                    //   decoration: InputDecoration(labelText: 'City'),
-                    //   validator: (city) {
-                    //     if (city.isEmpty) {
-                    //       return "City is required";
-                    //     }
-                    //     return null;
-                    //   },
-                    //   style: Theme.of(context).textTheme.body1,
-                    // ),
-                    // TextFormField(
-                    //   maxLines: 1,
-                    //   decoration: InputDecoration(labelText: 'State/Provice'),
-                    //   validator: (state) {
-                    //     if (state.isEmpty) {
-                    //       return "This field is required";
-                    //     }
-                    //     return null;
-                    //   },
-                    //   style: Theme.of(context).textTheme.body1,
-                    // ),
-                    // TextFormField(
-                    //   keyboardType: TextInputType.phone,
-                    //   maxLines: 1,
-                    //   decoration: InputDecoration(labelText: 'Country'),
-                    //   validator: (country) {
-                    //     if (country.isEmpty) {
-                    //       return "Please Mention your Country";
-                    //     }
-                    //     return null;
-                    //   },
-                    //   style: Theme.of(context).textTheme.body1,
-                    // ),
-                    // TextFormField(
-                    //   maxLines: 1,
-                    //   keyboardType: TextInputType.number,
-                    //   decoration: InputDecoration(labelText: 'Zip'),
-                    //   validator: (zip) {
-                    //     if (zip.isEmpty) {
-                    //       return "This field is required";
-                    //     }
-                    //     return null;
-                    //   },
-                    //   style: Theme.of(context).textTheme.body1,
-                    // ),
                     TextFormField(
                       keyboardType: TextInputType.phone,
                       maxLines: 1,
@@ -317,33 +258,34 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                       },
                       style: Theme.of(context).textTheme.body1,
                     ),
-                                      ListTile(
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
+                    ListTile(
+                      leading: Icon(
+                        Icons.location_on,
+                        color: Theme.of(context).accentColor,
+                      ),
+                      title: Text('Pick A location'),
+                      onTap: () async {
+                        LocationResult result =
+                            await Utils.showPlacePicker(context);
+                        if (result != null) {
+                          setState(() {
+                            address = result.formattedAddress;
+                          });
+                        }
+                      },
                     ),
-                    title: Text('Pick A location'),
-                    onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
-                      if (result != null) {
-                        setState(() {
-                          address = result.formattedAddress;
-                        });
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.my_location,
-                      color: Theme.of(context).accentColor,
+                    ListTile(
+                      leading: Icon(
+                        Icons.my_location,
+                        color: Theme.of(context).accentColor,
+                      ),
+                      title: Text('Selected Location',
+                          style:
+                              TextStyle(color: Theme.of(context).accentColor)),
+                      subtitle: Text(
+                        address,
+                      ),
                     ),
-                    title: Text('Selected Location',
-                        style: TextStyle(color: Theme.of(context).accentColor)),
-                    subtitle: Text(
-                      address,
-                    ),
-                  ),
                     Padding(
                       padding: EdgeInsets.only(top: 10, bottom: 10),
                       child: Text.rich(
@@ -375,16 +317,8 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.all(Radius.elliptical(100, 100)),
-
                         ),
-                        child:
-                            //  Row(
-                            //   children: <Widget>[
-                            //     Icon(
-                            //       FontAwesomeIcons.envelopeOpen,
-                            //       color: defaultHeighlightedColor,
-                            //     ),
-                            Text(
+                        child: Text(
                           'Sign Up',
                           style: TextStyle(
                             fontSize:
@@ -405,14 +339,17 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                         },
                         onPressed: () {
                           tapped = true;
-                          var form = widget._formKey.currentState;
+                          var form = _formKey.currentState;
                           if (form.validate() && dateInitialText != dateText) {
+                            Navigator.pop(context);
+                            Navigator.of(context).pushNamed(MyApp.driverHome);
                             setState(() {
                               dateSelected = true;
                             });
                           } else if (dateInitialText == dateText) {
                             setState(() {
-                              defaultHeighlightedColorDOB = Colors.red;
+                              dateOfBirthHeadingColor = Colors.red;
+                              dateOfBirthTextColor = Colors.red;
                             });
                           }
                         },
@@ -422,7 +359,7 @@ class UserSignUpRouteState extends State<UserSignUpRoute> {
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

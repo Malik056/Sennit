@@ -41,7 +41,7 @@ class DriverStartPage extends StatelessWidget {
                 child: Text(
                   'Sign up',
                   style: TextStyle(
-                      // color: Colors.white,
+                      color: Colors.white,
                       fontSize: Theme.of(context).textTheme.button.fontSize),
                 ),
                 // color: Theme.of(context).accentColor,
@@ -64,6 +64,7 @@ class DriverStartPage extends StatelessWidget {
                 child: Text(
                   'Log in',
                   style: TextStyle(
+                    color: Colors.white,
                     fontSize: Theme.of(context).textTheme.button.fontSize,
                     // color: Colors.white,
                   ),

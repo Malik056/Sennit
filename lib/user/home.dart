@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geocoder/geocoder.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/user/recieveIt.dart';
 
 class UserHomeRoute extends StatelessWidget {
   @override
@@ -136,7 +138,18 @@ class UserHomeState extends State<UserHomeBody> {
                                                     .accentColor,
                                               ),
                                             ),
-                                          )
+                                          ),
+                                          SizedBox(
+                                            width: 2,
+                                          ),
+                                          // Tooltip(
+                                          //   child: IconButton(
+                                          //     icon: Icon(Icons.help),
+                                          //     onPressed: () {},
+                                          //   ),
+                                          //   message:
+                                          //       "This Feature Allow user to buy things from our partner stores.",
+                                          // ),
                                         ],
                                       ),
                                     )
@@ -156,6 +169,10 @@ class UserHomeState extends State<UserHomeBody> {
                   },
                   onTapUp: (tap) {
                     setState(() {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return StoresRoute(address: Address());
+                      }));
                       currentSizeRecieveIt = defaultSize;
                     });
                   },
@@ -165,6 +182,17 @@ class UserHomeState extends State<UserHomeBody> {
                     });
                   },
                   onTap: () {},
+                  onLongPress: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        fullscreenDialog: false,
+                        maintainState: true,
+                        builder: (context) {
+                          return HelpScreenRecieveIt();
+                        },
+                      ),
+                    );
+                  },
                 ),
                 GestureDetector(
                   child: Container(
@@ -254,22 +282,511 @@ class UserHomeState extends State<UserHomeBody> {
                     });
                   },
                   onTap: () {
-                    // setState(() {
-                    //   currentSizeSendIt = defaultSize - 20;
-                    // });
-                    // Future.delayed(Duration(milliseconds: 100))
-                    //     .then((a) {
-                    //   setState(() {
-                    //     currentSizeSendIt = defaultSize;
-                    //   });
-                    // });
                     Navigator.of(context).pushNamed(MyApp.selectFromAddress);
+                  },
+                  onLongPress: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        fullscreenDialog: false,
+                        maintainState: true,
+                        builder: (context) {
+                          return HelpScreenSennit();
+                        }));
                   },
                 ),
               ],
             ),
             Spacer(
-              flex: 5,
+              flex: 2,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Hold down a button to see Help',
+                    style: Theme.of(context).textTheme.subhead,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+            Spacer(
+              flex: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HelpScreenSennit extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Help'),
+      ),
+      body: SafeArea(
+        minimum: EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              height: 20,
+            ),
+            Center(
+              child: Icon(
+                Icons.help,
+                size: 80,
+              ),
+            ),
+            SizedBox(
+              height: 30,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'This Feature helps you to send anything, anywhere to anyone with no effort. We are responsible for picking the package from your door and delivering it to your friend\'s door. Just Follow the Instruction below and Leave everything to Us.',
+                    style: Theme.of(context).textTheme.subtitle,
+                    textAlign: TextAlign.justify,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 15,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Instructions',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '1',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Pick a pickup point',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '2',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Provide delivery Location',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '3',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Provide Details of your package',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '4',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Select Payment Method',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '5',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Click Done',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(height: 30),
+            Text(
+              'Our Delivery Guy will be at your door step in a flash.',
+              style: Theme.of(context).textTheme.subtitle,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HelpScreenRecieveIt extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Help'),
+      ),
+      body: SafeArea(
+        minimum: EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              height: 20,
+            ),
+            Center(
+              child: Icon(
+                Icons.help,
+                size: 80,
+              ),
+            ),
+            SizedBox(
+              height: 30,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'This Feature helps you to order anything, anywhere from our partner stores. We are responsible for delivering the product to your door step. Just Follow the Instruction below and Leave everything to Us.',
+                    style: Theme.of(context).textTheme.subtitle,
+                    textAlign: TextAlign.justify,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 15,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Instructions',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '1',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Expanded(
+                  child: Text(
+                    'Select a product from any of our partner store',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '2',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Select the product quantity',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '3',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Enter the delivery location',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '4',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Select Payment Method',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '5',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Click Done',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(height: 30),
+            Text(
+              'Our Delivery Guy will be at your door step in a flash.',
+              style: Theme.of(context).textTheme.subtitle,
+              textAlign: TextAlign.center,
             ),
           ],
         ),

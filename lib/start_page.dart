@@ -8,7 +8,7 @@ class StartPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Think Couriers'),
+        title: Text('Sennit'),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -39,7 +39,7 @@ class StartPage extends StatelessWidget {
                 children: [
                   TextSpan(
                       text:
-                          '\nThink Couriers is a unique business platform whereby both drivers and clients are able to deliver or have goods delivered respectively, with no signup costs. Sign Up now to have your goods delivered immediately!.',
+                          '\nSennit is a unique business platform whereby both drivers and clients are able to deliver or have goods delivered respectively, with no signup costs. Sign Up now to have your goods delivered immediately!.',
                       style: Theme.of(context).textTheme.body1),
                 ],
               ),
@@ -51,7 +51,6 @@ class StartPage extends StatelessWidget {
             flex: 2,
           ),
           Container(
-            margin: EdgeInsets.only(top: 80),
             width: MediaQuery.of(context).size.width,
             child: RaisedButton(
               color: Colors.white,

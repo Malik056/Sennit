@@ -39,7 +39,7 @@ class UserStartPage extends StatelessWidget {
                 child: Text(
                   'Sign up',
                   style: TextStyle(
-                      // color: Colors.white,
+                      color: Colors.white,
                       fontSize: Theme.of(context).textTheme.button.fontSize),
                 ),
                 // color:  Theme.of(context).accentColor,
@@ -66,9 +66,10 @@ class UserStartPage extends StatelessWidget {
                 child: Text(
                   'Log in',
                   style: TextStyle(
-                      fontSize: Theme.of(context).textTheme.button.fontSize,
-                      // color: Colors.white //Theme.of(context).primaryColor,
-                      ),
+                    color: Colors.white,
+                    fontSize: Theme.of(context).textTheme.button.fontSize,
+                    // color: Colors.white //Theme.of(context).primaryColor,
+                  ),
                 ),
                 // color: Theme.of(context).accentColor,
                 shape: RoundedRectangleBorder(

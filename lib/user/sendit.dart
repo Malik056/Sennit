@@ -31,7 +31,6 @@ class AddressAddingRoute extends StatelessWidget {
   AddressAddingRoute(this.sourcePage, address) {
     _fromAddress = address;
   }
-  // final Address fromAddress;
   static Address _toAddress;
   static Address _fromAddress;
   @override
@@ -50,8 +49,14 @@ class AddressAddingRoute extends StatelessWidget {
                               return SendItCartRoute(_fromAddress, _toAddress);
                             }))
                           : print('Please Select an Address')
-                      : Navigator.of(context)
-                          .pushNamed(MyApp.deliverToAddresses);
+                      : _fromAddress != null
+                          ? Navigator.of(context)
+                              .push(MaterialPageRoute(builder: (context) {
+                              return DeliverToAddressRoute(
+                                address: _fromAddress,
+                              );
+                            }))
+                          : print('Please Select an Address');
             },
             child: Text(
               sourcePage == SourcePage.addressSelectionDestination
@@ -143,20 +148,18 @@ class AddressAddingState extends State<AddressAddingBody> {
                       LocationResult result =
                           await Utils.showPlacePicker(context);
                       if (result != null) {
-                        setState(() async {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          if (widget.sourcePage ==
-                              SourcePage.addressSelectionDestination) {
-                            AddressAddingRoute._toAddress = (await Geocoder
-                                .local
-                                .findAddressesFromCoordinates(coordinates))[0];
-                          } else {
-                            AddressAddingRoute._fromAddress = (await Geocoder
-                                .local
-                                .findAddressesFromCoordinates(coordinates))[0];
-                          }
-                        });
+                        Coordinates coordinates = Coordinates(
+                            result.latLng.latitude, result.latLng.longitude);
+                        if (widget.sourcePage ==
+                            SourcePage.addressSelectionDestination) {
+                          AddressAddingRoute._toAddress = (await Geocoder.local
+                              .findAddressesFromCoordinates(coordinates))[0];
+                        } else {
+                          AddressAddingRoute._fromAddress = (await Geocoder
+                              .local
+                              .findAddressesFromCoordinates(coordinates))[0];
+                        }
+                        setState(() {});
                       }
                     },
                   ),
@@ -173,7 +176,9 @@ class AddressAddingState extends State<AddressAddingBody> {
                           ? (AddressAddingRoute._toAddress != null
                               ? AddressAddingRoute._toAddress.addressLine
                               : 'Please select a Destination')
-                          : AddressAddingRoute._fromAddress.addressLine,
+                          : AddressAddingRoute._fromAddress != null
+                              ? AddressAddingRoute._fromAddress.addressLine
+                              : 'Select an Address',
                     ),
                   ),
                 ],
