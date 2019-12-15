@@ -1,0 +1,12 @@
+class MyDatabaseSchema {
+  static const String USER_TABLE = "USER_TABLE";
+  static const String DRIVER_TABLE = "DRIVER_TABLE";
+  static const String ORDER_TABLE = "ORDER";
+  static const String USER_ORDER_TABLE = "USER_ORDER_TABLE";
+  static const String USER_PICKUP_LOCATION_HISTORY_TABLE = "USER_PICK_UP_LOCATION_HISTORY_TABLE";
+  static const String USER_DROPOFF_LOCATION_HISTORY_TABLE = "USER_DROP_OFF_LOCATION_HISTORY_TABLE";
+  static const String SIGNED_IN_USER_TABLE = "SIGNED_IN_USER_TABLE";
+  static const String USER_NOTIFICATION_TABLE = "USER_NOTIFICATION_TABLE";
+  static const String DRIVER_NOTIFICATION_TABLE = "DRIVER_NOTIFICATION_TABLE";
+  static const String USER_CART_TABLE = "USER_CART_TABLE";
+}
