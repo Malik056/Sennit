@@ -65,7 +65,9 @@ class AddressAddingRoute extends StatelessWidget {
                       ? 'Next'
                       : 'Done',
               style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
             ),
           ),
         ],
@@ -768,7 +770,8 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
           ),
           Card(
             margin: EdgeInsets.only(
-                top: 10), //, left: cardMargin, right: cardMargin),
+              top: 10,
+            ), //, left: cardMargin, right: cardMargin),
             elevation: 5,
             child: Container(
               padding: EdgeInsets.only(top: cardPadding),

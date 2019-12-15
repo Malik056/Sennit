@@ -92,7 +92,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                     setState(() {
                       rememberMeChecked = !rememberMeChecked;
                     });
-                  }),
+                  },),
               Opacity(
                 opacity: 0,
                 child: Container(

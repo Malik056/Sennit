@@ -12,6 +12,7 @@ import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
+import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/recieveIt.dart';
@@ -61,6 +62,8 @@ class MyApp extends StatelessWidget {
   static final String driverHome = 'driverHome';
   static final String driverNavigationRoute = 'driverNavigationRoute';
   static final String activeOrderBody = 'activeOrderBody';
+  static final String reviewWidget = 'reviewWidget';
+
 
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
@@ -74,7 +77,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: driverSignin,
+      initialRoute: recieveItRoute,
       routes: {
         // '/': (context) => StartPage(),
         driverNavigationRoute: (context) => DeliveryTrackingRoute(
@@ -98,6 +101,7 @@ class MyApp extends StatelessWidget {
             ),
         storeMainPage: (context) => StoreMainPage(),
         activeOrderBody: (context) => ActiveOrder(),
+        reviewWidget: (context) => ReviewWidget(),
       },
       title: 'Sennit',
       theme: ThemeData(

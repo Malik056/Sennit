@@ -33,7 +33,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   @override
   void initState() {
     super.initState();
-    controller = TabController(length: 2, vsync: this);
+    controller = TabController(length: 3, vsync: this);
     controller.addListener(() {
       setState(() {
         index = controller.index;
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
@@ -103,6 +103,9 @@ class _HomeScreenState extends State<HomeScreenDriver>
                 //   ),
                 // ),
               ),
+              Tab(
+                icon: Icon(Icons.person),
+              ),
             ],
           ),
         ),
@@ -111,6 +114,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
           children: <Widget>[
             _NotificationPage(),
             _HistoryPage(),
+            _ProfilePage(),
           ],
         ),
       ),
@@ -268,5 +272,158 @@ class DeliveryTile extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _ProfilePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          SizedBox(
+            height: 10,
+          ),
+          CircleAvatar(
+            radius: 80,
+            backgroundColor: Theme.of(context).primaryColor,
+            backgroundImage: NetworkImage(
+              'https://picsum.photos/1200',
+              // fit: BoxFit.fitWidth,
+            ),
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Text(
+            'My Name',
+            style: Theme.of(context).textTheme.subhead,
+          ),
+          SizedBox(
+            height: 6,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Tooltip(
+                child: Icon(
+                  Icons.star,
+                  color: Colors.grey,
+                  size: 14,
+                ),
+                message: "rating",
+              ),
+              Text(' 4.5'),
+              SizedBox(
+                width: 10,
+              ),
+              Container(
+                color: Colors.black,
+                width: 1,
+                child: Text(''),
+              ),
+              SizedBox(
+                width: 10,
+              ),
+              Tooltip(
+                child: Icon(
+                  Icons.person,
+                  size: 14,
+                ),
+                message: "rated by users",
+              ),
+              Text(' 200'),
+            ],
+          ),
+          SizedBox(
+            height: 40,
+          ),
+          Align(
+            child: Text(
+              'Reviews',
+              style: Theme.of(context).textTheme.display1,
+            ),
+          ),
+          SizedBox(
+            height: 20,
+          ),
+          Column(
+            children: getReviews(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> getReviews() {
+    List<Widget> reviews = List();
+    for (var i = 0; i < 10; i++) {
+      Widget review = ListTile(
+        title: Text('Some User $i'),
+        subtitle: Text(
+            'This is some Long lenght review. I want it to be long so I can see how it looks. Dont read thi completely as I am just filling up space. blah blah blah blah.........'),
+        trailing: Column(
+          children: <Widget>[
+            Icon(
+              Icons.star,
+              color: Colors.yellow,
+            ),
+            SizedBox(
+              height: 2,
+            ),
+            Text('4.2'),
+          ],
+        ),
+      );
+      Widget review1 = ListTile(
+        title: Text('Some User $i'),
+        subtitle: Text('This is a very short lenght review.'),
+        trailing: Column(
+          children: <Widget>[
+            Icon(
+              Icons.star,
+              color: Colors.yellow,
+            ),
+            SizedBox(
+              height: 2,
+            ),
+            Text('4.2'),
+          ],
+        ),
+      );
+      Widget review2 = ListTile(
+        title: Text('Some User $i'),
+        subtitle: Text(
+            'This is some medium lenght review. I want it to check how app looks.'),
+        trailing: Column(
+          children: <Widget>[
+            Icon(
+              Icons.star,
+              color: Colors.yellow,
+            ),
+            SizedBox(
+              height: 2,
+            ),
+            Text('4.2'),
+          ],
+        ),
+      );
+      reviews
+        ..add(review)
+        ..add(
+          SizedBox(
+            height: 10,
+          ),
+        )
+        ..add(review2)
+        ..add(
+          SizedBox(
+            height: 10,
+          ),
+        )
+        ..add(review1);
+    }
+    return reviews;
   }
 }

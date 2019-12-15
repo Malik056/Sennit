@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -60,7 +62,7 @@ class StoresRouteState extends State<StoresRoute> {
             title: Text('Home'),
             icon: Icon(
               Icons.store,
-              color: Colors.black,
+              color: Colors.black54,
             ),
             activeIcon: Icon(
               Icons.store,
@@ -71,7 +73,7 @@ class StoresRouteState extends State<StoresRoute> {
             title: Text('Search'),
             icon: Icon(
               Icons.search,
-              color: Colors.black,
+              color: Colors.black54,
             ),
             activeIcon: Icon(
               Icons.search,
@@ -82,10 +84,41 @@ class StoresRouteState extends State<StoresRoute> {
             title: Text('Past Orders'),
             icon: Icon(
               Icons.bookmark,
-              color: Colors.black,
+              color: Colors.black54,
             ),
             activeIcon: Icon(
               Icons.bookmark,
+              color: Theme.of(context).accentColor,
+            ),
+          ),
+          BottomNavigationBarItem(
+            title: Text('Notifications'),
+            icon: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.notifications,
+                  color: Colors.black54,
+                ),
+                Positioned(
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.red,
+                        gradient: RadialGradient(radius: 0.5, colors: [
+                          Color.fromARGB(255, 0xff, 0x88, 0x88),
+                          Colors.redAccent
+                        ]),
+                      ),
+                    ),
+                    top: 0,
+                    right: 1),
+              ],
+            ),
+            activeIcon: Icon(
+              Icons.notifications,
               color: Theme.of(context).accentColor,
             ),
           ),
@@ -100,7 +133,7 @@ class StoresRouteState extends State<StoresRoute> {
           Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShoppingCartRoute(null, null),
+                builder: (context) => ShoppingCartRoute(null),
               ));
         },
         backgroundColor: Theme.of(context).accentColor,
@@ -660,6 +693,49 @@ class ItemDetailsRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
+      bottomSheet: BottomSheet(
+        elevation: 40,
+        onClosing: () {},
+        builder: (conext) {
+          return Padding(
+            padding: EdgeInsets.all(0),
+            child: InkWell(
+              child: Container(
+                padding: EdgeInsets.all(10),
+                alignment: Alignment.center,
+                width: MediaQuery.of(context).size.width,
+                height: 50,
+                child: Text(
+                  'Add to Cart',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ),
+              onTap: () {},
+            ),
+          );
+        },
+      ),
+      // persistentFooterButtons: <Widget>[
+      //   Container(
+      //     width: MediaQuery.of(context).size.width,
+      //     child: FlatButton(
+      //       child: Text(
+      //         'Add to Cart',
+      //         style: Theme.of(context).textTheme.subhead,
+      //       ),
+      //       onPressed: () {},
+      //     ),
+      //   ),
+      // ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).pushNamed(MyApp.reviewWidget);
+        },
+        child: Icon(Icons.rate_review),
+        tooltip: "Write a review",
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: _ItemDetailsBody(
         image: image,
         name: name,
@@ -715,12 +791,12 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
 
   var autoplay = true;
   _ItemDetailsBodyState() {
-    _tabController = TabController(vsync: this, length: 2);
+    _tabController = TabController(vsync: this, length: 3);
   }
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       initialIndex: 0,
       child: NestedScrollView(
         headerSliverBuilder: (context, constriant) {
@@ -741,20 +817,22 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                         // viewportFraction: 1.0,
                         enlargeCenterPage: true,
                         height: 250.0,
-                        items: [1, 2, 3, 4, 5].map((i) {
-                          return Builder(
-                            builder: (BuildContext context) {
-                              return Container(
-                                width: MediaQuery.of(context).size.width,
-                                margin: EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                        image: AssetImage(widget.image),
-                                        fit: BoxFit.fitHeight)),
-                              );
-                            },
-                          );
-                        }).toList(),
+                        items: [1, 2, 3, 4, 5].map(
+                          (i) {
+                            return Builder(
+                              builder: (BuildContext context) {
+                                return Container(
+                                  width: MediaQuery.of(context).size.width,
+                                  margin: EdgeInsets.symmetric(horizontal: 5.0),
+                                  decoration: BoxDecoration(
+                                      image: DecorationImage(
+                                          image: AssetImage(widget.image),
+                                          fit: BoxFit.fitHeight)),
+                                );
+                              },
+                            );
+                          },
+                        ).toList(),
                       ),
                       GestureDetector(
                         child: Container(
@@ -800,6 +878,12 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                 centerTitle: true,
                 collapseMode: CollapseMode.pin,
               ),
+              // bottom: TabBar(
+              //     controller: _tabController,
+              //     labelColor: Theme.of(context).accentColor,
+              //     indicatorColor: Theme.of(context).accentColor,
+              //     unselectedLabelColor: Colors.black,
+              //     tabs: _getTabs()),
             ),
           ];
         },
@@ -813,51 +897,108 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
               bottom: 0,
               child: Container(
                 alignment: Alignment.center,
-                color: Colors.white,
+                color: Color.fromARGB(255, 0xfa, 0xfa, 0xfa),
               ),
             ),
             Column(
               children: [
-                Expanded(
-                  child: TabBar(
+                Container(
+                    child: TabBar(
                       controller: _tabController,
                       labelColor: Theme.of(context).accentColor,
                       indicatorColor: Theme.of(context).accentColor,
+                      // indicatorPadding: EdgeInsets.only(top: 80),
                       unselectedLabelColor: Colors.black,
-                      tabs: _getTabs()),
-                ),
-                ButtonBar(
-                  alignment: MainAxisAlignment.spaceEvenly,
-                  mainAxisSize: MainAxisSize.max,
-                  children: <Widget>[
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.thumb_up),
-                            onPressed: () {},
-                          ),
-                          Text('1034 Likes'),
-                        ],
-                      ),
+                      tabs: _getTabs(),
                     ),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.thumb_down,
-                            ),
-                            onPressed: () {},
-                          ),
-                          Text('1034 dislikes'),
-                        ],
-                      ),
-                    ),
-                  ],
+                    color: Colors.white),
+                SizedBox(
+                  height: 10,
                 ),
+                // Row(
+                //   // mainAxisSize: MainAxisSize.min,
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: <Widget>[
+                //     Icon(
+                //       Icons.thumb_up,
+                //       size: 14,
+                //     ),
+                //     SizedBox(
+                //       width: 5,
+                //     ),
+                //     Text(
+                //       '1234',
+                //       style: TextStyle(fontSize: 12),
+                //     ),
+                //     SizedBox(
+                //       width: 20,
+                //     ),
+                //     Container(
+                //       width: 1,
+                //       color: Colors.black,
+                //       child: Text(''),
+                //     ),
+                //     SizedBox(
+                //       width: 20,
+                //     ),
+                //     Icon(Icons.thumb_down, size: 12,),
+                //     SizedBox(
+                //       width: 5,
+                //     ),
+                //     Text(
+                //       '1234',
+                //       style: TextStyle(fontSize: 12),
+                //     )
+                //   ],
+                // ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                //   mainAxisSize: MainAxisSize.max,
+                //   children: <Widget>[
+                //     Spacer(),
+                //     // Center(
+                //     //   child:
+                //     Column(
+                //       crossAxisAlignment: CrossAxisAlignment.center,
+                //       mainAxisSize: MainAxisSize.min,
+                //       children: [
+                //         IconButton(
+                //           icon: Icon(
+                //             Icons.thumb_up,
+                //             size: 18,
+                //           ),
+                //           onPressed: () {},
+                //         ),
+                //         Text('1034'),
+                //       ],
+                //       // ),
+                //     ),
+                //     SizedBox(
+                //       width: 20,
+                //     ),
+                //     // Spacer(),
+                //     // Center(
+                //     //   child:
+                //     Column(
+                //       crossAxisAlignment: CrossAxisAlignment.center,
+                //       mainAxisSize: MainAxisSize.min,
+                //       children: [
+                //         IconButton(
+                //           icon: Icon(
+                //             Icons.thumb_down,
+                //             size: 18,
+                //           ),
+                //           onPressed: () {},
+                //         ),
+                //         Text('1034'),
+                //       ],
+                //     ),
+                //     // ),
+                //     Spacer(
+                //       flex: 8,
+                //     ),
+                //   ],
+                // ),
                 Expanded(
                   flex: 8,
                   child: TabBarView(
@@ -903,8 +1044,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                   ConnectionState.done) {
                                 return SingleChildScrollView(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
                                     children: _getAllSpecifications(),
                                   ),
                                 );
@@ -924,37 +1063,37 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                               }
                             }
                           }),
-                      // FutureBuilder(
-                      //     initialData: null,
-                      //     future: widget.getItemDetails(0),
-                      //     builder: (context, asyncData) {
-                      //       if (asyncData.data == null) {
-                      //         return widget._getProgressBar();
-                      //       } else {
-                      //         if (asyncData.connectionState ==
-                      //             ConnectionState.done) {
-                      //           return _getReviews();
-                      //         } else {
-                      //           return Center(
-                      //             child: Column(
-                      //               mainAxisAlignment: MainAxisAlignment.center,
-                      //               children: <Widget>[
-                      //                 IconButton(
-                      //                   icon: Icon(Icons.replay),
-                      //                   onPressed: () {
-                      //                     setState(() {});
-                      //                   },
-                      //                 ),
-                      //                 SizedBox(
-                      //                   height: 6,
-                      //                 ),
-                      //                 Text('Unable to Load Data'),
-                      //               ],
-                      //             ),
-                      //           );
-                      //         }
-                      //       }
-                      //     }),
+                      FutureBuilder(
+                          initialData: null,
+                          future: widget.getItemDetails(0),
+                          builder: (context, asyncData) {
+                            if (asyncData.data == null) {
+                              return widget._getProgressBar();
+                            } else {
+                              if (asyncData.connectionState ==
+                                  ConnectionState.done) {
+                                return _getReviews();
+                              } else {
+                                return Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: <Widget>[
+                                      IconButton(
+                                        icon: Icon(Icons.replay),
+                                        onPressed: () {
+                                          setState(() {});
+                                        },
+                                      ),
+                                      SizedBox(
+                                        height: 6,
+                                      ),
+                                      Text('Unable to Load Data'),
+                                    ],
+                                  ),
+                                );
+                              }
+                            }
+                          }),
                     ],
                   ),
                 ),
@@ -978,136 +1117,131 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
   List<Widget> _getAllSpecifications() {
     return [
       SizedBox(
-        height: 40,
+        height: 20,
       ),
       Row(
         children: <Widget>[
           SizedBox(
-            width: 40,
+            width: 20,
           ),
-          Expanded(
-            child: Text(
-              'Spec1: ',
-              style: Theme.of(context).textTheme.subhead,
+          Text(
+            'Spec1: ',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
             ),
           ),
+          SizedBox(
+            width: 15,
+          ),
           Expanded(
-            child: Text(
-              'Value of Spec 1',
-              style: Theme.of(context).textTheme.body1,
+            child: Container(
+              // color: Colors.pink,
+              child: Text(
+                'Value of Spec 1',
+                style: Theme.of(context).textTheme.caption,
+                textAlign: TextAlign.start,
+              ),
             ),
           ),
         ],
       ),
       SizedBox(
-        height: 30,
+        height: 10,
       ),
       Row(
         children: <Widget>[
           SizedBox(
-            width: 40,
+            width: 20,
           ),
-          Expanded(
-            child: Text(
-              'Spec 2: ',
-              style: Theme.of(context).textTheme.subhead,
+          Text(
+            'Spec1: ',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
             ),
           ),
+          SizedBox(
+            width: 15,
+          ),
           Expanded(
-            child: Text(
-              'Value of Spec 2',
-              style: Theme.of(context).textTheme.body1,
+            child: Container(
+              // color: Colors.pink,
+              child: Text(
+                'Value of Spec 1',
+                style: Theme.of(context).textTheme.caption,
+                textAlign: TextAlign.start,
+              ),
             ),
           ),
         ],
       ),
       SizedBox(
-        height: 30,
+        height: 10,
       ),
       Row(
         children: <Widget>[
           SizedBox(
-            width: 40,
+            width: 20,
           ),
-          Expanded(
-            child: Text(
-              'Spec 3: ',
-              style: Theme.of(context).textTheme.subhead,
+          Text(
+            'Spec1: ',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
             ),
           ),
+          SizedBox(
+            width: 15,
+          ),
           Expanded(
-            child: Text(
-              'Value of Spec 3',
-              style: Theme.of(context).textTheme.body1,
+            child: Container(
+              // color: Colors.pink,
+              child: Text(
+                'Value of Spec 1',
+                style: Theme.of(context).textTheme.caption,
+                textAlign: TextAlign.start,
+              ),
             ),
           ),
         ],
       ),
       SizedBox(
-        height: 30,
+        height: 10,
       ),
       Row(
         children: <Widget>[
           SizedBox(
-            width: 40,
+            width: 20,
           ),
-          Expanded(
-            child: Text(
-              'Spec 4: ',
-              style: Theme.of(context).textTheme.subhead,
+          Text(
+            'Spec1: ',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
             ),
           ),
+          SizedBox(
+            width: 15,
+          ),
           Expanded(
-            child: Text(
-              'Value of Spec 4',
-              style: Theme.of(context).textTheme.body1,
+            child: Container(
+              // color: Colors.pink,
+              child: Text(
+                'Value of Spec 1',
+                style: Theme.of(context).textTheme.caption,
+                textAlign: TextAlign.start,
+              ),
             ),
           ),
         ],
       ),
       SizedBox(
-        height: 30,
-      ),
-      Row(
-        children: <Widget>[
-          SizedBox(
-            width: 40,
-          ),
-          Expanded(
-            child: Text(
-              'Spec 5: ',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Value of Spec 5',
-              style: Theme.of(context).textTheme.body1,
-            ),
-          ),
-        ],
-      ),
-      SizedBox(
-        height: 30,
-      ),
-      Row(
-        children: <Widget>[
-          SizedBox(
-            width: 40,
-          ),
-          Expanded(
-            child: Text(
-              'Spec 6: ',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Value of Spec 6',
-              style: Theme.of(context).textTheme.body1,
-            ),
-          ),
-        ],
+        height: 10,
       ),
     ];
   }
@@ -1120,74 +1254,235 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
       Tab(
         text: 'Specification',
       ),
-      // Tab(
-      //   text: 'Reviews',
-      // ),
+      Tab(
+        text: 'Reviews',
+      ),
     ];
   }
 
   Widget _getReviews() {
+    List<Widget> reviews = List();
+    for (var i = 0; i < 10; i++) {
+      Widget review2 = Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(4),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 8,
+            right: 8,
+            top: 16,
+            bottom: 8,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.only(right: 4),
+                  // decoration: ShapeDecoration(
+                  //   shape: Border(
+                  //     right: BorderSide(width: 1, color: Colors.black),
+                  //   ),
+                  // ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Some User $i',
+                        style: Theme.of(context).textTheme.subhead,
+                      ),
+                      // mainAxisSize: MainAxisSize.max,
+                      Text(
+                          'This is some medium lenght review. I want it to check how app looks.\n'),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 12,
+              ),
+              Container(
+                margin: EdgeInsets.only(top: 10),
+                width: 1,
+                height: 80,
+                color: Colors.black,
+              ),
+              SizedBox(
+                width: 12,
+              ),
+              Column(
+                children: <Widget>[
+                  Icon(
+                    Icons.star,
+                    color: Colors.yellow,
+                  ),
+                  SizedBox(
+                    height: 2,
+                  ),
+                  Text('4.2'),
+                ],
+              ),
+              SizedBox(
+                width: 8,
+              ),
+            ],
+          ),
+        ),
+      );
+      Widget review = Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(4),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 8,
+            right: 8,
+            top: 16,
+            bottom: 8,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.only(right: 4),
+                  // decoration: ShapeDecoration(
+                  //   shape: Border(
+                  //     right: BorderSide(width: 1, color: Colors.black),
+                  //   ),
+                  // ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Some User $i',
+                        style: Theme.of(context).textTheme.subhead,
+                      ),
+                      // mainAxisSize: MainAxisSize.max,
+                      Text(
+                          'This is some medium lenght review. I want it to check how app looks. This is some medium lenght review. I want it to check how app looks. This is some medium lenght review. I want it to check how app looks.\n'),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 12,
+              ),
+              Container(
+                margin: EdgeInsets.only(top: 10),
+                width: 1,
+                height: 80,
+                color: Colors.black,
+              ),
+              SizedBox(
+                width: 12,
+              ),
+              Column(
+                children: <Widget>[
+                  Icon(
+                    Icons.star,
+                    color: Colors.yellow,
+                  ),
+                  SizedBox(
+                    height: 2,
+                  ),
+                  Text('4.2'),
+                ],
+              ),
+              SizedBox(
+                width: 8,
+              ),
+            ],
+          ),
+        ),
+      );
+      reviews
+        ..add(review)
+        ..add(
+          SizedBox(
+            height: 10,
+          ),
+        )
+        ..add(review2)
+        ..add(
+          SizedBox(
+            height: 10,
+          ),
+        );
+      // ..add(review1);
+    }
     return ListView(
-      children: <Widget>[
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person,
-            size: 40,
-          ),
-          title: Text('person 1'),
-          subtitle: Text('This item is great'),
-        ),
-      ],
+      children: reviews,
     );
   }
+
+  // Widget _getReviews() {
+  //   return ListView(
+  //     children: <Widget>[
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //       ListTile(
+  //         leading: Icon(
+  //           Icons.person,
+  //           size: 40,
+  //         ),
+  //         title: Text('person 1'),
+  //         subtitle: Text('This item is great'),
+  //       ),
+  //     ],
+  //   );
+  // }
 }
 
 class ShoppingCartRoute extends StatelessWidget {
-  static Address _fromAddress;
+  // static Address _fromAddress;
   static Address _toAddress;
 
-  ShoppingCartRoute(fromAddress, toAddress) {
-    _fromAddress = fromAddress;
+  ShoppingCartRoute(toAddress) {
+    // _fromAddress = fromAddress;
     _toAddress = toAddress;
   }
 
@@ -1248,158 +1543,9 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
       child: Column(
         children: [
           Card(
-            margin: EdgeInsets.only(),
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.only(top: cardPadding),
-              child: Column(
-                children: <Widget>[
-                  Text(
-                    'Pick From',
-                    style: Theme.of(context).textTheme.headline,
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: itemMargin,
-                    ),
-                  ),
-                  ListTile(
-                    onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
-                      if (result != null) {
-                        setState(() async {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          ShoppingCartRoute._fromAddress = (await Geocoder.local
-                              .findAddressesFromCoordinates(coordinates))[0];
-                        });
-                      }
-                    },
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text(
-                      ShoppingCartRoute._fromAddress != null
-                          ? ShoppingCartRoute._fromAddress.addressLine
-                          : 'Address not Set',
-                      style: TextStyle(
-                          color: Theme.of(context).accentColor, fontSize: 16),
-                    ),
-                    trailing: Icon(
-                      Icons.edit,
-                      color: Theme.of(context).accentColor,
-                      size: 18,
-                    ),
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: itemMargin,
-                    ),
-                  ),
-                  GestureDetector(
-                    child: ListTile(
-                      leading: Icon(
-                        pickFromDoor
-                            ? FontAwesomeIcons.doorOpen
-                            : FontAwesomeIcons.doorClosed,
-                        color: pickFromDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                      title: Text(
-                        'Pick At Door',
-                        style: TextStyle(
-                          color: pickFromDoor
-                              ? Theme.of(context).accentColor
-                              : Colors.grey,
-                        ),
-                      ),
-                      trailing: Icon(
-                        pickFromDoor
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        color: pickFromDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        pickFromDoor = true;
-                      });
-                    },
-                  ),
-                  GestureDetector(
-                    child: ListTile(
-                      leading: Icon(
-                        pickFromDoor
-                            ? FontAwesomeIcons.taxi
-                            : FontAwesomeIcons.truckPickup,
-                        color: !pickFromDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                      title: Text(
-                        'Meet at Vehicle',
-                        style: TextStyle(
-                          color: !pickFromDoor
-                              ? Theme.of(context).accentColor
-                              : Colors.grey,
-                        ),
-                      ),
-                      trailing: Icon(
-                        !pickFromDoor
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        color: !pickFromDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        pickFromDoor = false;
-                      });
-                    },
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(itemMargin),
-                    child: Column(
-                      children: <Widget>[
-                        TextField(
-                          decoration: InputDecoration(
-                              labelText: 'Apt/Suite/Floor/Building Name'),
-                        ),
-                        TextField(
-                          decoration: InputDecoration(labelText: 'Email'),
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        TextField(
-                          decoration:
-                              InputDecoration(labelText: 'Phone Number'),
-                          keyboardType: TextInputType.phone,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Card(
-            margin: EdgeInsets.only(
-              top: groupMargin,
-            ), //, left: cardMargin, right: cardMargin),
+            // margin: EdgeInsets.only(
+            //   top: groupMargin,
+            // ), //, left: cardMargin, right: cardMargin),
             elevation: 5,
             child: Container(
               padding: EdgeInsets.only(top: cardPadding),
@@ -1677,16 +1823,17 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     ),
                     Expanded(
                       flex: 2,
-                      child:TextField(
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: <TextInputFormatter>[
-                        LengthLimitingTextInputFormatter(2),
-                        WhitelistingTextInputFormatter.digitsOnly,
-                        BlacklistingTextInputFormatter.singleLineFormatter,
-                        BlacklistingTextInputFormatter(RegExp(r'\n|-|.')),
-                      ],
-                    ),),
+                      child: TextField(
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          LengthLimitingTextInputFormatter(2),
+                          WhitelistingTextInputFormatter.digitsOnly,
+                          BlacklistingTextInputFormatter.singleLineFormatter,
+                          BlacklistingTextInputFormatter(RegExp(r'\n|-|.')),
+                        ],
+                      ),
+                    ),
                     InkWell(
                       child: Text(
                         ' +',
