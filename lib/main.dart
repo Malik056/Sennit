@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:path/path.dart';
 import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
@@ -19,6 +20,7 @@ import 'package:sennit/user/recieveIt.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
+import 'package:sqflite/sqflite.dart';
 import 'driver/signup.dart';
 import 'user/user_startpage.dart';
 
@@ -38,7 +40,27 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   locationInitializer();
+  databaseInitializer();
   runApp(MyApp());
+}
+
+
+
+void databaseInitializer() async {
+  final Future<Database> database = openDatabase(
+  // Set the path to the database.
+  join(await getDatabasesPath(), 'sennit.db'),
+  // When the database is first created, create a table to store dogs.
+  onCreate: (db, version) {
+    // Run the CREATE TABLE statement on the database.
+    return db.execute(
+      "CREATE TABLE USER(ID INTEGER PRIMARY KEY, FIRST_NAME TEXT, LAST_NAME TEXT, DATA_OF_BIRTH, )",
+    );
+  },
+  // Set the version. This executes the onCreate function and provides a
+  // path to perform database upgrades and downgrades.
+  version: 1,
+);
 }
 
 class MyApp extends StatelessWidget {
@@ -64,7 +86,6 @@ class MyApp extends StatelessWidget {
   static final String activeOrderBody = 'activeOrderBody';
   static final String reviewWidget = 'reviewWidget';
 
-
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
   static Stream<LocationData> _locationData;
@@ -77,7 +98,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: recieveItRoute,
+      initialRoute: startPage,
       routes: {
         // '/': (context) => StartPage(),
         driverNavigationRoute: (context) => DeliveryTrackingRoute(
@@ -116,6 +137,11 @@ class MyApp extends StatelessWidget {
               Radius.circular(6),
             ),
           ),
+        ),
+        bottomAppBarColor: Colors.white,
+        bottomAppBarTheme: BottomAppBarTheme(
+          color: Colors.white,
+          elevation: 8,
         ),
         appBarTheme: AppBarTheme(
           iconTheme: IconThemeData(

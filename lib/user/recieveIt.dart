@@ -59,7 +59,10 @@ class StoresRouteState extends State<StoresRoute> {
       bottomNavigationBar: BottomNavigationBar(
         items: [
           BottomNavigationBarItem(
-            title: Text('Home'),
+            title: Text(
+              'Home',
+              style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600),
+            ),
             icon: Icon(
               Icons.store,
               color: Colors.black54,
@@ -70,7 +73,7 @@ class StoresRouteState extends State<StoresRoute> {
             ),
           ),
           BottomNavigationBarItem(
-            title: Text('Search'),
+            title: Text('Search', style: TextStyle(color: Colors.black)),
             icon: Icon(
               Icons.search,
               color: Colors.black54,
@@ -81,7 +84,7 @@ class StoresRouteState extends State<StoresRoute> {
             ),
           ),
           BottomNavigationBarItem(
-            title: Text('Past Orders'),
+            title: Text('Past Order', style: TextStyle(color: Colors.black)),
             icon: Icon(
               Icons.bookmark,
               color: Colors.black54,
@@ -92,7 +95,7 @@ class StoresRouteState extends State<StoresRoute> {
             ),
           ),
           BottomNavigationBarItem(
-            title: Text('Notifications'),
+            title: Text('Notification', style: TextStyle(color: Colors.black)),
             icon: Stack(
               alignment: Alignment.center,
               children: [
