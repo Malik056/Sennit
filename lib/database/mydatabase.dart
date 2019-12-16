@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart';
+
 class Tables {
   static const String USER_TABLE = "USER_TABLE";
   static const String DRIVER_TABLE = "DRIVER_TABLE";
@@ -66,9 +68,7 @@ class OrderFromRecieveItTableColumns {
   static const String DATE_ORDERED = "DATE_ORDERED";
   static const String ORDER_PRICE = "ORDER_PRICE";
   static const String USER_ID = "USER_ID";
-  static const String RECIEVER_NAME = "RECEIVER_NAME";
-  static const String RECIEVER_PHONE = "RECEIVER_PHONE";
-  static const String RECIEVER_EMAIL = "RECEIVER_EMAIL";
+  static const String DRIVER_ID = "DRIVER_ID";
 }
 
 class OrderFromSennitTableColumns {
@@ -80,6 +80,11 @@ class OrderFromSennitTableColumns {
   static const String DROP_OFF_COORDINATES = "DROP_OFF_COORDINATES";
   static const String DROP_OFF_ADDRESS = "DROP_OFF_ADDRESS";
   static const String SERVICE_CHARGES = "SERVICE_CHARGES";
+  static const String USER_ID = "USER_ID";
+  static const String RECIEVER_NAME = "RECEIVER_NAME";
+  static const String RECIEVER_PHONE = "RECEIVER_PHONE";
+  static const String RECIEVER_EMAIL = "RECEIVER_EMAIL";
+  static const String DRIVER_ID = "DRIVER_ID";
 }
 
 class OrderItemForSennitTableColumns {
@@ -105,10 +110,12 @@ class OrderItemForReceiveItTableColumns {
 
 class OrderOtherChargesTableColumns {
   static const String CHARGES_NAME = "CHARGES_NAME";
-  static const String CHARGGES_PRICE = "CHARGES_PRICE";
+  static const String CHARGES_PRICE = "CHARGES_PRICE";
+  static const String ORDER_ID = "ORDER_ID";
 }
 
 class ItemTableColumns {
+  static const String ITEM_ID = "ITEM_ID";
   static const String NAME = "NAME";
   static const String BASE_CATEGORY = "CATEGORY";
   static const String SUB_CATEGORY = "SUB_CATEGORY";
@@ -120,12 +127,15 @@ class SignedInUserTableColumns {
 }
 
 class UserCartTableColumns {
+  static const String USER_ID = "USER_ID";
+  static const String TOTAL_PRICE = "TOTAL_PRICE";
   static const String CART_ID = "CART_ID";
-  static const String PRICE = "PRICE";
 }
 
 class UserLocationHistoryTableColumns {
   static const String ADDRESS = "ADDRESS";
+  static const String COORDINATES = "COORDINATES";
+  static const String USER_ID = "USER_ID";
 }
 
 class UserNotificationTableColumns {
@@ -133,19 +143,169 @@ class UserNotificationTableColumns {
   static const String TITLE = "TITLE";
   static const String ORDER_ID = "ORDER_ID";
   static const String DESCRIPTION = "DESCRIPTION";
-  static const String IS_NOTIFICATION_FOR_ORDER_COMPLETE = "IS_NOTIFICATION_FOR_ORDER_COMPLETE";
+  static const String IS_NOTIFICATION_FOR_ORDER_COMPLETE =
+      "IS_NOTIFICATION_FOR_ORDER_COMPLETE";
 }
 
 class DriverNotificationTableColumns {
   static const String NOTIFICATION_ID = "NOTIFICATOIN_ID";
   static const String PICK_UP_ADDRESS = "PICK_UP_ADDRESS";
-  static const String DROP_OFF_LOCATION = "DROP_OFF_LOCATION";
+  static const String DROP_OFF_ADDRESS = "DROP_OFF_LOCATION";
   static const String PICK_UP_COORDINATES = "PICK_UP_COORDINATES";
-  static const String DROP_OF_COORDINATES = "DROP_OFF_COORDINATES";
+  static const String DROP_OFF_COORDINATES = "DROP_OFF_COORDINATES";
 }
 
-class OtherChargesForOrderTableColumn {
-  static const String CHARGES_NAME = "SomeCharges";
-  static const String CHARGES_VALUE = "SomeDoubleValue";
-  static const String ORDER_ID = "ORDER_ID";
+class ItemPropertyTableColumn {
+  static const String PROPERTY_NAME = "PROPERTY_NAME";
+  static const String PROPERTY_VALUE = "PROPERTY_VALUE";
+  static const String ITEM_PRICE = "ITEM_PRICE";
+  static const String ITEM_ID = "ITEM_ID";
+}
+
+class MyDatabase {
+  static Database _myDatabase;
+
+  getDatabase() async {
+    if (_myDatabase != null) {
+      return _myDatabase;
+    } else {
+      _myDatabase = await openDatabase('sennit.db', onCreate: (db, version) {
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.SIGNED_IN_USER_TABLE} ( " +
+                "${SignedInUserTableColumns.USER_ID} TEXT PRIMARY KEY" +
+                " )");
+
+        db.execute("CREATE TABLE IF NOT EXISTS ${Tables.USER_TABLE} ( " +
+            "${UserTableColumns.FIRST_NAME} TEXT, " +
+            "${UserTableColumns.LAST_NAME} TEXT, " +
+            "${UserTableColumns.EMAIL} TEXT, " +
+            "${UserTableColumns.PHONE_NUMBER} TEXT, " +
+            "${UserTableColumns.USER_ID} TEXT PRIMARY KEY, " +
+            "${UserTableColumns.DATE_CREATED} TEXT, " +
+            "${UserTableColumns.DATE_OF_BIRTH} TEXT, " +
+            "${UserTableColumns.HOME_LOCATION_ADDRESS} TEXT," +
+            "${UserTableColumns.HOME_LOCATION_LATLNG} TEXT, " +
+            "${UserTableColumns.OFFICE_LOCATION_ADDRESS} TEXT, " +
+            "${UserTableColumns.OFFICE_LOCATION_LATLNG} TEXT, " +
+            "${UserTableColumns.RANK} TEXT, " +
+            "${UserTableColumns.GENDER} TEXT" +
+            " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.USER_LOCATION_HISTORY_TABLE} ( " +
+                "${UserLocationHistoryTableColumns.ADDRESS} TEXT PRIMARY KEY, " +
+                "${UserLocationHistoryTableColumns.USER_ID} TEXT, " +
+                "${UserLocationHistoryTableColumns.COORDINATES} TEXT" +
+                " )");
+
+        db.execute("CREATE TABLE IF NOT EXISTS ${Tables.USER_CART_TABLE} ( " +
+            "${UserCartTableColumns.CART_ID} TEXT PRIMARY_KEY, " +
+            "${UserCartTableColumns.USER_ID} TEXT" +
+            " )");
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.USER_NOTIFICATION_TABLE} ( " +
+                "${UserNotificationTableColumns.ORDER_ID} TEXT, " +
+                "${UserNotificationTableColumns.NOTIFICATION_ID} TEXT PRIMARY KEY, " +
+                "${UserNotificationTableColumns.DESCRIPTION} TEXT , " +
+                "${UserNotificationTableColumns.TITLE} TEXT" +
+                " )");
+
+        db.execute("CREATE TABLE IF NOT EXISTS ${Tables.DRIVER_TABLE} ( " +
+            "${DriverTableColumns.FIRST_NAME} TEXT, " +
+            "${DriverTableColumns.LAST_NAME} TEXT, " +
+            "${DriverTableColumns.PHONE_NUMBER} TEXT, " +
+            "${DriverTableColumns.DATE_OF_BIRTH} TEXT, " +
+            "${DriverTableColumns.DATE_CREATED} TEXT, " +
+            "${DriverTableColumns.DRIVER_ID} TEXT PRIMARY KEY, " +
+            "${DriverTableColumns.HOME_LOCATION_ADDRESS} TEXT, " +
+            "${DriverTableColumns.HOME_LOCATION_LATLNG} TEXT, " +
+            "${DriverTableColumns.EMAIL} TEXT, " +
+            "${DriverTableColumns.BALANCE} TEXT, " +
+            "${DriverTableColumns.RANK} TEXT, " +
+            "${DriverTableColumns.GENDER} TEXT" +
+            " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.DRIVER_NOTIFICATION_TABLE} ( " +
+                "${DriverNotificationTableColumns.NOTIFICATION_ID} TEXT PRIMARY KEY, " +
+                "${DriverNotificationTableColumns.DROP_OFF_ADDRESS} TEXT, " +
+                "${DriverNotificationTableColumns.PICK_UP_ADDRESS} TEXT, " +
+                "${DriverNotificationTableColumns.PICK_UP_COORDINATES} TEXT, " +
+                "${DriverNotificationTableColumns.DROP_OFF_COORDINATES} TEXT" +
+                " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_FROM_RECIEVE_IT_TABLE} ( " +
+                "${OrderFromRecieveItTableColumns.ORDER_ID} TEXT PRIMARY KEY, " +
+                "${OrderFromRecieveItTableColumns.DRIVER_ID} TEXT, " +
+                "${OrderFromRecieveItTableColumns.USER_ID} TEXT, " +
+                "${OrderFromRecieveItTableColumns.DATE_ORDERED} TEXT, " +
+                "${OrderFromRecieveItTableColumns.DROP_OFF_COORDINATES} TEXT, " +
+                "${OrderFromRecieveItTableColumns.DROP_OFF_COORDINATES} TEXT, " +
+                "${OrderFromRecieveItTableColumns.ORDER_PRICE} TEXT, " +
+                "${OrderFromRecieveItTableColumns.STORE_ADDRESS} TEXT, " +
+                "${OrderFromRecieveItTableColumns.STORE_COORDINATES} TEXT, " +
+                "${OrderFromRecieveItTableColumns.STORE_NAME} TEXT" +
+                " )");
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_FROM_SENNIT_TABLE} ( " +
+                "${OrderFromSennitTableColumns.ORDER_ID} TEXT PRIMARY KEY, " +
+                "${OrderFromSennitTableColumns.DRIVER_ID} TEXT, " +
+                "${OrderFromSennitTableColumns.USER_ID} TEXT, " +
+                "${OrderFromRecieveItTableColumns.DATE_ORDERED} TEXT, " +
+                "${OrderFromSennitTableColumns.DROP_OFF_COORDINATES} TEXT, " +
+                "${OrderFromSennitTableColumns.DROP_OFF_ADDRESS} TEXT, " +
+                "${OrderFromSennitTableColumns.ORDER_PRICE} TEXT, " +
+                "${OrderFromSennitTableColumns.PICK_UP_ADDRESS} TEXT, " +
+                "${OrderFromSennitTableColumns.PICK_UP_COORDINATES} TEXT, " +
+                "${OrderFromSennitTableColumns.RECIEVER_EMAIL} TEXT, " +
+                "${OrderFromSennitTableColumns.RECIEVER_NAME} TEXT, " +
+                "${OrderFromSennitTableColumns.RECIEVER_PHONE} TEXT" +
+                " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_ITEM_FOR_RECEIVE_IT_TABLE} ( " +
+                "${OrderItemForReceiveItTableColumns.ORDER_ITEM_ID} TEXT PRIMARY KEY, " +
+                "${OrderItemForReceiveItTableColumns.ITEM_ID} TEXT, " +
+                "${OrderItemForReceiveItTableColumns.ITEM_PROPERTY_ID} TEXT , " +
+                "${OrderItemForReceiveItTableColumns.ORDER_ID} TEXT , " +
+                "${OrderItemForReceiveItTableColumns.PRICE} TEXT , " +
+                "${OrderItemForReceiveItTableColumns.QUANTITY} TEXT" +
+                " )");
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_ITEM_FOR_SENNIT_TABLE} ( " +
+                "${OrderItemForSennitTableColumns.ORDER_ITEM_ID} TEXT PRIMARY KEY, " +
+                "${OrderItemForSennitTableColumns.ITEM_ID} TEXT, " +
+                "${OrderItemForSennitTableColumns.ORDER_ID} TEXT, " +
+                "${OrderItemForSennitTableColumns.BOX_SIZE} TEXT, " +
+                "${OrderItemForSennitTableColumns.NUMBER_OF_BOXES} TEXT, " +
+                "${OrderItemForSennitTableColumns.PRICE} TEXT, " +
+                "${OrderItemForSennitTableColumns.SLEEVES_REQUIRED} TEXT" +
+                " )");
+
+        db.execute("CREATE TABLE IF NOT EXISTS ${Tables.ITEM_TABLE} ( " +
+            "${ItemTableColumns.ITEM_ID} TEXT PRIMARY KEY, " +
+            "${ItemTableColumns.NAME} TEXT, " +
+            "${ItemTableColumns.SUB_CATEGORY} TEXT, " +
+            "${ItemTableColumns.PRICE} TEXT, " +
+            "${ItemTableColumns.BASE_CATEGORY} TEXT" +
+            " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ITEM_PROPERTY_TABLE} ( " +
+                "${ItemPropertyTableColumn.PROPERTY_NAME} TEXT PRIMARY KEY, " +
+                "${ItemPropertyTableColumn.ITEM_ID} TEXT, " +
+                "${ItemPropertyTableColumn.ITEM_PRICE} TEXT, " +
+                "${ItemPropertyTableColumn.PROPERTY_VALUE} TEXT" +
+                " )");
+
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_OTHER_CHARGES_TABLE} ( " +
+                "${OrderOtherChargesTableColumns.CHARGES_NAME} TEXT PRIMARY KEY, " +
+                "${OrderOtherChargesTableColumns.ORDER_ID} TEXT, " +
+                "${OrderOtherChargesTableColumns.CHARGES_PRICE} TEXT" +
+                " )");
+      });
+    }
+  }
 }
