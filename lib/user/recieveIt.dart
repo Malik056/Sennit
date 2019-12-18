@@ -61,7 +61,9 @@ class StoresRouteState extends State<StoresRoute> {
           BottomNavigationBarItem(
             title: Text(
               'Home',
-              style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.w600),
             ),
             icon: Icon(
               Icons.store,
@@ -705,13 +707,16 @@ class ItemDetailsRoute extends StatelessWidget {
             padding: EdgeInsets.all(0),
             child: InkWell(
               child: Container(
+                color: Theme.of(context).primaryColor,
                 padding: EdgeInsets.all(10),
                 alignment: Alignment.center,
                 width: MediaQuery.of(context).size.width,
                 height: 50,
                 child: Text(
                   'Add to Cart',
-                  style: Theme.of(context).textTheme.subhead,
+                  strutStyle: StrutStyle.fromTextStyle(
+                      Theme.of(context).textTheme.subhead),
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
               onTap: () {},
@@ -735,7 +740,8 @@ class ItemDetailsRoute extends StatelessWidget {
         onPressed: () {
           Navigator.of(context).pushNamed(MyApp.reviewWidget);
         },
-        child: Icon(Icons.rate_review),
+        backgroundColor: Theme.of(context).accentColor,
+        child: Icon(Icons.rate_review, color: Colors.white,),
         tooltip: "Write a review",
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
@@ -857,11 +863,11 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                         },
                         onTapUp: (details) {
                           autoplay = true;
-                          setState(() {});
+                          // setState(() {});
                         },
                         onTapCancel: () {
                           autoplay = true;
-                          setState(() {});
+                          // setState(() {});
                         },
                         onHorizontalDragStart: (details) {},
                       ),
@@ -1419,6 +1425,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
         );
       // ..add(review1);
     }
+    reviews.add(SizedBox(height: 100));
     return ListView(
       children: reviews,
     );

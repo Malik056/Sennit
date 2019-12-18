@@ -60,13 +60,14 @@ class UserStartPage extends StatelessWidget {
                 ),
               ),
               RaisedButton(
+                color: Colors.white,
                 padding:
                     EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
                 // color: Theme.of(context).accentColor,
                 child: Text(
                   'Log in',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).primaryColor,
                     fontSize: Theme.of(context).textTheme.button.fontSize,
                     // color: Colors.white //Theme.of(context).primaryColor,
                   ),

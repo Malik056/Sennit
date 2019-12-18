@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:path/path.dart';
 import 'package:place_picker/place_picker.dart';
+import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
@@ -22,6 +23,7 @@ import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
 import 'package:sqflite/sqflite.dart';
 import 'driver/signup.dart';
+import 'models/models.dart';
 import 'user/user_startpage.dart';
 
 Future<void> locationInitializer() async {
@@ -44,23 +46,8 @@ main() async {
   runApp(MyApp());
 }
 
-
-
 void databaseInitializer() async {
-  final Future<Database> database = openDatabase(
-  // Set the path to the database.
-  join(await getDatabasesPath(), 'sennit.db'),
-  // When the database is first created, create a table to store dogs.
-  onCreate: (db, version) {
-    // Run the CREATE TABLE statement on the database.
-    return db.execute(
-      "CREATE TABLE USER(ID INTEGER PRIMARY KEY, FIRST_NAME TEXT, LAST_NAME TEXT, DATA_OF_BIRTH, )",
-    );
-  },
-  // Set the version. This executes the onCreate function and provides a
-  // path to perform database upgrades and downgrades.
-  version: 1,
-);
+  // final database = DatabaseHelper.getDatabase();
 }
 
 class MyApp extends StatelessWidget {
@@ -267,6 +254,63 @@ class Utils {
     final data = await MyApp._location.getLocation();
     return LatLng(data.latitude, data.longitude);
   }
+
+  static LatLng latLngFromString(String latlng) {
+    List<String> splittedValues = latlng.split(',');
+    double lattitude = double.parse(splittedValues[0]);
+    double longitude = double.parse(splittedValues[1]);
+    return LatLng(lattitude, longitude);
+  }
+
+  static String genderToString(Gender gender) {
+    switch (gender) {
+      case Gender.male:
+        return "MALE";
+      case Gender.female:
+        return "FEMALE";
+      default:
+        return "OTHER";
+    }
+  }
+
+  static Gender getGenderFromString(String name) {
+    switch (name.toUpperCase()) {
+      case "MALE":
+        return Gender.male;
+      case "FEMALE":
+        return Gender.female;
+      default:
+        return Gender.other;
+    }
+  }
+
+  static String latLngToString(LatLng latLng) {
+    return "${latLng.latitude},${latLng.longitude}";
+  }
+
+  static String boxSizeToString(BoxSize boxsSize) {
+    switch (boxsSize){
+      case BoxSize.small:
+        return "SMALL";
+      case BoxSize.medium:
+        return "MEDIUM";
+      default:
+        return "LARGE";
+    }
+  }
+
+  static BoxSize getBoxSizeFromString(String boxSize) {
+    switch(boxSize.toUpperCase()) {
+      case 'SMALL':
+        return BoxSize.small;
+      case 'MEDIUM':
+        return BoxSize.medium;
+      default:
+        return BoxSize.large;
+    }
+  }
+
+
 }
 
 class Item {
