@@ -1,8 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:place_picker/place_picker.dart';
+import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
+import 'package:sqflite/sqlite_api.dart';
 
 class UserSignUpRoute extends StatelessWidget {
   @override
@@ -30,6 +34,7 @@ class UserSignUpRouteBody extends StatefulWidget {
 }
 
 class UserSignUpRouteState extends State<UserSignUpRouteBody> {
+  User user = User();
   Color defaultColor = Colors.white;
   Color defaultHeighlightedColor = Colors.white;
   Color defaultBtnBackgroundColor = Colors.white;
@@ -85,6 +90,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         if (firstName.isEmpty) {
                           return "First Name can't be empty";
                         }
+                        user.firstName = firstName;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -97,6 +103,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         if (lastName.isEmpty) {
                           return "Last Name can't be empty";
                         }
+                        user.lastName = lastName;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -117,6 +124,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                             return 'Invalid Email Format';
                           }
                         }
+                        user.email = email;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -206,12 +214,13 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                             if (selectedDate != null) {
                               setState(() {
                                 dateSelected = true;
-                                dateOfBirthTextColor =
-                                    Colors.white;
-                                dateOfBirthHeadingColor = Theme.of(context).primaryColor;
+                                dateOfBirthTextColor = Colors.white;
+                                dateOfBirthHeadingColor =
+                                    Theme.of(context).primaryColor;
                                 dateText = DateFormat("dd-MMM-yyyy", "en_US")
                                     .format(selectedDate)
                                     .toString();
+                                user.dateOfBirth = selectedDate;
                               });
                             }
                           },
@@ -254,6 +263,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         if (cellNum.isEmpty) {
                           return "Please Enter your phone number";
                         }
+                        user.phoneNumber = cellNum;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -272,6 +282,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                             address = result.formattedAddress;
                           });
                         }
+                        user.homeLocationAddress = address;
+                        user.homeLocationLatLng = result.latLng;
                       },
                     ),
                     ListTile(
@@ -337,17 +349,54 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                           }
                           setState(() {});
                         },
-                        onPressed: () {
+                        onPressed: () async {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) {
+                              return Dialog(
+                                  elevation: 8,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(4),
+                                    ),
+                                  ),
+                                  child: CircularProgressIndicator());
+                            },
+                          );
                           tapped = true;
                           var form = _formKey.currentState;
                           if (form.validate() && dateInitialText != dateText) {
-                            Navigator.pop(context);
-                            Navigator.of(context).pushNamed(MyApp.driverHome);
-                            setState(() {
-                              dateSelected = true;
+                            user.userCreatedOn = DateTime.now();
+                            user.userId =
+                                "user${DateTime.now().millisecondsSinceEpoch}";
+                            Database database = DatabaseHelper.getDatabase();
+                            database.insert(Tables.USER_TABLE, user.toMap());
+                            await DatabaseHelper.signInUser(user.userId);
+                            Firestore.instance
+                                .collection("users")
+                                .document(user.userId)
+                                .setData(user.toMap())
+                                .timeout(Duration(seconds: 10))
+                                .then((a) {
+                              Session.variables["user"] = user;
+                              Navigator.pop(context);
+                              Navigator.pop(context);
+                              Navigator.of(context).pushNamed(MyApp.userHome);
+                            }).catchError(() {
+                              Navigator.pop(context);
+                              SnackBar snackBar = SnackBar(
+                                content: Text(
+                                  'Something went wrong. Try again!',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: Colors.red,
+                              );
+                              Scaffold.of(context).showSnackBar(snackBar);
                             });
                           } else if (dateInitialText == dateText) {
                             setState(() {
+                              Navigator.pop(context);
                               dateOfBirthHeadingColor = Colors.red;
                               dateOfBirthTextColor = Colors.red;
                             });

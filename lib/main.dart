@@ -6,9 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-import 'package:path/path.dart';
 import 'package:place_picker/place_picker.dart';
-import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
@@ -21,7 +19,7 @@ import 'package:sennit/user/recieveIt.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
-import 'package:sqflite/sqflite.dart';
+import 'database/mydatabase.dart';
 import 'driver/signup.dart';
 import 'models/models.dart';
 import 'user/user_startpage.dart';
@@ -42,13 +40,13 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   locationInitializer();
-  databaseInitializer();
+  await databaseInitializer();
   runApp(MyApp());
 }
 
-void databaseInitializer() async {
-  // final database = DatabaseHelper.getDatabase();
-}
+databaseInitializer() async {
+  await DatabaseHelper.iniitialize();
+} 
 
 class MyApp extends StatelessWidget {
   static final String startPage = 'startPage';
@@ -354,4 +352,8 @@ class Review {
   final rewiewID;
 
   Review(this.picUrl, this.name, this.userID, this.review, this.rewiewID);
+}
+
+class Session {
+  static get variables => Map<String, dynamic>();
 }

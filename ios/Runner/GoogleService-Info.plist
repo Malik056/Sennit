@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>203282049129-2b5clid843q1ghj53ltq6v5v59oeskqh.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.203282049129-2b5clid843q1ghj53ltq6v5v59oeskqh</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCRHI1Zhhx4rWBP6efs5qdxK0Z5d8Hb8qw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>203282049129</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>za.co.sennit</string>
+	<key>PROJECT_ID</key>
+	<string>sennit-70d71</string>
+	<key>STORAGE_BUCKET</key>
+	<string>sennit-70d71.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:203282049129:ios:34541c92870c1398735af8</string>
+	<key>DATABASE_URL</key>
+	<string>https://sennit-70d71.firebaseio.com</string>
+</dict>
+</plist>

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:sennit/models/models.dart';
 import 'package:sqflite/sqflite.dart';
 
 class Tables {
@@ -120,6 +121,7 @@ class OrderOtherChargesTableColumns {
 
 class ItemTableColumns {
   static const String ITEM_ID = "itemId";
+  static const String ORDER_ID = "orderId";
   static const String NAME = "name";
   static const String BASE_CATEGORY = "baseCategory";
   static const String SUB_CATEGORY = "subCategory";
@@ -138,7 +140,7 @@ class SignedInUserTableColumns {
 
 class UserCartTableColumns {
   static const String USER_ID = "userId";
-  static const String TOTAL_PRICE = "totalPrice";
+  // static const String TOTAL_PRICE = "totalPrice";
   static const String CART_ID = "cartId";
 }
 
@@ -180,11 +182,16 @@ class DatabaseHelper {
 
   DatabaseHelper._();
 
-  static getDatabase() async {
+  static Database getDatabase() {
+    return _myDatabase;
+  }
+
+  static iniitialize() async {
     String databaseName = 'sennit.db';
 
     if (_myDatabase != null) {
-      return _myDatabase;
+      print('Already Initialized');
+      return;
     } else {
       _myDatabase = await openDatabase(
         databaseName,
@@ -193,15 +200,16 @@ class DatabaseHelper {
           db.rawDelete("DROP DATABASE $databaseName");
           onCreate(db, nVersion);
         },
-        version: 1,
+        version: 2,
       );
-      return _myDatabase;
+      return;
     }
   }
 
-  static FutureOr<void> onCreate(db, version) {
+  static onCreate(db, version) {
     db.execute("CREATE TABLE IF NOT EXISTS ${Tables.SIGNED_IN_USER_TABLE} ( " +
-        "${SignedInUserTableColumns.USER_ID} TEXT PRIMARY KEY" +
+        "ID INT PRIMARY KEY, " +
+        "${SignedInUserTableColumns.USER_ID} TEXT" +
         " )");
 
     db.execute("CREATE TABLE IF NOT EXISTS ${Tables.USER_TABLE} ( " +
@@ -230,8 +238,7 @@ class DatabaseHelper {
 
     db.execute("CREATE TABLE IF NOT EXISTS ${Tables.USER_CART_TABLE} ( " +
         "${UserCartTableColumns.CART_ID} TEXT PRIMARY_KEY, " +
-        "${UserCartTableColumns.USER_ID} TEXT, " +
-        "${UserCartTableColumns.TOTAL_PRICE} INT" +
+        "${UserCartTableColumns.USER_ID} TEXT" +
         " )");
 
     db.execute("CREATE TABLE IF NOT EXISTS ${Tables.USER_NOTIFICATION_TABLE} ( " +
@@ -272,7 +279,7 @@ class DatabaseHelper {
             "${OrderFromRecieveItTableColumns.USER_ID} TEXT, " +
             "${OrderFromRecieveItTableColumns.DATE_ORDERED} TEXT, " +
             "${OrderFromRecieveItTableColumns.DROP_OFF_LATLNG} TEXT, " +
-            "${OrderFromRecieveItTableColumns.DROP_OFF_LATLNG} TEXT, " +
+            "${OrderFromRecieveItTableColumns.DROP_OFF_ADDRESS} TEXT, " +
             "${OrderFromRecieveItTableColumns.ORDER_PRICE} TEXT, " +
             "${OrderFromRecieveItTableColumns.STORE_ADDRESS} TEXT, " +
             "${OrderFromRecieveItTableColumns.STORE_LATLNG} TEXT, " +
@@ -346,4 +353,158 @@ class DatabaseHelper {
             "${OrderOtherChargesTableColumns.CHARGES_PRICE} TEXT" +
             " )");
   }
+
+  static getCurrentUser() async {
+    var currentUserId = getCurrentUserId();
+    if (currentUserId != null) {
+      var usersAsListofMap = await _myDatabase.query(
+        Tables.USER_TABLE,
+        distinct: true,
+        where: "${UserTableColumns.USER_ID} = ?",
+        whereArgs: [
+          currentUserId,
+        ],
+      );
+      User user = User.fromMap((usersAsListofMap)[0]);
+      return user;
+    } else {
+      return null;
+    }
+  }
+
+  static getCurrentUserId() async {
+    var signedInUsersAsListOfMap =
+        await _myDatabase.query(Tables.SIGNED_IN_USER_TABLE);
+    if (signedInUsersAsListOfMap != null &&
+        signedInUsersAsListOfMap.length >= 1) {
+      return signedInUsersAsListOfMap[0][SignedInUserTableColumns.USER_ID];
+    }
+    return null;
+  }
+
+  static getUserLocationHistory() async {
+    var currentUserId = getCurrentUserId();
+    if (currentUserId != null) {
+      var userHistoryLocations = await _myDatabase.query(
+        Tables.USER_LOCATION_HISTORY_TABLE,
+        distinct: true,
+        where: "${UserLocationHistoryTableColumns.USER_ID} = ?",
+        whereArgs: [currentUserId],
+        orderBy: "{UserLocationHistoryTableColumns.LAST_USED} DESC",
+      );
+
+      if (userHistoryLocations == null || userHistoryLocations.length == 0) {
+        return null;
+      }
+      List<UserLocationHistory> userLocationHistory =
+          List.generate(userHistoryLocations.length, (i) {
+        return UserLocationHistory.fromMap(userHistoryLocations[i]);
+      });
+      return userLocationHistory;
+    } else {
+      return null;
+    }
+  }
+
+  static signInUser(String userId) async {
+    await _myDatabase.update(
+      Tables.SIGNED_IN_USER_TABLE,
+      {"ID": 1, SignedInUserTableColumns.USER_ID: userId},
+    );
+  }
+
+  static getUserCartId(String userId) async {
+    var userCarts = await _myDatabase.query(
+      Tables.USER_CART_TABLE,
+      where: "${UserCartTableColumns.USER_ID} = ?",
+      whereArgs: [userId],
+    );
+
+    if (userCarts != null && userCarts.length >= 1) {
+      return userCarts[0][UserCartTableColumns.CART_ID];
+    } else {
+      return null;
+    }
+  }
+
+  static getOrderInCart(String userId) async {
+    String cartId = await getUserCartId(userId);
+    if (cartId != null) {
+      var orders = await _myDatabase.query(
+        Tables.ORDER_FROM_RECIEVE_IT_TABLE,
+        where: "${OrderFromRecieveItTableColumns.ORDER_ID} = ?",
+        whereArgs: [cartId],
+      );
+      if (orders == null || orders.length == 0) {
+        return null;
+      }
+      return OrderFromRecieveIt.fromMap(orders[0]);
+    } else {
+      return null;
+    }
+  }
+
+  static getOrderItems(String orderId) async {
+    var orderItemsAsMap = await _myDatabase.query(
+      Tables.ORDER_ITEM_FOR_RECEIVE_IT_TABLE,
+      where: "${OrderItemForReceiveItTableColumns.ORDER_ID} = ?",
+      whereArgs: [orderId],
+    );
+
+    if (orderItemsAsMap == null && orderItemsAsMap.length == 0) {
+      return null;
+    }
+    List<OrderItemForReceiveIt> orderItems =
+        List.generate(orderItemsAsMap.length, (index) {
+      return OrderItemForReceiveIt.fromMap(orderItemsAsMap[index]);
+    });
+    return orderItems;
+  }
+
+  static getItem(String itemId) async {
+    var itemsAsMap = await _myDatabase.query(
+      Tables.ITEM_TABLE,
+      where: "${ItemTableColumns.ITEM_ID} = ?",
+      whereArgs: [itemId],
+    );
+
+    if (itemsAsMap == null || itemsAsMap.length == 0) {
+      return null;
+    }
+    return Item.fromMap(itemsAsMap[0]);
+  }
+
+  static getItemProperties(String itemId) async {
+    var itemPropertiesAsMap = await _myDatabase.query(
+      Tables.ITEM_PROPERTY_TABLE,
+      where: "${ItemPropertyTableColumn.ITEM_ID} = ?",
+      whereArgs: [itemId],
+    );
+    if (itemPropertiesAsMap == null || itemPropertiesAsMap.length == 0) {
+      return null;
+    }
+    return List.generate(itemPropertiesAsMap.length, (index) {
+      return ItemProperty.fromMap(itemPropertiesAsMap[index]);
+    });
+  }
+
+  static getAllOrdersFromSennit(String userId) async {
+    var ordersAsMap = await _myDatabase.query(
+      Tables.ORDER_FROM_SENNIT_TABLE,
+      where: "${OrderFromSennitTableColumns.USER_ID} = ?",
+      whereArgs: [userId],
+    );
+    if (ordersAsMap == null || ordersAsMap.length == 0) {
+      return null;
+    }
+    return List.generate(
+      ordersAsMap.length,
+      (index) => OrderFromSennit.fromMap(ordersAsMap[index]),
+    );
+  }
+  
+  static getAllOrdersFromReceiveIt(String userId) async {
+
+  }
+
 }

@@ -26,7 +26,6 @@ class User {
   DateTime userCreatedOn;
   String email;
   String phoneNumber;
-  DateTime dateCreated;
   DateTime dateOfBirth;
   Gender gender;
   String rank;
@@ -804,20 +803,24 @@ class Item {
   String name;
   String baseCategory;
   String subCategory;
+  String orderId;
   double price;
   Item({
     this.itemId,
     this.name,
     this.baseCategory,
     this.subCategory,
+    this.orderId,
     this.price,
   });
+  
 
   Item copyWith({
     String itemId,
     String name,
     String baseCategory,
     String subCategory,
+    String orderId,
     double price,
   }) {
     return Item(
@@ -825,6 +828,7 @@ class Item {
       name: name ?? this.name,
       baseCategory: baseCategory ?? this.baseCategory,
       subCategory: subCategory ?? this.subCategory,
+      orderId: orderId ?? this.orderId,
       price: price ?? this.price,
     );
   }
@@ -835,18 +839,20 @@ class Item {
       'name': name,
       'baseCategory': baseCategory,
       'subCategory': subCategory,
+      'orderId': orderId,
       'price': price,
     };
   }
 
   static Item fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-
+  
     return Item(
       itemId: map['itemId'],
       name: map['name'],
       baseCategory: map['baseCategory'],
       subCategory: map['subCategory'],
+      orderId: map['orderId'],
       price: map['price'],
     );
   }
@@ -857,31 +863,32 @@ class Item {
 
   @override
   String toString() {
-    return 'Item itemId: $itemId, name: $name, baseCategory: $baseCategory, subCategory: $subCategory, price: $price';
+    return 'Item itemId: $itemId, name: $name, baseCategory: $baseCategory, subCategory: $subCategory, orderId: $orderId, price: $price';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
-
+  
     return o is Item &&
-        o.itemId == itemId &&
-        o.name == name &&
-        o.baseCategory == baseCategory &&
-        o.subCategory == subCategory &&
-        o.price == price;
+      o.itemId == itemId &&
+      o.name == name &&
+      o.baseCategory == baseCategory &&
+      o.subCategory == subCategory &&
+      o.orderId == orderId &&
+      o.price == price;
   }
 
   @override
   int get hashCode {
     return itemId.hashCode ^
-        name.hashCode ^
-        baseCategory.hashCode ^
-        subCategory.hashCode ^
-        price.hashCode;
+      name.hashCode ^
+      baseCategory.hashCode ^
+      subCategory.hashCode ^
+      orderId.hashCode ^
+      price.hashCode;
   }
 }
-
 class ItemImage {
   String imageId;
   String itemId;
@@ -945,11 +952,9 @@ class ItemImage {
 class UserCart {
   String cartId;
   String userId;
-  double totalPrice;
   UserCart({
     this.cartId,
     this.userId,
-    this.totalPrice,
   });
 
   UserCart copyWith({
@@ -960,7 +965,7 @@ class UserCart {
     return UserCart(
       cartId: cartId ?? this.cartId,
       userId: userId ?? this.userId,
-      totalPrice: totalPrice ?? this.totalPrice,
+      // totalPrice: totalPrice ?? this.totalPrice,
     );
   }
 
@@ -968,7 +973,6 @@ class UserCart {
     return {
       'cartId': cartId,
       'userId': userId,
-      'totalPrice': totalPrice,
     };
   }
 
@@ -978,7 +982,6 @@ class UserCart {
     return UserCart(
       cartId: map['cartId'],
       userId: map['userId'],
-      totalPrice: map['totalPrice'],
     );
   }
 
@@ -988,20 +991,18 @@ class UserCart {
 
   @override
   String toString() =>
-      'UserCart cartId: $cartId, userId: $userId, totalPrice: $totalPrice';
+      'UserCart cartId: $cartId, userId: $userId';
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
     return o is UserCart &&
-        o.cartId == cartId &&
-        o.userId == userId &&
-        o.totalPrice == totalPrice;
+        o.cartId == cartId;
   }
 
   @override
-  int get hashCode => cartId.hashCode ^ userId.hashCode ^ totalPrice.hashCode;
+  int get hashCode => cartId.hashCode ^ userId.hashCode;
 }
 
 class UserLocationHistory {
