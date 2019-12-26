@@ -3,7 +3,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
 
 class StartPage extends StatelessWidget {
-
   StartPage();
   @override
   Widget build(BuildContext context) {
@@ -22,13 +21,13 @@ class StartPage extends StatelessWidget {
               height: 50,
             ),
           ),
-          Image.asset(
-            'assets/images/logo.png',
-            width: 250,
+          Expanded(
+            child: Image.asset(
+              'assets/images/logo.png',
+            ),
           ),
           // Expanded(
           //   child:
-          Spacer(),
           Container(
             padding: EdgeInsets.only(
               left: 10,
@@ -37,7 +36,9 @@ class StartPage extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 text: 'About Us\n',
-                style: Theme.of(context).textTheme.headline,
+                style: MediaQuery.of(context).size.height < 800 / MediaQuery.of(context).devicePixelRatio
+                    ? Theme.of(context).textTheme.subhead
+                    : Theme.of(context).textTheme.headline,
                 children: [
                   TextSpan(
                       text:
@@ -50,7 +51,7 @@ class StartPage extends StatelessWidget {
           ),
           // ),
           Spacer(
-            flex: 2,
+            flex: 1,
           ),
           Container(
             width: MediaQuery.of(context).size.width,
@@ -75,6 +76,7 @@ class StartPage extends StatelessWidget {
               },
             ),
           ),
+
           Container(
             margin: EdgeInsets.only(top: 10, bottom: 10),
             width: MediaQuery.of(context).size.width,

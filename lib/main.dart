@@ -12,7 +12,6 @@ import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
-import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/recieveIt.dart';
@@ -46,9 +45,9 @@ main() async {
 
 databaseInitializer() async {
   await DatabaseHelper.iniitialize();
-} 
+}
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String startPage = 'startPage';
   // static final String startPage2 = '/startPage2';
   static final String userSignup = 'userSignup';
@@ -77,8 +76,17 @@ class MyApp extends StatelessWidget {
   static Address _address;
   static Location _location;
   MyApp() {
-    // WidgetsFlutterBinding.ensureInitialized();
+    WidgetsBinding.instance.addObserver(this);
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.detached) {
+      DatabaseHelper.getDatabase().close();
+    }
+  }
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -107,7 +115,6 @@ class MyApp extends StatelessWidget {
             ),
         storeMainPage: (context) => StoreMainPage(),
         activeOrderBody: (context) => ActiveOrder(),
-        reviewWidget: (context) => ReviewWidget(),
       },
       title: 'Sennit',
       theme: ThemeData(
@@ -221,9 +228,34 @@ class Utils {
 
   static Stream<LatLng> getLocationStream() {
     Stream<LatLng> stream = Stream.empty();
-
     MyApp._locationData
         .transform<LatLng>(StreamTransformer<LocationData, LatLng>((a, b) {}));
+  }
+
+  static showSnackBarError(BuildContext context, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.red.shade500,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      duration: Duration(seconds: 4),
+    );
+
+    Scaffold.of(context).showSnackBar(snackBar);
+  }
+
+  static showSnackBarSuccess(BuildContext context, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.green.shade700,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      duration: Duration(seconds: 2),
+    );
+
+    Scaffold.of(context).showSnackBar(snackBar);
   }
 
   static double calculateDistance(LatLng latlng1, LatLng latlng2) {
@@ -287,7 +319,7 @@ class Utils {
   }
 
   static String boxSizeToString(BoxSize boxsSize) {
-    switch (boxsSize){
+    switch (boxsSize) {
       case BoxSize.small:
         return "SMALL";
       case BoxSize.medium:
@@ -298,7 +330,7 @@ class Utils {
   }
 
   static BoxSize getBoxSizeFromString(String boxSize) {
-    switch(boxSize.toUpperCase()) {
+    switch (boxSize.toUpperCase()) {
       case 'SMALL':
         return BoxSize.small;
       case 'MEDIUM':
@@ -308,52 +340,36 @@ class Utils {
     }
   }
 
+  static void showLoadingDialog(BuildContext context) {
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          );
+        });
+  }
 
-}
-
-class Item {
-  final int itemId;
-  final String itemName;
-  final String picUrl;
-  final String description;
-
-  Item(
-      {@required this.itemId,
-      @required this.itemName,
-      @required this.picUrl,
-      @required this.description});
-}
-
-class ItemDetails {
-  final String price;
-  final int itemId;
-  final String itemName;
-  final String picUrl;
-  final String description;
-  final Map<String, dynamic> specifications;
-  final List<Review> reviews;
-
-  ItemDetails({
-    @required this.itemId,
-    @required this.itemName,
-    @required this.picUrl,
-    @required this.description,
-    @required this.specifications,
-    @required this.reviews,
-    @required this.price,
-  });
-}
-
-class Review {
-  final String picUrl;
-  final String name;
-  final String userID;
-  final String review;
-  final rewiewID;
-
-  Review(this.picUrl, this.name, this.userID, this.review, this.rewiewID);
+  static bool isEmailCorrect(String email) {
+    if (email.isEmpty) {
+      return false;
+    } else {
+      RegExp re = RegExp(
+          r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+          caseSensitive: false,
+          multiLine: false);
+      if (!re.hasMatch(email)) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 class Session {
-  static get variables => Map<String, dynamic>();
+  static Map data = Map<String, dynamic>();
+  // static get variables => _;
 }

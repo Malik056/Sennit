@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
@@ -55,6 +56,10 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
   final _formKey = GlobalKey<FormState>();
 
   final passwordController = TextEditingController();
+
+  bool pressed = false;
+
+  Function onSignUpError;
   @override
   void initState() {
     btnPaddingTop = 10;
@@ -65,6 +70,12 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
     dateText = dateInitialText;
     dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
     dateOfBirthTextColor = Colors.white;
+
+    onSignUpError = (error) {
+      pressed = false;
+      Navigator.pop(context);
+      Utils.showSnackBarError(context, 'Email Address is already in use');
+    };
     super.initState();
   }
 
@@ -350,56 +361,94 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                           setState(() {});
                         },
                         onPressed: () async {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) {
-                              return Dialog(
-                                  elevation: 8,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(4),
-                                    ),
-                                  ),
-                                  child: CircularProgressIndicator());
-                            },
-                          );
-                          tapped = true;
-                          var form = _formKey.currentState;
-                          if (form.validate() && dateInitialText != dateText) {
-                            user.userCreatedOn = DateTime.now();
-                            user.userId =
-                                "user${DateTime.now().millisecondsSinceEpoch}";
-                            Database database = DatabaseHelper.getDatabase();
-                            database.insert(Tables.USER_TABLE, user.toMap());
-                            await DatabaseHelper.signInUser(user.userId);
-                            Firestore.instance
-                                .collection("users")
-                                .document(user.userId)
-                                .setData(user.toMap())
-                                .timeout(Duration(seconds: 10))
-                                .then((a) {
-                              Session.variables["user"] = user;
-                              Navigator.pop(context);
-                              Navigator.pop(context);
-                              Navigator.of(context).pushNamed(MyApp.userHome);
-                            }).catchError(() {
-                              Navigator.pop(context);
-                              SnackBar snackBar = SnackBar(
-                                content: Text(
-                                  'Something went wrong. Try again!',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                backgroundColor: Colors.red,
-                              );
-                              Scaffold.of(context).showSnackBar(snackBar);
-                            });
-                          } else if (dateInitialText == dateText) {
-                            setState(() {
-                              Navigator.pop(context);
-                              dateOfBirthHeadingColor = Colors.red;
-                              dateOfBirthTextColor = Colors.red;
-                            });
+                          if (!pressed) {
+                            pressed = true;
+                            Utils.showLoadingDialog(context);
+                            tapped = true;
+                            var form = _formKey.currentState;
+                            if (form.validate() &&
+                                dateInitialText != dateText) {
+                              user.userCreatedOn = DateTime.now();
+                              // user.userId =
+                              //     "user${DateTime.now().millisecondsSinceEpoch}";
+                              try {
+                                FirebaseAuth.instance
+                                    .createUserWithEmailAndPassword(
+                                      email: user.email,
+                                      password: passwordController.text,
+                                    )
+                                    .catchError((Object object) {})
+                                    .then((value) {
+                                  FirebaseUser firebaseUser = value.user;
+                                  if (firebaseUser == null) {
+                                    SnackBar snackBar = SnackBar(
+                                      content: Text(
+                                        'An Account with the same email already exists',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.yellow,
+                                      duration: Duration(seconds: 1),
+                                    );
+                                    Scaffold.of(context).showSnackBar(snackBar);
+                                  } else {
+                                    user.userId = firebaseUser.uid;
+                                    Map map = user.toMap();
+                                    Firestore.instance
+                                        .collection("users")
+                                        .document(user.userId)
+                                        .setData(map)
+                                        .timeout(Duration(seconds: 10))
+                                        .then((a) async {
+                                      // await DatabaseHelper.signInUser(
+                                      //   user.userId,
+                                      // );
+                                      Database database =
+                                          DatabaseHelper.getDatabase();
+                                      database.insert(
+                                        Tables.USER_TABLE,
+                                        user.toMap(),
+                                      );
+                                      Session.data.update('user', (ignored) {
+                                        return user;
+                                      }, ifAbsent: () {
+                                        return user;
+                                      });
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
+                                      Navigator.of(context)
+                                          .pushNamed(MyApp.userHome);
+                                    }).catchError((error) {
+                                      pressed = false;
+                                      Navigator.pop(context);
+                                      SnackBar snackBar = SnackBar(
+                                        content: Text(
+                                          'Something went wrong. Try again!',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      );
+                                      firebaseUser.sendEmailVerification();
+                                      Scaffold.of(context)
+                                          .showSnackBar(snackBar);
+                                    });
+                                  }
+                                });
+                              } on dynamic catch (_) {
+                                onSignUpError();
+                              }
+                            } else if (dateInitialText == dateText) {
+                              setState(() {
+                                pressed = false;
+                                Navigator.pop(context);
+                                dateOfBirthHeadingColor = Colors.red;
+                                dateOfBirthTextColor = Colors.red;
+                              });
+                            } else {
+                              setState(() {
+                                pressed = false;
+                                Navigator.pop(context);
+                              });
+                            }
                           }
                         },
                       ),

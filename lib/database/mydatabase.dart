@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:sennit/models/models.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -24,8 +22,8 @@ class Tables {
   static const String ITEM_TABLE = "ITEM_TABLE";
   static const String ITEM_IMAGE_TABLE = "ITEM_IMAGE_TABLE";
   static const String ITEM_PROPERTY_TABLE = "ITEM_PROPERTY_TABLE";
-  static const String ORDER_ITEM_FOR_SENNIT_TABLE =
-      "ORDER_ITEM_FOR_SENNIT_TABLE";
+  // static const String ORDER_ITEM_FOR_SENNIT_TABLE =
+  //     "ORDER_ITEM_FOR_SENNIT_TABLE";
   static const String ORDER_ITEM_FOR_RECEIVE_IT_TABLE =
       "ORDER_ITEM_FOR_RECIEVE_IT_TABLE";
   static const String ORDER_OTHER_CHARGES_TABLE = "ORDER_OTHER_CHARGES_TABLE";
@@ -41,10 +39,11 @@ class UserTableColumns {
   static const String OFFICE_LOCATION_LATLNG = "officeLocationLatLng";
   static const String USER_CREATED_ON = "userCreatedOn";
   static const String EMAIL = "email";
-  static const String PHONE_NUMBER = "phone";
+  static const String PHONE_NUMBER = "phoneNumber";
   static const String DATE_OF_BIRTH = "dateOfBirth";
   static const String GENDER = "gender";
   static const String RANK = "rank";
+  static const String PROFILE_PICTURE = "profilePicture";
 }
 
 class DriverTableColumns {
@@ -55,10 +54,11 @@ class DriverTableColumns {
   static const String HOME_LOCATION_LATLNG = "homeLocationLatLng";
   static const String USER_CREATED_ON = "userCreatedOn";
   static const String EMAIL = "email";
-  static const String PHONE_NUMBER = "phone";
+  static const String PHONE_NUMBER = "phoneNumber";
   static const String DATE_OF_BIRTH = "DateOfBirth";
   static const String GENDER = "gender";
   static const String RANK = "rank";
+  static const String PROFILE_PICTURE = "profilePicture";
   static const String BALANCE = "balance";
 }
 
@@ -89,19 +89,22 @@ class OrderFromSennitTableColumns {
   static const String RECEIVER_PHONE = "receiverPhone";
   static const String RECEIVER_EMAIL = "receiverEmail";
   static const String DRIVER_ID = "driverId";
+  static const String NUMBER_OF_BOXES = "numberOfBoxes";
+  static const String SLEEVES_REQUIRED = "sleevesRequired";
+  static const String TOTAL_PRICE = "TOTAL_PRICE";
+  static const String BOXES_SIZE = "BOXES_SIZE";
 }
 
-class OrderItemForSennitTableColumns {
-  static const String ORDER_ITEM_ID = "orderItemId";
-  static const String PRICE = "pirce";
-  static const String ITEM_ID = "itemId";
-  // static const String QUANTITY = "QUANTITY";
-  static const String ORDER_ID = "orderId";
-  // static const String ITEM_PROPERTY_ID = "ITEM_PROPERTY_ID";
-  static const String SLEEVES_REQUIRED = "sleevesRequired";
-  static const String BOX_SIZE = "boxSize";
-  static const String NUMBER_OF_BOXES = "numberOfBoxes";
-}
+// class OrderItemForSennitTableColumns {
+//   static const String ORDER_ITEM_ID = "orderItemId";
+//   static const String PRICE = "pirce";
+//   // static const String QUANTITY = "QUANTITY";
+//   static const String ORDER_ID = "orderId";
+//   // static const String ITEM_PROPERTY_ID = "ITEM_PROPERTY_ID";
+//   static const String SLEEVES_REQUIRED = "sleevesRequired";
+//   static const String BOX_SIZE = "boxSize";
+//   static const String NUMBER_OF_BOXES = "numberOfBoxes";
+// }
 
 class OrderItemForReceiveItTableColumns {
   static const String ORDER_ITEM_ID = "orderItemId";
@@ -196,11 +199,32 @@ class DatabaseHelper {
       _myDatabase = await openDatabase(
         databaseName,
         onCreate: onCreate,
-        onUpgrade: (db, pVersion, nVersion) {
-          db.rawDelete("DROP DATABASE $databaseName");
+        onUpgrade: (db, pVersion, nVersion) async {
+          List<String> tables = [
+            Tables.USER_TABLE,
+            Tables.SIGNED_IN_USER_TABLE,
+            Tables.DRIVER_NOTIFICATION_TABLE,
+            Tables.DRIVER_TABLE,
+            Tables.ITEM_IMAGE_TABLE,
+            Tables.ITEM_PROPERTY_TABLE,
+            Tables.ITEM_TABLE,
+            Tables.ORDER_FROM_RECIEVE_IT_TABLE,
+            Tables.ORDER_FROM_SENNIT_TABLE,
+            Tables.ORDER_ITEM_FOR_RECEIVE_IT_TABLE,
+            // Tables.ORDER_ITEM_FOR_SENNIT_TABLE,
+            Tables.ORDER_OTHER_CHARGES_TABLE,
+            Tables.USER_CART_TABLE,
+            Tables.USER_LOCATION_HISTORY_TABLE,
+            Tables.USER_NOTIFICATION_TABLE
+          ];
+          
+          for (String table in tables) {
+            await db.execute('DROP TABLE $table');
+          }
+
           onCreate(db, nVersion);
         },
-        version: 2,
+        version: 6,
       );
       return;
     }
@@ -225,6 +249,7 @@ class DatabaseHelper {
         "${UserTableColumns.OFFICE_LOCATION_ADDRESS} TEXT, " +
         "${UserTableColumns.OFFICE_LOCATION_LATLNG} TEXT, " +
         "${UserTableColumns.RANK} TEXT, " +
+        "${UserTableColumns.PROFILE_PICTURE} TEXT, " +
         "${UserTableColumns.GENDER} TEXT" +
         " )");
 
@@ -260,6 +285,7 @@ class DatabaseHelper {
         "${DriverTableColumns.EMAIL} TEXT, " +
         "${DriverTableColumns.BALANCE} TEXT, " +
         "${DriverTableColumns.RANK} TEXT, " +
+        "${DriverTableColumns.PROFILE_PICTURE} TEXT, " +
         "${DriverTableColumns.GENDER} TEXT" +
         " )");
 
@@ -299,7 +325,10 @@ class DatabaseHelper {
             "${OrderFromSennitTableColumns.PICK_UP_LATLNG} TEXT, " +
             "${OrderFromSennitTableColumns.RECEIVER_EMAIL} TEXT, " +
             "${OrderFromSennitTableColumns.RECEIVER_NAME} TEXT, " +
-            "${OrderFromSennitTableColumns.RECEIVER_PHONE} TEXT" +
+            "${OrderFromSennitTableColumns.RECEIVER_PHONE} TEXT, " +
+            "${OrderFromSennitTableColumns.BOXES_SIZE} TEXT, " +
+            "${OrderFromSennitTableColumns.NUMBER_OF_BOXES} INTEGER, " +
+            "${OrderFromSennitTableColumns.SLEEVES_REQUIRED} INTEGER" +
             " )");
 
     db.execute(
@@ -312,16 +341,16 @@ class DatabaseHelper {
             "${OrderItemForReceiveItTableColumns.QUANTITY} TEXT" +
             " )");
 
-    db.execute(
-        "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_ITEM_FOR_SENNIT_TABLE} ( " +
-            "${OrderItemForSennitTableColumns.ORDER_ITEM_ID} TEXT PRIMARY KEY, " +
-            "${OrderItemForSennitTableColumns.ITEM_ID} TEXT, " +
-            "${OrderItemForSennitTableColumns.ORDER_ID} TEXT, " +
-            "${OrderItemForSennitTableColumns.BOX_SIZE} TEXT, " +
-            "${OrderItemForSennitTableColumns.NUMBER_OF_BOXES} TEXT, " +
-            "${OrderItemForSennitTableColumns.PRICE} TEXT, " +
-            "${OrderItemForSennitTableColumns.SLEEVES_REQUIRED} TEXT" +
-            " )");
+    // db.execute(
+    //     "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_ITEM_FOR_SENNIT_TABLE} ( " +
+    //         "${OrderItemForSennitTableColumns.ORDER_ITEM_ID} TEXT PRIMARY KEY, " +
+    //         "${OrderItemForSennitTableColumns.ITEM_ID} TEXT, " +
+    //         "${OrderItemForSennitTableColumns.ORDER_ID} TEXT, " +
+    //         "${OrderItemForSennitTableColumns.BOX_SIZE} TEXT, " +
+    //         "${OrderItemForSennitTableColumns.NUMBER_OF_BOXES} TEXT, " +
+    //         "${OrderItemForSennitTableColumns.PRICE} TEXT, " +
+    //         "${OrderItemForSennitTableColumns.SLEEVES_REQUIRED} TEXT" +
+    //         " )");
 
     db.execute("CREATE TABLE IF NOT EXISTS ${Tables.ITEM_TABLE} ( " +
         "${ItemTableColumns.ITEM_ID} TEXT PRIMARY KEY, " +
@@ -360,7 +389,7 @@ class DatabaseHelper {
       var usersAsListofMap = await _myDatabase.query(
         Tables.USER_TABLE,
         distinct: true,
-        where: "${UserTableColumns.USER_ID} = ?",
+        where: "ID = ?",
         whereArgs: [
           currentUserId,
         ],
@@ -372,7 +401,7 @@ class DatabaseHelper {
     }
   }
 
-  static getCurrentUserId() async {
+  static Future<String> getCurrentUserId() async {
     var signedInUsersAsListOfMap =
         await _myDatabase.query(Tables.SIGNED_IN_USER_TABLE);
     if (signedInUsersAsListOfMap != null &&
@@ -382,15 +411,15 @@ class DatabaseHelper {
     return null;
   }
 
-  static getUserLocationHistory() async {
-    var currentUserId = getCurrentUserId();
+  static Future<List<UserLocationHistory>> getUserLocationHistory() async {
+    var currentUserId = await getCurrentUserId();
     if (currentUserId != null) {
       var userHistoryLocations = await _myDatabase.query(
         Tables.USER_LOCATION_HISTORY_TABLE,
         distinct: true,
         where: "${UserLocationHistoryTableColumns.USER_ID} = ?",
         whereArgs: [currentUserId],
-        orderBy: "{UserLocationHistoryTableColumns.LAST_USED} DESC",
+        orderBy: "${UserLocationHistoryTableColumns.LAST_USED} DESC",
       );
 
       if (userHistoryLocations == null || userHistoryLocations.length == 0) {
@@ -438,7 +467,7 @@ class DatabaseHelper {
       if (orders == null || orders.length == 0) {
         return null;
       }
-      return OrderFromRecieveIt.fromMap(orders[0]);
+      return OrderFromReceiveIt.fromMap(orders[0]);
     } else {
       return null;
     }
@@ -471,7 +500,7 @@ class DatabaseHelper {
     if (itemsAsMap == null || itemsAsMap.length == 0) {
       return null;
     }
-    return Item.fromMap(itemsAsMap[0]);
+    return StoreItem.fromMap(itemsAsMap[0]);
   }
 
   static getItemProperties(String itemId) async {
@@ -502,9 +531,6 @@ class DatabaseHelper {
       (index) => OrderFromSennit.fromMap(ordersAsMap[index]),
     );
   }
-  
-  static getAllOrdersFromReceiveIt(String userId) async {
 
-  }
-
+  static getAllOrdersFromReceiveIt(String userId) async {}
 }

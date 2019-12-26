@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/main.dart';
 
@@ -29,6 +30,10 @@ class User {
   DateTime dateOfBirth;
   Gender gender;
   String rank;
+  String profilePicture;
+
+  String get fullname => "$firstName $lastName";
+
   User({
     this.userId,
     this.firstName,
@@ -43,6 +48,7 @@ class User {
     this.dateOfBirth,
     this.gender,
     this.rank,
+    this.profilePicture,
   });
 
   User copyWith({
@@ -59,6 +65,7 @@ class User {
     DateTime dateOfBirth,
     Gender gender,
     String rank,
+    String profilePicture,
   }) {
     return User(
       userId: userID ?? this.userId,
@@ -75,6 +82,7 @@ class User {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
       rank: rank ?? this.rank,
+      profilePicture: profilePicture ?? this.profilePicture,
     );
   }
 
@@ -84,15 +92,19 @@ class User {
       'firstName': firstName,
       'lastName': lastName,
       'homeLocationAddress': homeLocationAddress,
-      'latLng': Utils.latLngToString(homeLocationLatLng),
-      'officeLocationAddress': officeLocationAddress,
-      'officeLocationLatLng': Utils.latLngToString(officeLocationLatLng),
+      'homeLocationLatLng': Utils.latLngToString(homeLocationLatLng),
+      'officeLocationAddress':
+          officeLocationAddress == null ? null : officeLocationAddress,
+      'officeLocationLatLng': officeLocationLatLng == null
+          ? null
+          : Utils.latLngToString(officeLocationLatLng),
       'userCreatedOn': userCreatedOn.millisecondsSinceEpoch,
       'email': email,
       'phoneNumber': phoneNumber,
       'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
       'gender': Utils.genderToString(gender),
       'rank': rank,
+      'profilePicture': profilePicture,
     };
   }
 
@@ -112,6 +124,7 @@ class User {
       phoneNumber: map['phoneNumber'],
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
       gender: Utils.getGenderFromString(map['gender']),
+      profilePicture: map['profilePicture'],
       rank: map['rank'],
     );
   }
@@ -122,7 +135,7 @@ class User {
 
   @override
   String toString() {
-    return 'User userId: $userId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, latLng: ${Utils.latLngToString(homeLocationLatLng)}, officeLocationAddress: $officeLocationAddress, officeLocationLatLng: ${Utils.latLngToString(officeLocationLatLng)}, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank';
+    return 'User userId: $userId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, latLng: ${Utils.latLngToString(homeLocationLatLng)}, officeLocationAddress: $officeLocationAddress, officeLocationLatLng: ${Utils.latLngToString(officeLocationLatLng)}, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank, profilePicture: $profilePicture';
   }
 
   @override
@@ -146,7 +159,8 @@ class User {
         phoneNumber.hashCode ^
         dateOfBirth.hashCode ^
         gender.hashCode ^
-        rank.hashCode;
+        rank.hashCode ^
+        profilePicture.hashCode;
   }
 }
 
@@ -159,6 +173,7 @@ class Driver {
   DateTime userCreatedOn;
   String email;
   String phoneNumber;
+  String profilePicture;
   DateTime dateOfBirth;
   Gender gender;
   String rank;
@@ -175,6 +190,7 @@ class Driver {
     this.dateOfBirth,
     this.gender,
     this.rank,
+    this.profilePicture,
     this.balance,
   });
 
@@ -191,6 +207,7 @@ class Driver {
     Gender gender,
     String rank,
     double balance,
+    String profilePicture,
   }) {
     return Driver(
       driverId: driverId ?? this.driverId,
@@ -204,6 +221,7 @@ class Driver {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
       rank: rank ?? this.rank,
+      profilePicture: profilePicture ?? this.profilePicture,
       balance: balance ?? this.balance,
     );
   }
@@ -221,6 +239,7 @@ class Driver {
       'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
       'gender': Utils.genderToString(gender),
       'rank': rank,
+      'profilePicture': profilePicture,
       'balance': balance,
     };
   }
@@ -240,6 +259,7 @@ class Driver {
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
       gender: Utils.getGenderFromString(map['gender']),
       rank: map['rank'],
+      profilePicture: map['profilePicture'],
       balance: map['balance'],
     );
   }
@@ -278,120 +298,243 @@ class Driver {
   }
 }
 
-class OrderFromRecieveIt {
-  String storeName;
-  String storeLocationAddress;
-  LatLng storeLatLng;
-  String dropOffAddress;
-  LatLng dropOffLatLng;
-  String orderId;
-  DateTime dateOrdered;
-  double orderPrice;
+class OrderFromReceiveIt {
+  List<String> items;
+  String email;
+  String phoneNumber;
+  String house;
+  LatLng destination;
   String userId;
   String driverId;
-  OrderFromRecieveIt({
-    this.storeName,
-    this.storeLocationAddress,
-    this.storeLatLng,
-    this.dropOffAddress,
-    this.dropOffLatLng,
-    this.orderId,
-    this.dateOrdered,
-    this.orderPrice,
+  double price;
+  DateTime orderDate;
+  DateTime deliveryTime;
+  OrderFromReceiveIt({
+    this.items,
+    this.email,
+    this.phoneNumber,
+    this.house,
+    this.destination,
     this.userId,
     this.driverId,
+    this.price,
+    this.orderDate,
+    this.deliveryTime,
   });
 
-  OrderFromRecieveIt copyWith({
-    String storeName,
-    String storeLocationAddress,
-    LatLng storeLatLng,
-    String dropOffAddress,
-    LatLng dropOffLatLng,
-    String orderId,
-    DateTime dateOrdered,
-    double orderPrice,
+  OrderFromReceiveIt copyWith({
+    List<String> items,
+    String email,
+    String phoneNumber,
+    String house,
+    LatLng destination,
     String userId,
     String driverId,
+    double price,
+    DateTime orderDate,
+    DateTime deliveryTime,
   }) {
-    return OrderFromRecieveIt(
-      storeName: storeName ?? this.storeName,
-      storeLocationAddress: storeLocationAddress ?? this.storeLocationAddress,
-      storeLatLng: storeLatLng ?? this.storeLatLng,
-      dropOffAddress: dropOffAddress ?? this.dropOffAddress,
-      dropOffLatLng: dropOffLatLng ?? this.dropOffLatLng,
-      orderId: orderId ?? this.orderId,
-      dateOrdered: dateOrdered ?? this.dateOrdered,
-      orderPrice: orderPrice ?? this.orderPrice,
+    return OrderFromReceiveIt(
+      items: items ?? this.items,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      house: house ?? this.house,
+      destination: destination ?? this.destination,
       userId: userId ?? this.userId,
       driverId: driverId ?? this.driverId,
+      price: price ?? this.price,
+      orderDate: orderDate ?? this.orderDate,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'storeName': storeName,
-      'storeLocationAddress': storeLocationAddress,
-      'storeLatLng': Utils.latLngToString(storeLatLng),
-      'dropOffAddress': dropOffAddress,
-      'dropOffLatLng': Utils.latLngToString(dropOffLatLng),
-      'orderId': orderId,
-      'dateOrdered': dateOrdered.millisecondsSinceEpoch,
-      'orderPrice': orderPrice,
+      'items': List<dynamic>.from(items.map((x) => x)),
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'house': house,
+      'destination': Utils.latLngToString(destination),
       'userId': userId,
       'driverId': driverId,
+      'price': price,
+      'orderDate': orderDate.millisecondsSinceEpoch,
+      'deliveryTime': deliveryTime.millisecondsSinceEpoch,
     };
   }
 
-  static OrderFromRecieveIt fromMap(Map<String, dynamic> map) {
+  static OrderFromReceiveIt fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
 
-    return OrderFromRecieveIt(
-      storeName: map['storeName'],
-      storeLocationAddress: map['storeLocationAddress'],
-      storeLatLng: Utils.latLngFromString(map['storeLatLng']),
-      dropOffAddress: map['dropOffAddress'],
-      dropOffLatLng: Utils.latLngFromString(map['dropOffLatLng']),
-      orderId: map['orderId'],
-      dateOrdered: DateTime.fromMillisecondsSinceEpoch(map['dateOrdered']),
-      orderPrice: map['orderPrice'],
+    return OrderFromReceiveIt(
+      items: List<String>.from(map['items']),
+      email: map['email'],
+      phoneNumber: map['phoneNumber'],
+      house: map['house'],
+      destination: Utils.latLngFromString(map['destination']),
       userId: map['userId'],
       driverId: map['driverId'],
+      price: map['price'],
+      orderDate: DateTime.fromMillisecondsSinceEpoch(map['orderDate']),
+      deliveryTime: DateTime.fromMillisecondsSinceEpoch(map['deliveryTime']),
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  static OrderFromRecieveIt fromJson(String source) =>
+  static OrderFromReceiveIt fromJson(String source) =>
       fromMap(json.decode(source));
 
   @override
   String toString() {
-    return 'OrderFromRecieveIt storeName: $storeName, storeLocationAddress: $storeLocationAddress, storeLatLng: $storeLatLng, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, userId: $userId, driverId: $driverId';
+    return 'OrderFromReceiveIt items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $orderDate, deliveryTime: $deliveryTime';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return (o is OrderFromRecieveIt && o.orderId == orderId) ||
-        (o is String && o == orderId);
+    return o is OrderFromReceiveIt &&
+        o.items == items &&
+        o.email == email &&
+        o.phoneNumber == phoneNumber &&
+        o.house == house &&
+        o.destination == destination &&
+        o.userId == userId &&
+        o.driverId == driverId &&
+        o.price == price &&
+        o.orderDate == orderDate &&
+        o.deliveryTime == deliveryTime;
   }
 
   @override
   int get hashCode {
-    return storeName.hashCode ^
-        storeLocationAddress.hashCode ^
-        storeLatLng.hashCode ^
-        dropOffAddress.hashCode ^
-        dropOffLatLng.hashCode ^
-        orderId.hashCode ^
-        dateOrdered.hashCode ^
-        orderPrice.hashCode ^
+    return items.hashCode ^
+        email.hashCode ^
+        phoneNumber.hashCode ^
+        house.hashCode ^
+        destination.hashCode ^
         userId.hashCode ^
-        driverId.hashCode;
+        driverId.hashCode ^
+        price.hashCode ^
+        orderDate.hashCode ^
+        deliveryTime.hashCode;
   }
 }
+// class OrderFromReceiveIt {}
+//   String storeName;
+//   String storeLocationAddress;
+//   LatLng storeLatLng;
+//   String dropOffAddress;
+//   LatLng dropOffLatLng;
+//   String orderId;
+//   DateTime dateOrdered;
+//   double orderPrice;
+//   String userId;
+//   String driverId;
+//   OrderFromRecieveIt({
+//     this.storeName,
+//     this.storeLocationAddress,
+//     this.storeLatLng,
+//     this.dropOffAddress,
+//     this.dropOffLatLng,
+//     this.orderId,
+//     this.dateOrdered,
+//     this.orderPrice,
+//     this.userId,
+//     this.driverId,
+//   });
+
+//   OrderFromRecieveIt copyWith({
+//     String storeName,
+//     String storeLocationAddress,
+//     LatLng storeLatLng,
+//     String dropOffAddress,
+//     LatLng dropOffLatLng,
+//     String orderId,
+//     DateTime dateOrdered,
+//     double orderPrice,
+//     String userId,
+//     String driverId,
+//   }) {
+//     return OrderFromRecieveIt(
+//       storeName: storeName ?? this.storeName,
+//       storeLocationAddress: storeLocationAddress ?? this.storeLocationAddress,
+//       storeLatLng: storeLatLng ?? this.storeLatLng,
+//       dropOffAddress: dropOffAddress ?? this.dropOffAddress,
+//       dropOffLatLng: dropOffLatLng ?? this.dropOffLatLng,
+//       orderId: orderId ?? this.orderId,
+//       dateOrdered: dateOrdered ?? this.dateOrdered,
+//       orderPrice: orderPrice ?? this.orderPrice,
+//       userId: userId ?? this.userId,
+//       driverId: driverId ?? this.driverId,
+//     );
+//   }
+
+//   Map<String, dynamic> toMap() {
+//     return {
+//       'storeName': storeName,
+//       'storeLocationAddress': storeLocationAddress,
+//       'storeLatLng': Utils.latLngToString(storeLatLng),
+//       'dropOffAddress': dropOffAddress,
+//       'dropOffLatLng': Utils.latLngToString(dropOffLatLng),
+//       'orderId': orderId,
+//       'dateOrdered': dateOrdered.millisecondsSinceEpoch,
+//       'orderPrice': orderPrice,
+//       'userId': userId,
+//       'driverId': driverId,
+//     };
+//   }
+
+//   static OrderFromRecieveIt fromMap(Map<String, dynamic> map) {
+//     if (map == null) return null;
+
+//     return OrderFromRecieveIt(
+//       storeName: map['storeName'],
+//       storeLocationAddress: map['storeLocationAddress'],
+//       storeLatLng: Utils.latLngFromString(map['storeLatLng']),
+//       dropOffAddress: map['dropOffAddress'],
+//       dropOffLatLng: Utils.latLngFromString(map['dropOffLatLng']),
+//       orderId: map['orderId'],
+//       dateOrdered: DateTime.fromMillisecondsSinceEpoch(map['dateOrdered']),
+//       orderPrice: map['orderPrice'],
+//       userId: map['userId'],
+//       driverId: map['driverId'],
+//     );
+//   }
+
+//   String toJson() => json.encode(toMap());
+
+//   static OrderFromRecieveIt fromJson(String source) =>
+//       fromMap(json.decode(source));
+
+//   @override
+//   String toString() {
+//     return 'OrderFromRecieveIt storeName: $storeName, storeLocationAddress: $storeLocationAddress, storeLatLng: $storeLatLng, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, userId: $userId, driverId: $driverId';
+//   }
+
+//   @override
+//   bool operator ==(Object o) {
+//     if (identical(this, o)) return true;
+
+//     return (o is OrderFromRecieveIt && o.orderId == orderId) ||
+//         (o is String && o == orderId);
+//   }
+
+//   @override
+//   int get hashCode {
+//     return storeName.hashCode ^
+//         storeLocationAddress.hashCode ^
+//         storeLatLng.hashCode ^
+//         dropOffAddress.hashCode ^
+//         dropOffLatLng.hashCode ^
+//         orderId.hashCode ^
+//         dateOrdered.hashCode ^
+//         orderPrice.hashCode ^
+//         userId.hashCode ^
+//         driverId.hashCode;
+//   }
+// }
 
 class OrderFromSennit {
   String orderId;
@@ -407,6 +550,10 @@ class OrderFromSennit {
   String receiverPhone;
   String receiverEmail;
   String driverId;
+  BoxSize boxSize;
+  int numberOfBoxes;
+  bool sleevesRequired;
+
   OrderFromSennit({
     this.orderId,
     this.dateOrdered,
@@ -421,6 +568,9 @@ class OrderFromSennit {
     this.receiverPhone,
     this.receiverEmail,
     this.driverId,
+    this.boxSize,
+    this.numberOfBoxes,
+    this.sleevesRequired,
   });
 
   OrderFromSennit copyWith({
@@ -437,6 +587,9 @@ class OrderFromSennit {
     String receiverPhone,
     String receiverEmail,
     String driverId,
+    BoxSize boxSize,
+    int numberOfBoxes,
+    bool sleevesRequired,
   }) {
     return OrderFromSennit(
       orderId: orderId ?? this.orderId,
@@ -452,6 +605,9 @@ class OrderFromSennit {
       receiverPhone: receiverPhone ?? this.receiverPhone,
       receiverEmail: receiverEmail ?? this.receiverEmail,
       driverId: driverId ?? this.driverId,
+      boxSize: boxSize ?? this.boxSize,
+      numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
+      sleevesRequired: sleevesRequired ?? this.sleevesRequired,
     );
   }
 
@@ -470,6 +626,9 @@ class OrderFromSennit {
       'receiverPhone': receiverPhone,
       'receiverEmail': receiverEmail,
       'driverId': driverId,
+      'boxSize': Utils.boxSizeToString(boxSize),
+      'numberOfBoxes': numberOfBoxes,
+      'sleevesRequired': sleevesRequired,
     };
   }
 
@@ -490,6 +649,9 @@ class OrderFromSennit {
       receiverPhone: map['receiverPhone'],
       receiverEmail: map['receiverEmail'],
       driverId: map['driverId'],
+      boxSize: Utils.getBoxSizeFromString(map['boxSize']),
+      numberOfBoxes: map['numberOfBoxes'],
+      sleevesRequired: map['sleevesRequired'],
     );
   }
 
@@ -500,27 +662,14 @@ class OrderFromSennit {
 
   @override
   String toString() {
-    return 'OrderFromSennit orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, driverId: $driverId';
+    return 'OrderFromSennit orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, driverId: $driverId, boxSize: $boxSize, numberOfBoxes: $numberOfBoxes, sleevesRequired: $sleevesRequired';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return o is OrderFromSennit &&
-        o.orderId == orderId &&
-        o.dateOrdered == dateOrdered &&
-        o.orderPrice == orderPrice &&
-        o.pickUpLatLng == pickUpLatLng &&
-        o.pickUpAddress == pickUpAddress &&
-        o.dropOffAddress == dropOffAddress &&
-        o.dropOffLatLng == dropOffLatLng &&
-        o.serviceCharges == serviceCharges &&
-        o.userId == userId &&
-        o.receiverName == receiverName &&
-        o.receiverPhone == receiverPhone &&
-        o.receiverEmail == receiverEmail &&
-        o.driverId == driverId;
+    return o is OrderFromSennit && o.orderId == orderId;
   }
 
   @override
@@ -537,103 +686,105 @@ class OrderFromSennit {
         receiverName.hashCode ^
         receiverPhone.hashCode ^
         receiverEmail.hashCode ^
-        driverId.hashCode;
-  }
-}
-
-class OrderItemForSennit {
-  String orderItemId;
-  double price;
-  String itemId;
-  String orderId;
-  bool sleevesRequred;
-  BoxSize boxSize;
-  int numberOfBoxes;
-  OrderItemForSennit({
-    this.orderItemId,
-    this.price,
-    this.itemId,
-    this.orderId,
-    this.sleevesRequred,
-    this.boxSize,
-    this.numberOfBoxes,
-  });
-
-  OrderItemForSennit copyWith({
-    String orderItemId,
-    double price,
-    String itemId,
-    String orderId,
-    bool sleevesRequred,
-    BoxSize boxSize,
-    int numberOfBoxes,
-  }) {
-    return OrderItemForSennit(
-      orderItemId: orderItemId ?? this.orderItemId,
-      price: price ?? this.price,
-      itemId: itemId ?? this.itemId,
-      orderId: orderId ?? this.orderId,
-      sleevesRequred: sleevesRequred ?? this.sleevesRequred,
-      boxSize: boxSize ?? this.boxSize,
-      numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'orderItemId': orderItemId,
-      'price': price,
-      'itemId': itemId,
-      'orderId': orderId,
-      'sleevesRequred': sleevesRequred,
-      'boxSize': Utils.boxSizeToString(boxSize),
-      'numberOfBoxes': numberOfBoxes,
-    };
-  }
-
-  static OrderItemForSennit fromMap(Map<String, dynamic> map) {
-    if (map == null) return null;
-
-    return OrderItemForSennit(
-      orderItemId: map['orderItemId'],
-      price: map['price'],
-      itemId: map['itemId'],
-      orderId: map['orderId'],
-      sleevesRequred: map['sleevesRequred'],
-      boxSize: Utils.getBoxSizeFromString(map['boxSize']),
-      numberOfBoxes: map['numberOfBoxes'],
-    );
-  }
-
-  String toJson() => json.encode(toMap());
-
-  static OrderItemForSennit fromJson(String source) =>
-      fromMap(json.decode(source));
-
-  @override
-  String toString() {
-    return 'OrderItemForSennit orderItemId: $orderItemId, price: $price, itemId: $itemId, orderId: $orderId, sleevesRequred: $sleevesRequred, boxSize: $boxSize, numberOfBoxes: $numberOfBoxes';
-  }
-
-  @override
-  bool operator ==(Object o) {
-    if (identical(this, o)) return true;
-
-    return (o is OrderItemForSennit && o.orderItemId == orderItemId) ||
-        (o is String && o == orderItemId);
-  }
-
-  @override
-  int get hashCode {
-    return orderItemId.hashCode ^
-        price.hashCode ^
-        itemId.hashCode ^
-        orderId.hashCode ^
-        sleevesRequred.hashCode ^
+        driverId.hashCode ^
         boxSize.hashCode ^
-        numberOfBoxes.hashCode;
+        numberOfBoxes.hashCode ^
+        sleevesRequired.hashCode;
   }
 }
+// class OrderItemForSennit {
+//   String orderItemId;
+//   double price;
+//   String itemId;
+//   String orderId;
+//   bool sleevesRequred;
+//   BoxSize boxSize;
+//   int numberOfBoxes;
+//   OrderItemForSennit({
+//     this.orderItemId,
+//     this.price,
+//     this.itemId,
+//     this.orderId,
+//     this.sleevesRequred,
+//     this.boxSize,
+//     this.numberOfBoxes,
+//   });
+
+//   OrderItemForSennit copyWith({
+//     String orderItemId,
+//     double price,
+//     String itemId,
+//     String orderId,
+//     bool sleevesRequred,
+//     BoxSize boxSize,
+//     int numberOfBoxes,
+//   }) {
+//     return OrderItemForSennit(
+//       orderItemId: orderItemId ?? this.orderItemId,
+//       price: price ?? this.price,
+//       itemId: itemId ?? this.itemId,
+//       orderId: orderId ?? this.orderId,
+//       sleevesRequred: sleevesRequred ?? this.sleevesRequred,
+//       boxSize: boxSize ?? this.boxSize,
+//       numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
+//     );
+//   }
+
+//   Map<String, dynamic> toMap() {
+//     return {
+//       'orderItemId': orderItemId,
+//       'price': price,
+//       'itemId': itemId,
+//       'orderId': orderId,
+//       'sleevesRequred': sleevesRequred,
+//       'boxSize': Utils.boxSizeToString(boxSize),
+//       'numberOfBoxes': numberOfBoxes,
+//     };
+//   }
+
+//   static OrderItemForSennit fromMap(Map<String, dynamic> map) {
+//     if (map == null) return null;
+
+//     return OrderItemForSennit(
+//       orderItemId: map['orderItemId'],
+//       price: map['price'],
+//       itemId: map['itemId'],
+//       orderId: map['orderId'],
+//       sleevesRequred: map['sleevesRequred'],
+//       boxSize: Utils.getBoxSizeFromString(map['boxSize']),
+//       numberOfBoxes: map['numberOfBoxes'],
+//     );
+//   }
+
+//   String toJson() => json.encode(toMap());
+
+//   static OrderItemForSennit fromJson(String source) =>
+//       fromMap(json.decode(source));
+
+//   @override
+//   String toString() {
+//     return 'OrderItemForSennit orderItemId: $orderItemId, price: $price, itemId: $itemId, orderId: $orderId, sleevesRequred: $sleevesRequred, boxSize: $boxSize, numberOfBoxes: $numberOfBoxes';
+//   }
+
+//   @override
+//   bool operator ==(Object o) {
+//     if (identical(this, o)) return true;
+
+//     return (o is OrderItemForSennit && o.orderItemId == orderItemId) ||
+//         (o is String && o == orderItemId);
+//   }
+
+//   @override
+//   int get hashCode {
+//     return orderItemId.hashCode ^
+//         price.hashCode ^
+//         itemId.hashCode ^
+//         orderId.hashCode ^
+//         sleevesRequred.hashCode ^
+//         boxSize.hashCode ^
+//         numberOfBoxes.hashCode;
+//   }
+// }
 
 class OrderItemForReceiveIt {
   String orderItemId;
@@ -798,160 +949,164 @@ class OrderOtherCharges {
   }
 }
 
-class Item {
-  String itemId;
-  String name;
-  String baseCategory;
-  String subCategory;
-  String orderId;
-  double price;
-  Item({
-    this.itemId,
-    this.name,
-    this.baseCategory,
-    this.subCategory,
-    this.orderId,
-    this.price,
-  });
-  
+// class Item {
+//   String itemId;
+//   String name;
+//   String baseCategory;
+//   String subCategory;
+//   String orderId;
+//   double price;
 
-  Item copyWith({
-    String itemId,
-    String name,
-    String baseCategory,
-    String subCategory,
-    String orderId,
-    double price,
-  }) {
-    return Item(
-      itemId: itemId ?? this.itemId,
-      name: name ?? this.name,
-      baseCategory: baseCategory ?? this.baseCategory,
-      subCategory: subCategory ?? this.subCategory,
-      orderId: orderId ?? this.orderId,
-      price: price ?? this.price,
-    );
-  }
+//   ItemProperty itemProperty;
 
-  Map<String, dynamic> toMap() {
-    return {
-      'itemId': itemId,
-      'name': name,
-      'baseCategory': baseCategory,
-      'subCategory': subCategory,
-      'orderId': orderId,
-      'price': price,
-    };
-  }
+//   Item({
+//     this.itemId,
+//     this.name,
+//     this.baseCategory,
+//     this.subCategory,
+//     this.orderId,
+//     this.price,
+//   });
 
-  static Item fromMap(Map<String, dynamic> map) {
-    if (map == null) return null;
-  
-    return Item(
-      itemId: map['itemId'],
-      name: map['name'],
-      baseCategory: map['baseCategory'],
-      subCategory: map['subCategory'],
-      orderId: map['orderId'],
-      price: map['price'],
-    );
-  }
+//   Item copyWith({
+//     String itemId,
+//     String name,
+//     String baseCategory,
+//     String subCategory,
+//     String orderId,
+//     double price,
+//   }) {
+//     return Item(
+//       itemId: itemId ?? this.itemId,
+//       name: name ?? this.name,
+//       baseCategory: baseCategory ?? this.baseCategory,
+//       subCategory: subCategory ?? this.subCategory,
+//       orderId: orderId ?? this.orderId,
+//       price: price ?? this.price,
+//     );
+//   }
 
-  String toJson() => json.encode(toMap());
+//   Map<String, dynamic> toMap() {
+//     return {
+//       'itemId': itemId,
+//       'name': name,
+//       'baseCategory': baseCategory,
+//       'subCategory': subCategory,
+//       'orderId': orderId,
+//       'price': price,
+//     };
+//   }
 
-  static Item fromJson(String source) => fromMap(json.decode(source));
+//   static Item fromMap(Map<String, dynamic> map) {
+//     if (map == null) return null;
 
-  @override
-  String toString() {
-    return 'Item itemId: $itemId, name: $name, baseCategory: $baseCategory, subCategory: $subCategory, orderId: $orderId, price: $price';
-  }
+//     return Item(
+//       itemId: map['itemId'],
+//       name: map['name'],
+//       baseCategory: map['baseCategory'],
+//       subCategory: map['subCategory'],
+//       orderId: map['orderId'],
+//       price: map['price'],
+//     );
+//   }
 
-  @override
-  bool operator ==(Object o) {
-    if (identical(this, o)) return true;
-  
-    return o is Item &&
-      o.itemId == itemId &&
-      o.name == name &&
-      o.baseCategory == baseCategory &&
-      o.subCategory == subCategory &&
-      o.orderId == orderId &&
-      o.price == price;
-  }
+//   String toJson() => json.encode(toMap());
 
-  @override
-  int get hashCode {
-    return itemId.hashCode ^
-      name.hashCode ^
-      baseCategory.hashCode ^
-      subCategory.hashCode ^
-      orderId.hashCode ^
-      price.hashCode;
-  }
-}
-class ItemImage {
-  String imageId;
-  String itemId;
-  String url;
-  ItemImage({
-    this.imageId,
-    this.itemId,
-    this.url,
-  });
+//   static Item fromJson(String source) => fromMap(json.decode(source));
 
-  ItemImage copyWith({
-    String imageId,
-    String itemId,
-    String url,
-  }) {
-    return ItemImage(
-      imageId: imageId ?? this.imageId,
-      itemId: itemId ?? this.itemId,
-      url: url ?? this.url,
-    );
-  }
+//   @override
+//   String toString() {
+//     return 'Item itemId: $itemId, name: $name, baseCategory: $baseCategory, subCategory: $subCategory, orderId: $orderId, price: $price';
+//   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'imageId': imageId,
-      'itemId': itemId,
-      'url': url,
-    };
-  }
+//   @override
+//   bool operator ==(Object o) {
+//     if (identical(this, o)) return true;
 
-  static ItemImage fromMap(Map<String, dynamic> map) {
-    if (map == null) return null;
+//     return o is Item &&
+//         o.itemId == itemId &&
+//         o.name == name &&
+//         o.baseCategory == baseCategory &&
+//         o.subCategory == subCategory &&
+//         o.orderId == orderId &&
+//         o.price == price;
+//   }
 
-    return ItemImage(
-      imageId: map['imageId'],
-      itemId: map['itemId'],
-      url: map['url'],
-    );
-  }
+//   @override
+//   int get hashCode {
+//     return itemId.hashCode ^
+//         name.hashCode ^
+//         baseCategory.hashCode ^
+//         subCategory.hashCode ^
+//         orderId.hashCode ^
+//         price.hashCode;
+//   }
+// }
 
-  String toJson() => json.encode(toMap());
+// class ItemImage {
+//   String imageId;
+//   String itemId;
+//   String url;
+//   ItemImage({
+//     this.imageId,
+//     this.itemId,
+//     this.url,
+//   });
 
-  static ItemImage fromJson(String source) => fromMap(json.decode(source));
+//   ItemImage copyWith({
+//     String imageId,
+//     String itemId,
+//     String url,
+//   }) {
+//     return ItemImage(
+//       imageId: imageId ?? this.imageId,
+//       itemId: itemId ?? this.itemId,
+//       url: url ?? this.url,
+//     );
+//   }
 
-  @override
-  String toString() =>
-      'ItemImage imageId: $imageId, itemId: $itemId, url: $url';
+//   Map<String, dynamic> toMap() {
+//     return {
+//       'imageId': imageId,
+//       'itemId': itemId,
+//       'url': url,
+//     };
+//   }
 
-  @override
-  bool operator ==(Object o) {
-    if (identical(this, o)) return true;
+//   static ItemImage fromMap(Map<String, dynamic> map) {
+//     if (map == null) return null;
 
-    return (o is ItemImage && o.imageId == imageId) ||
-        (o is String && o == imageId);
-  }
+//     return ItemImage(
+//       imageId: map['imageId'],
+//       itemId: map['itemId'],
+//       url: map['url'],
+//     );
+//   }
 
-  @override
-  int get hashCode => imageId.hashCode ^ itemId.hashCode ^ url.hashCode;
-}
+//   String toJson() => json.encode(toMap());
+
+//   static ItemImage fromJson(String source) => fromMap(json.decode(source));
+
+//   @override
+//   String toString() =>
+//       'ItemImage imageId: $imageId, itemId: $itemId, url: $url';
+
+//   @override
+//   bool operator ==(Object o) {
+//     if (identical(this, o)) return true;
+
+//     return (o is ItemImage && o.imageId == imageId) ||
+//         (o is String && o == imageId);
+//   }
+
+//   @override
+//   int get hashCode => imageId.hashCode ^ itemId.hashCode ^ url.hashCode;
+// }
 
 class UserCart {
   String cartId;
   String userId;
+  List<StoreItem> items = List();
   UserCart({
     this.cartId,
     this.userId,
@@ -990,15 +1145,13 @@ class UserCart {
   static UserCart fromJson(String source) => fromMap(json.decode(source));
 
   @override
-  String toString() =>
-      'UserCart cartId: $cartId, userId: $userId';
+  String toString() => 'UserCart cartId: $cartId, userId: $userId';
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return o is UserCart &&
-        o.cartId == cartId;
+    return o is UserCart && o.cartId == cartId;
   }
 
   @override
@@ -1286,7 +1439,7 @@ class ItemProperty {
 
   static ItemProperty fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-  
+
     return ItemProperty(
       itemPropertyId: map['itemPropertyId'],
       propertyName: map['propertyName'],
@@ -1308,21 +1461,388 @@ class ItemProperty {
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
-  
+
     return o is ItemProperty &&
-      o.itemPropertyId == itemPropertyId &&
-      o.propertyName == propertyName &&
-      o.propertyValue == propertyValue &&
-      o.price == price &&
-      o.itemId == itemId;
+        o.itemPropertyId == itemPropertyId &&
+        o.propertyName == propertyName &&
+        o.propertyValue == propertyValue &&
+        o.price == price &&
+        o.itemId == itemId;
   }
 
   @override
   int get hashCode {
     return itemPropertyId.hashCode ^
-      propertyName.hashCode ^
-      propertyValue.hashCode ^
-      price.hashCode ^
-      itemId.hashCode;
+        propertyName.hashCode ^
+        propertyValue.hashCode ^
+        price.hashCode ^
+        itemId.hashCode;
+  }
+}
+
+class StoreItem {
+  String itemId;
+  List<String> images;
+  double price;
+  String description;
+  String itemName;
+  StoreItem({
+    this.itemId,
+    this.images,
+    this.price,
+    this.description,
+    this.itemName,
+  });
+
+  StoreItem copyWith({
+    String itemId,
+    List<String> images,
+    double price,
+    String description,
+    String itemName,
+  }) {
+    return StoreItem(
+      itemId: itemId ?? this.itemId,
+      images: images ?? this.images,
+      price: price ?? this.price,
+      description: description ?? this.description,
+      itemName: itemName ?? this.itemName,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'itemId': itemId,
+      'images': List<dynamic>.from(images.map((x) => x)),
+      'price': price,
+      'description': description,
+      'itemName': itemName,
+    };
+  }
+
+  static StoreItem fromMap(Map<String, dynamic> map) {
+    if (map == null) return null;
+
+    return StoreItem(
+      itemId: map['itemId'],
+      images: List<String>.from(map['images']),
+      price: (map['price'] as int).toDouble(),
+      description: map['description'],
+      itemName: map['itemName'],
+    );
+  }
+
+  String toJson() => json.encode(toMap());
+
+  static StoreItem fromJson(String source) => fromMap(json.decode(source));
+
+  @override
+  String toString() {
+    return 'StoreItem itemId: $itemId, images: $images, price: $price, description: $description, itemName: $itemName';
+  }
+
+  @override
+  bool operator ==(Object o) {
+    if (identical(this, o)) return true;
+
+    return o is StoreItem &&
+        o.itemId == itemId &&
+        o.images == images &&
+        o.price == price &&
+        o.description == description &&
+        o.itemName == itemName;
+  }
+
+  @override
+  int get hashCode {
+    return itemId.hashCode ^
+        images.hashCode ^
+        price.hashCode ^
+        description.hashCode ^
+        itemName.hashCode;
+  }
+}
+
+class Store {
+  String storeId;
+  String storeName;
+  List<String> items;
+  List<StoreItem> storeItems = [];
+  String storeImage;
+  String storeMoto;
+  Store({
+    this.storeId,
+    this.storeName,
+    this.items,
+    this.storeImage,
+    this.storeMoto,
+  });
+
+  Store copyWith({
+    String storeId,
+    String storeName,
+    List<String> items,
+    String storeImage,
+    String storeMoto,
+  }) {
+    return Store(
+      storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
+      items: items ?? this.items,
+      storeImage: storeImage ?? this.storeImage,
+      storeMoto: storeMoto ?? this.storeMoto,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'storeId': storeId,
+      'storeName': storeName,
+      'items': List<dynamic>.from(items.map((x) => x)),
+      'storeImage': storeImage,
+      'storeMoto': storeMoto,
+    };
+  }
+
+  static Store fromMap(Map<String, dynamic> map) {
+    if (map == null) return null;
+
+    return Store(
+      storeId: map['storeId'],
+      storeName: map['storeName'],
+      items: List<String>.from(map['items']),
+      storeImage: map['storeImage'],
+      storeMoto: map['storeMoto'],
+    );
+  }
+
+  String toJson() => json.encode(toMap());
+
+  static Store fromJson(String source) => fromMap(json.decode(source));
+
+  @override
+  String toString() {
+    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMoto: $storeMoto';
+  }
+
+  @override
+  bool operator ==(Object o) {
+    if (identical(this, o)) return true;
+
+    return o is Store &&
+        o.storeId == storeId &&
+        o.storeName == storeName &&
+        o.items == items &&
+        o.storeImage == storeImage &&
+        o.storeMoto == storeMoto;
+  }
+
+  @override
+  int get hashCode {
+    return storeId.hashCode ^
+        storeName.hashCode ^
+        items.hashCode ^
+        storeImage.hashCode ^
+        storeMoto.hashCode;
+  }
+}
+
+class ReviewForDriver {
+  String userId;
+  String reviewedBy;
+  String reviewDescription;
+  String driverid;
+  DateTime createdOn;
+  double rating;
+  DateTime lastUpdated;
+  ReviewForDriver({
+    this.userId,
+    this.reviewedBy,
+    this.reviewDescription,
+    this.driverid,
+    this.createdOn,
+    this.rating,
+    this.lastUpdated,
+  });
+
+  ReviewForDriver copyWith({
+    String userId,
+    String reviewedBy,
+    String reviewDescription,
+    String driverid,
+    DateTime createdOn,
+    double rating,
+    DateTime lastUpdated,
+  }) {
+    return ReviewForDriver(
+      userId: userId ?? this.userId,
+      reviewedBy: reviewedBy ?? this.reviewedBy,
+      reviewDescription: reviewDescription ?? this.reviewDescription,
+      driverid: driverid ?? this.driverid,
+      createdOn: createdOn ?? this.createdOn,
+      rating: rating ?? this.rating,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'reviewedBy': reviewedBy,
+      'reviewDescription': reviewDescription,
+      'driverid': driverid,
+      'createdOn': createdOn.millisecondsSinceEpoch,
+      'rating': rating,
+      'lastUpdated': lastUpdated.millisecondsSinceEpoch,
+    };
+  }
+
+  static ReviewForDriver fromMap(Map<String, dynamic> map) {
+    if (map == null) return null;
+
+    return ReviewForDriver(
+      userId: map['userId'],
+      reviewedBy: map['reviewedBy'],
+      reviewDescription: map['reviewDescription'],
+      driverid: map['driverid'],
+      createdOn: DateTime.fromMillisecondsSinceEpoch(map['createdOn']),
+      rating: map['rating'],
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated']),
+    );
+  }
+
+  String toJson() => json.encode(toMap());
+
+  static ReviewForDriver fromJson(String source) =>
+      fromMap(json.decode(source));
+
+  @override
+  String toString() {
+    return 'ReviewForDriver userId: $userId, reviewedBy: $reviewedBy, reviewDescription: $reviewDescription, driverid: $driverid, createdOn: $createdOn, rating: $rating, lastUpdated: $lastUpdated';
+  }
+
+  @override
+  bool operator ==(Object o) {
+    if (identical(this, o)) return true;
+
+    return o is ReviewForDriver &&
+        o.userId == userId &&
+        o.reviewedBy == reviewedBy &&
+        o.reviewDescription == reviewDescription &&
+        o.driverid == driverid &&
+        o.createdOn == createdOn &&
+        o.rating == rating &&
+        o.lastUpdated == lastUpdated;
+  }
+
+  @override
+  int get hashCode {
+    return userId.hashCode ^
+        reviewedBy.hashCode ^
+        reviewDescription.hashCode ^
+        driverid.hashCode ^
+        createdOn.hashCode ^
+        rating.hashCode ^
+        lastUpdated.hashCode;
+  }
+}
+
+class Review {
+  String userId;
+  String reviewedBy;
+  String reviewDescription;
+  String itemId;
+  DateTime createdOn;
+  double rating;
+  DateTime lastUpdated;
+
+  Review({
+    this.userId,
+    this.reviewedBy,
+    this.reviewDescription,
+    this.itemId,
+    this.createdOn,
+    this.rating,
+    this.lastUpdated,
+  });
+
+  Review copyWith({
+    String userId,
+    String reviewedBy,
+    String reviewDescription,
+    String itemId,
+    DateTime createdOn,
+    double rating,
+    DateTime lastUpdated,
+  }) {
+    return Review(
+      userId: userId ?? this.userId,
+      reviewedBy: reviewedBy ?? this.reviewedBy,
+      reviewDescription: reviewDescription ?? this.reviewDescription,
+      itemId: itemId ?? this.itemId,
+      createdOn: createdOn ?? this.createdOn,
+      rating: rating ?? this.rating,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'reviewedBy': reviewedBy,
+      'reviewDescription': reviewDescription,
+      'itemId': itemId,
+      'createdOn': createdOn.millisecondsSinceEpoch,
+      'rating': rating,
+      'lastUpdated': lastUpdated.millisecondsSinceEpoch,
+    };
+  }
+
+  static Review fromMap(Map<String, dynamic> map) {
+    if (map == null) return null;
+
+    return Review(
+      userId: map['userId'],
+      reviewedBy: map['reviewedBy'],
+      reviewDescription: map['reviewDescription'],
+      itemId: map['itemId'],
+      createdOn: DateTime.fromMillisecondsSinceEpoch(map['createdOn']),
+      rating: map['rating'],
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated']),
+    );
+  }
+
+  String toJson() => json.encode(toMap());
+
+  static Review fromJson(String source) => fromMap(json.decode(source));
+
+  @override
+  String toString() {
+    return 'Review userId: $userId, reviewedBy: $reviewedBy, reviewDescription: $reviewDescription, itemId: $itemId, createdOn: $createdOn, rating: $rating, lastUpdated: $lastUpdated';
+  }
+
+  @override
+  bool operator ==(Object o) {
+    if (identical(this, o)) return true;
+
+    return o is Review &&
+        o.userId == userId &&
+        o.reviewedBy == reviewedBy &&
+        o.reviewDescription == reviewDescription &&
+        o.itemId == itemId &&
+        o.createdOn == createdOn &&
+        o.rating == rating &&
+        o.lastUpdated == lastUpdated;
+  }
+
+  @override
+  int get hashCode {
+    return userId.hashCode ^
+        reviewedBy.hashCode ^
+        reviewDescription.hashCode ^
+        itemId.hashCode ^
+        createdOn.hashCode ^
+        rating.hashCode ^
+        lastUpdated.hashCode;
   }
 }

@@ -171,7 +171,7 @@ class UserHomeState extends State<UserHomeBody> {
                     setState(() {
                       Navigator.push(context,
                           MaterialPageRoute(builder: (context) {
-                        return StoresRoute(address: Address());
+                        return ReceiveItRoute();
                       }));
                       currentSizeRecieveIt = defaultSize;
                     });
