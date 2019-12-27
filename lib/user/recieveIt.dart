@@ -12,18 +12,22 @@ import 'package:place_picker/place_picker.dart';
 import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/review.dart';
+import 'package:sennit/my_widgets/search.dart';
 import '../main.dart';
 
 class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
-  static List<Widget> _tabs = [];
+  static List<Widget> _tabs;
   ReceiveItRoute() {
+    _tabs = [];
     drawerNameController.text = ((Session.data['user']) as User).fullname;
-    _tabs.add(
-      StoresRoute(
-        address: null,
-      ),
-    );
+    _tabs
+      ..add(
+        StoresRoute(
+          address: null,
+        ),
+      )
+      ..add(SearchWidget());
   }
   @override
   Widget build(BuildContext context) {
@@ -97,7 +101,7 @@ class ReceiveItRoute extends StatelessWidget {
 }
 
 class _Body extends StatefulWidget {
-  final List<Widget> tabs = [];
+  // final List<Widget> tabs = [];
   @override
   State<StatefulWidget> createState() {
     return _BodyState();
@@ -110,6 +114,7 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   dispose() {
     super.dispose();
     _controller.dispose();
+    ReceiveItRoute._tabs = null;
   }
 
   @override
@@ -754,7 +759,7 @@ class MenuItem extends StatelessWidget {
 class BottomSheetButton extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    return null;
+    return BottomSheetButtonState();
   }
 }
 
@@ -1719,7 +1724,14 @@ class ShoppingCartRoute extends StatelessWidget {
           FlatButton(
             onPressed: () {
               User user = Session.data['user'];
-              List<String> items = body.getItems();
+              List<model.StoreItem> items = body.getItems();
+              double price = 0.0;
+              
+              for(model.StoreItem item in items) {
+                price += item.price;
+              }
+
+              List<String> itemIds = body.getItemsIds();
               model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
               order.orderDate = DateTime.now();
               order.userId = user.userId;
@@ -1727,7 +1739,8 @@ class ShoppingCartRoute extends StatelessWidget {
               order.phoneNumber =
                   ShoppingCartRouteState._phoneNumberController.text;
               order.house = ShoppingCartRouteState._houseController.text;
-              order.items = items;
+              order.items = itemIds;
+              order.price = price;
               order.destination = LatLng(
                   ShoppingCartRoute._toAddress.coordinates.latitude,
                   ShoppingCartRoute._toAddress.coordinates.longitude);
@@ -1775,8 +1788,12 @@ class ShoppingCartRoute extends StatelessWidget {
 
 class ShoppingCartRouteBody extends StatefulWidget {
   final ShoppingCartRouteState state = ShoppingCartRouteState();
-  getItems() {
+  getItemsIds() {
     return state.itemIds;
+  }
+
+  getItems(){
+    return state.items;
   }
 
   @override

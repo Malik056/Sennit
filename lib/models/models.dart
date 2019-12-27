@@ -1234,19 +1234,24 @@ class UserLocationHistory {
   }
 }
 
+
 class UserNotification {
+
+  static const String ORDER_COMPLETE = "complete";
+  static const String ORDER_PENDING = "pending";
+  static const String ORDER_POSTED = "posted";
+
   String notificationId;
   String title;
   String orderId;
   String description;
-  bool isNotificationForOrderComplete;
-
+  String type;
   UserNotification({
     this.notificationId,
     this.title,
     this.orderId,
     this.description,
-    this.isNotificationForOrderComplete,
+    this.type,
   });
 
   UserNotification copyWith({
@@ -1254,15 +1259,14 @@ class UserNotification {
     String title,
     String orderId,
     String description,
-    bool isNotificationForOrderComplete,
+    String type,
   }) {
     return UserNotification(
       notificationId: notificationId ?? this.notificationId,
       title: title ?? this.title,
       orderId: orderId ?? this.orderId,
       description: description ?? this.description,
-      isNotificationForOrderComplete:
-          isNotificationForOrderComplete ?? this.isNotificationForOrderComplete,
+      type: type ?? this.type,
     );
   }
 
@@ -1272,51 +1276,52 @@ class UserNotification {
       'title': title,
       'orderId': orderId,
       'description': description,
-      'isNotificationForOrderComplete': isNotificationForOrderComplete ? 1 : 0,
+      'type': type,
     };
   }
 
   static UserNotification fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-
+  
     return UserNotification(
       notificationId: map['notificationId'],
       title: map['title'],
       orderId: map['orderId'],
       description: map['description'],
-      isNotificationForOrderComplete:
-          map['isNotificationForOrderComplete'] == 1 ? true : false,
+      type: map['type'],
     );
   }
 
   String toJson() => json.encode(toMap());
 
-  static UserNotification fromJson(String source) =>
-      fromMap(json.decode(source));
+  static UserNotification fromJson(String source) => fromMap(json.decode(source));
 
   @override
   String toString() {
-    return 'UserNotification notificationId: $notificationId, title: $title, orderId: $orderId, description: $description, isNotificationForOrderComplete: $isNotificationForOrderComplete';
+    return 'UserNotification notificationId: $notificationId, title: $title, orderId: $orderId, description: $description, type: $type';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
-
-    return (o is UserNotification && o.notificationId == notificationId) ||
-        (o is String && o == notificationId);
+  
+    return o is UserNotification &&
+      o.notificationId == notificationId &&
+      o.title == title &&
+      o.orderId == orderId &&
+      o.description == description &&
+      o.type == type;
   }
 
   @override
   int get hashCode {
     return notificationId.hashCode ^
-        title.hashCode ^
-        orderId.hashCode ^
-        description.hashCode ^
-        isNotificationForOrderComplete.hashCode;
+      title.hashCode ^
+      orderId.hashCode ^
+      description.hashCode ^
+      type.hashCode;
   }
 }
-
 class DriverNotification {
   String notificationId;
   String pickUpAddress;

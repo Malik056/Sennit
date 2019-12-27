@@ -12,6 +12,8 @@ import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
+import 'package:sennit/my_widgets/notification.dart';
+import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/recieveIt.dart';
@@ -49,6 +51,7 @@ databaseInitializer() async {
 
 class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String startPage = 'startPage';
+  static final String searchPage = 'searchPage';
   // static final String startPage2 = '/startPage2';
   static final String userSignup = 'userSignup';
   static final String userSignin = 'userSignin';
@@ -69,6 +72,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String driverNavigationRoute = 'driverNavigationRoute';
   static final String activeOrderBody = 'activeOrderBody';
   static final String reviewWidget = 'reviewWidget';
+  static final String notificationWidget = 'notificationWidget';
 
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
@@ -91,7 +95,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: startPage,
+      initialRoute: notificationWidget,
       routes: {
         // '/': (context) => StartPage(),
         driverNavigationRoute: (context) => DeliveryTrackingRoute(
@@ -115,6 +119,8 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
             ),
         storeMainPage: (context) => StoreMainPage(),
         activeOrderBody: (context) => ActiveOrder(),
+        searchPage: (context) => SearchWidget(),
+        notificationWidget: (context) => UserNotificationWidget(),
       },
       title: 'Sennit',
       theme: ThemeData(
