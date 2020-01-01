@@ -1,19 +1,31 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:place_picker/place_picker.dart';
+import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
+import 'package:sqflite/sqlite_api.dart';
 
 class DriverSignUpRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Driver Sign Up'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: DriverSignUpRouteBody(),
+    return WillPopScope(
+            onWillPop: () async {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, MyApp.driverStartPage);
+        return false;
+      },
+          child: Scaffold(
+        appBar: AppBar(
+          title: Text('Driver Sign Up'),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: DriverSignUpRouteBody(),
+        ),
       ),
     );
   }
@@ -30,6 +42,7 @@ class DriverSignUpRouteBody extends StatefulWidget {
 }
 
 class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
+  Driver driver = Driver();
   Color defaultColor = Colors.white;
   Color defaultHeighlightedColor = Colors.white;
   Color defaultBtnBackgroundColor = Colors.white;
@@ -50,6 +63,10 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
   final _formKey = GlobalKey<FormState>();
 
   final passwordController = TextEditingController();
+
+  bool pressed = false;
+
+  Function onSignUpError;
   @override
   void initState() {
     btnPaddingTop = 10;
@@ -60,6 +77,12 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
     dateText = dateInitialText;
     dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
     dateOfBirthTextColor = Colors.white;
+
+    onSignUpError = (error) {
+      pressed = false;
+      Navigator.pop(context);
+      Utils.showSnackBarError(context, 'Email Address is already in use');
+    };
     super.initState();
   }
 
@@ -85,6 +108,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         if (firstName.isEmpty) {
                           return "First Name can't be empty";
                         }
+                        driver.firstName = firstName;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -97,6 +121,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         if (lastName.isEmpty) {
                           return "Last Name can't be empty";
                         }
+                        driver.lastName = lastName;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -117,6 +142,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                             return 'Invalid Email Format';
                           }
                         }
+                        driver.email = email;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -206,12 +232,13 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                             if (selectedDate != null) {
                               setState(() {
                                 dateSelected = true;
-                                dateOfBirthTextColor =
-                                    Colors.white;
-                                dateOfBirthHeadingColor = Theme.of(context).primaryColor;
+                                dateOfBirthTextColor = Colors.white;
+                                dateOfBirthHeadingColor =
+                                    Theme.of(context).primaryColor;
                                 dateText = DateFormat("dd-MMM-yyyy", "en_US")
                                     .format(selectedDate)
                                     .toString();
+                                driver.dateOfBirth = selectedDate;
                               });
                             }
                           },
@@ -254,6 +281,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         if (cellNum.isEmpty) {
                           return "Please Enter your phone number";
                         }
+                        driver.phoneNumber = cellNum;
                         return null;
                       },
                       style: Theme.of(context).textTheme.body1,
@@ -272,6 +300,8 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                             address = result.formattedAddress;
                           });
                         }
+                        driver.homeLocationAddress = address;
+                        driver.homeLocationLatLng = result.latLng;
                       },
                     ),
                     ListTile(
@@ -337,20 +367,98 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                           }
                           setState(() {});
                         },
-                        onPressed: () {
-                          tapped = true;
-                          var form = _formKey.currentState;
-                          if (form.validate() && dateInitialText != dateText) {
-                            Navigator.pop(context);
-                            Navigator.of(context).pushNamed(MyApp.driverHome);
-                            setState(() {
-                              dateSelected = true;
-                            });
-                          } else if (dateInitialText == dateText) {
-                            setState(() {
-                              dateOfBirthHeadingColor = Colors.red;
-                              dateOfBirthTextColor = Colors.red;
-                            });
+                        onPressed: () async {
+                          if (!pressed) {
+                            pressed = true;
+                            Utils.showLoadingDialog(context);
+                            tapped = true;
+                            var form = _formKey.currentState;
+                            if (form.validate() &&
+                                dateInitialText != dateText) {
+                              driver.userCreatedOn = DateTime.now();
+                              driver.balance = 0;
+                              driver.rank = "Rookie";
+
+                              // user.userId =
+                              //     "user${DateTime.now().millisecondsSinceEpoch}";
+                              try {
+                                FirebaseAuth.instance
+                                    .createUserWithEmailAndPassword(
+                                      email: driver.email,
+                                      password: passwordController.text,
+                                    )
+                                    .catchError((Object object) {})
+                                    .then((value) {
+                                  FirebaseUser firebaseUser = value.user;
+                                  if (firebaseUser == null) {
+                                    SnackBar snackBar = SnackBar(
+                                      content: Text(
+                                        'An Account with the same email already exists',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.yellow,
+                                      duration: Duration(seconds: 1),
+                                    );
+                                    Scaffold.of(context).showSnackBar(snackBar);
+                                  } else {
+                                    driver.driverId = firebaseUser.uid;
+                                    Map map = driver.toMap();
+                                    Firestore.instance
+                                        .collection("drivers")
+                                        .document(driver.driverId)
+                                        .setData(map)
+                                        .timeout(Duration(seconds: 10))
+                                        .then((a) async {
+                                      // await DatabaseHelper.signInUser(
+                                      //   user.userId,
+                                      // );
+                                      Database database =
+                                          DatabaseHelper.getDatabase();
+                                      database.insert(
+                                        Tables.DRIVER_TABLE,
+                                        driver.toMap(),
+                                      );
+                                      Session.data.update('driver', (ignored) {
+                                        return driver;
+                                      }, ifAbsent: () {
+                                        return driver;
+                                      });
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
+                                      Navigator.of(context)
+                                          .pushNamed(MyApp.driverHome);
+                                    }).catchError((error) {
+                                      pressed = false;
+                                      Navigator.pop(context);
+                                      SnackBar snackBar = SnackBar(
+                                        content: Text(
+                                          'Something went wrong. Try again!',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      );
+                                      firebaseUser.sendEmailVerification();
+                                      Scaffold.of(context)
+                                          .showSnackBar(snackBar);
+                                    });
+                                  }
+                                });
+                              } on dynamic catch (_) {
+                                onSignUpError();
+                              }
+                            } else if (dateInitialText == dateText) {
+                              setState(() {
+                                pressed = false;
+                                Navigator.pop(context);
+                                dateOfBirthHeadingColor = Colors.red;
+                                dateOfBirthTextColor = Colors.red;
+                              });
+                            } else {
+                              setState(() {
+                                pressed = false;
+                                Navigator.pop(context);
+                              });
+                            }
                           }
                         },
                       ),

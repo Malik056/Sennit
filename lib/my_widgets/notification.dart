@@ -3,18 +3,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:sennit/models/models.dart';
 
+import '../main.dart';
+
 class UserNotificationWidget extends StatelessWidget {
   Stream<DocumentSnapshot> getNotifications() {
-    // User user = Session.data['user'];
+    User user = Session.data['user'];
     return Firestore.instance
         .collection('userNotifications')
-        .document('JExltYlsltcNPx1xEP9F19raUx52')
+        .document('${user.userId}')
         .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Notifications'),
+        centerTitle: true,
+      ),
       body: Center(
         child: StreamBuilder<DocumentSnapshot>(
           stream: getNotifications(),
@@ -22,6 +28,15 @@ class UserNotificationWidget extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(
                 child: CircularProgressIndicator(),
+              );
+            } else if (snapshot.data == null ||
+                snapshot.data.exists ||
+                snapshot.data.data == null) {
+              return Center(
+                child: Text(
+                  'No Notifications Available',
+                  style: Theme.of(context).textTheme.title,
+                ),
               );
             } else {
               var keys = snapshot.data.data.keys.toList();

@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -51,7 +52,8 @@ class AddressAddingRoute extends StatelessWidget {
                               .push(MaterialPageRoute(builder: (context) {
                               return SendItCartRoute(_fromAddress, _toAddress);
                             }))
-                          : print('Please Select an Address')
+                          : Utils.showSnackBarError(
+                              context, 'Please Select an Address')
                       : _fromAddress != null
                           ? Navigator.of(context)
                               .push(MaterialPageRoute(builder: (context) {
@@ -59,7 +61,10 @@ class AddressAddingRoute extends StatelessWidget {
                                 address: _fromAddress,
                               );
                             }))
-                          : print('Please Select an Address');
+                          : Utils.showSnackBarError(
+                              context,
+                              'Please Select an Address',
+                            );
             },
             child: Text(
               sourcePage == SourcePage.addressSelectionDestination
@@ -188,6 +193,7 @@ class AddressAddingState extends State<AddressAddingBody> {
                               ? AddressAddingRoute._fromAddress.addressLine
                               : 'Select an Address',
                     ),
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -219,6 +225,31 @@ class AddressAddingState extends State<AddressAddingBody> {
                     leading: Icon(Icons.home),
                     title: Text('Home'),
                     subtitle: Text('${user.homeLocationAddress}'),
+                    onTap: () async {
+                      Address selectedAddress =
+                          (await Geocoder.local.findAddressesFromCoordinates(
+                        Coordinates(user.homeLocationLatLng.latitude,
+                            user.homeLocationLatLng.longitude),
+                      ))[0];
+                      widget.sourcePage == SourcePage.recieveIt
+                          ? Navigator.of(context).pop()
+                          : widget.sourcePage ==
+                                  SourcePage.addressSelectionDestination
+                              ? Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return SendItCartRoute(
+                                          widget._fromAddress, selectedAddress);
+                                    },
+                                  ),
+                                )
+                              : Navigator.of(context)
+                                  .push(MaterialPageRoute(builder: (context) {
+                                  return DeliverToAddressRoute(
+                                    address: selectedAddress,
+                                  );
+                                }));
+                    },
                   ),
                   user.officeLocationAddress != null
                       ? ListTile(
@@ -226,6 +257,32 @@ class AddressAddingState extends State<AddressAddingBody> {
                           leading: Icon(Icons.history),
                           title: Text('Office'),
                           subtitle: Text(user.officeLocationAddress),
+                          onTap: () async {
+                            Address selectedAddress = (await Geocoder.local
+                                .findAddressesFromCoordinates(
+                              Coordinates(user.officeLocationLatLng.latitude,
+                                  user.officeLocationLatLng.longitude),
+                            ))[0];
+                            widget.sourcePage == SourcePage.recieveIt
+                                ? Navigator.of(context).pop()
+                                : widget.sourcePage ==
+                                        SourcePage.addressSelectionDestination
+                                    ? Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return SendItCartRoute(
+                                                widget._fromAddress,
+                                                selectedAddress);
+                                          },
+                                        ),
+                                      )
+                                    : Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (context) {
+                                        return DeliverToAddressRoute(
+                                          address: selectedAddress,
+                                        );
+                                      }));
+                          },
                         )
                       : Opacity(
                           opacity: 0,
@@ -324,7 +381,77 @@ class SendItCartRoute extends StatelessWidget {
       appBar: AppBar(
         actions: <Widget>[
           FlatButton(
-            onPressed: () {},
+            onPressed: () async {
+              Utils.showLoadingDialog(context);
+              OrderFromSennit sennitOrder = OrderFromSennit();
+              sennitOrder.boxSize = SendItCartRouteState.selectedBoxSize;
+              sennitOrder.dateOrdered = DateTime.now();
+              sennitOrder.userId = (Session.data['user'] as User).userId;
+              sennitOrder.dropOffLatLng = LatLng(
+                  SendItCartRoute._toAddress.coordinates.latitude,
+                  SendItCartRoute._toAddress.coordinates.longitude);
+              sennitOrder.dropOffAddress =
+                  SendItCartRoute._toAddress.addressLine;
+              sennitOrder.pickUpLatLng = LatLng(
+                  SendItCartRoute._fromAddress.coordinates.latitude,
+                  SendItCartRoute._fromAddress.coordinates.longitude);
+              sennitOrder.pickUpAddress =
+                  SendItCartRoute._fromAddress.addressLine;
+              sennitOrder.dropToDoor = SendItCartRouteState.deliverToDoor;
+              sennitOrder.pickupFromDoor = SendItCartRouteState.pickFromDoor;
+              sennitOrder.numberOfBoxes =
+                  int.parse(SendItCartRouteState.numberOfBoxesController.text);
+              sennitOrder.orderPrice = 200; //TODO: NEED TO CALCULATE THIS
+              sennitOrder.sleevesRequired = SendItCartRouteState.sleeveNeeded;
+              sennitOrder.serviceCharges = 0;
+              sennitOrder.receiverEmail =
+                  SendItCartRouteState.receiverEmailController.text;
+              sennitOrder.receiverPhone =
+                  SendItCartRouteState.receiverPhoneNumberController.text;
+              sennitOrder.senderEmail =
+                  SendItCartRouteState.senderEmailController.text;
+              sennitOrder.senderPhone =
+                  SendItCartRouteState.senderPhoneNumberController.text;
+              await Firestore.instance
+                  .collection("postedOrders")
+                  .add(sennitOrder.toMap());
+              BotToast.showEnhancedWidget(toastBuilder: (a) {
+                return Center(
+                  child: Container(
+                    width: 300,
+                    height: 230,
+                    padding:
+                        EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 10),
+                    child: Card(
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Spacer(),
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 32,
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Text('Your Order is on its way!'),
+                          Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              });
+              Future.delayed(Duration(seconds: 2)).then((value) {
+                BotToast.cleanAll();
+              });
+              Navigator.popUntil(context, ModalRoute.withName(MyApp.userHome));
+            },
             child: Text(
               'Done',
               style: TextStyle(
@@ -355,21 +482,21 @@ class SendItCartRouteBody extends StatefulWidget {
 }
 
 class SendItCartRouteState extends State<SendItCartRouteBody> {
-  bool pickFromDoor = true;
-  bool deliverToDoor = true;
+  static bool pickFromDoor = true;
+  static bool deliverToDoor = true;
   double cardMargin = 10;
   double cardPadding = 20;
   double groupMargin = 30;
   double itemMargin = 10;
 
-  bool sleeveNeeded = false;
-  BoxSize selectedBoxSize = BoxSize.small;
+  static bool sleeveNeeded = false;
+  static BoxSize selectedBoxSize = BoxSize.small;
 
-  final senderEmailController = TextEditingController();
-  final senderPhoneNumberController = TextEditingController();
-  final receiverEmailController = TextEditingController();
-  final receiverPhoneNumberController = TextEditingController();
-  final numberOfBoxesController = TextEditingController();
+  static final senderEmailController = TextEditingController();
+  static final senderPhoneNumberController = TextEditingController();
+  static final receiverEmailController = TextEditingController();
+  static final receiverPhoneNumberController = TextEditingController();
+  static final numberOfBoxesController = TextEditingController();
 
   SendItCartRouteState();
 
@@ -408,12 +535,11 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       LocationResult result =
                           await Utils.showPlacePicker(context);
                       if (result != null) {
-                        setState(() async {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          SendItCartRoute._fromAddress = (await Geocoder.local
-                              .findAddressesFromCoordinates(coordinates))[0];
-                        });
+                        Coordinates coordinates = Coordinates(
+                            result.latLng.latitude, result.latLng.longitude);
+                        SendItCartRoute._fromAddress = (await Geocoder.local
+                            .findAddressesFromCoordinates(coordinates))[0];
+                        setState(() {});
                       }
                     },
                     leading: Icon(
@@ -559,12 +685,11 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       LocationResult result =
                           await Utils.showPlacePicker(context);
                       if (result != null) {
-                        setState(() async {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          SendItCartRoute._toAddress = (await Geocoder.local
-                              .findAddressesFromCoordinates(coordinates))[0];
-                        });
+                        Coordinates coordinates = Coordinates(
+                            result.latLng.latitude, result.latLng.longitude);
+                        SendItCartRoute._toAddress = (await Geocoder.local
+                            .findAddressesFromCoordinates(coordinates))[0];
+                        setState(() {});
                       }
                     },
                     leading: Icon(

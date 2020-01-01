@@ -46,6 +46,7 @@ dependencies:
   cloud_firestore: ^0.13.0+1
   firebase_auth: ^0.15.3
   flappy_search_bar: ^1.4.1
+  bot_toast: ^2.2.0
 
 
 

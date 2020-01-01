@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -95,7 +96,15 @@ class ReceiveItRoute extends StatelessWidget {
         },
         backgroundColor: Theme.of(context).accentColor,
       ),
-      body: _Body(),
+      body: FutureBuilder<void>(
+        future: MyApp.futureCart,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          return _Body();
+        },
+      ),
     );
   }
 }
@@ -509,13 +518,16 @@ class StoreItem extends StatelessWidget {
                       ),
                     ),
                   ),
-                  onTap: () {
-                    Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (context) {
-                      return ItemDetailsRoute(
-                        item: store.storeItems[index],
-                      );
-                    }));
+                  onTap: () async {
+                    Utils.showLoadingDialog(context);
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) {
+                        return ItemDetailsRoute(
+                          item: store.storeItems[index],
+                        );
+                      }),
+                    );
                   },
                 );
               },
@@ -764,8 +776,20 @@ class BottomSheetButton extends StatefulWidget {
 }
 
 class BottomSheetButtonState extends State<BottomSheetButton> {
-  bool isInCart = false;
   bool addingToCart = false;
+  bool isInCart;
+  BottomSheetButtonState() {
+    isInCart = searchItemInCart();
+  }
+
+  searchItemInCart() {
+    model.StoreItem item = ItemDetailsRoute._item;
+    UserCart cart = Session.data['cart'];
+    if (cart.itemIds.contains(item.itemId)) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -790,20 +814,24 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             addingToCart = true;
           });
           User user = Session.data['user'];
+          UserCart cart = Session.data['cart'];
           if (!isInCart) {
             Firestore.instance
                 .collection('carts')
                 .document(user.userId)
                 .setData({
               ItemDetailsRoute._item.itemId: ItemDetailsRoute._item.itemId,
-            }).catchError((error) {
+            }, merge: true).catchError((error) {
               Utils.showSnackBarError(
                   context, "Network Problem Occured! Try Again");
               setState(() {
                 addingToCart = false;
               });
             }).then((_) {
+              cart.itemIds.add(ItemDetailsRoute._item.itemId);
+              cart.items.add(ItemDetailsRoute._item);
               setState(() {
+                addingToCart = false;
                 isInCart = true;
               });
             });
@@ -819,8 +847,11 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 addingToCart = false;
               });
             }).then((_) {
+              cart.itemIds.remove(ItemDetailsRoute._item.itemId);
+              cart.items.remove(ItemDetailsRoute._item);
               setState(() {
                 addingToCart = false;
+                isInCart = false;
               });
             });
           }
@@ -832,10 +863,9 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
 
 class ItemDetailsRoute extends StatelessWidget {
   static model.StoreItem _item;
-
   ItemDetailsRoute({
     Key key,
-    @required item,
+    @required model.StoreItem item,
   }) : super(key: key) {
     _item = item;
   }
@@ -1723,16 +1753,48 @@ class ShoppingCartRoute extends StatelessWidget {
         actions: <Widget>[
           FlatButton(
             onPressed: () {
-              User user = Session.data['user'];
-              List<model.StoreItem> items = body.getItems();
-              double price = 0.0;
-              
-              for(model.StoreItem item in items) {
-                price += item.price;
+              Utils.showLoadingDialog(context);
+              if (ShoppingCartRouteState._emailController.text == "" ||
+                  ShoppingCartRouteState._emailController.text == null) {
+                Utils.showSnackBarError(
+                    context, 'Please Provide your email Address');
+                Navigator.pop(context);
+                return;
+              } else if (ShoppingCartRouteState._phoneNumberController.text ==
+                      "" ||
+                  ShoppingCartRouteState._phoneNumberController.text == null) {
+                Utils.showSnackBarError(
+                    context, 'Please Provide your phone Number');
+                Navigator.pop(context);
+                return;
+              } else if (ShoppingCartRoute._toAddress == null) {
+                BotToast.showText(
+                    text: 'Please Select a Destination First!',
+                    duration: Duration(seconds: 2));
+                // Utils.showSnackBarError(context, 'Please Select a Destination');
+                Navigator.pop(context);
+                return;
               }
 
-              List<String> itemIds = body.getItemsIds();
+              User user = Session.data['user'];
               model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
+              List<TextEditingController> controllers =
+                  ShoppingCartRouteState._controllers;
+              model.UserCart cart = Session.data['cart'];
+              List<model.StoreItem> items = cart.items;
+
+              double price = 0.0;
+              List<LatLng> pickups = order.pickups;
+              if (pickups == null) {
+                pickups = [];
+                order.pickups = pickups;
+              }
+              int i = 0;
+              for (model.StoreItem item in items) {
+                price += item.price * int.parse(controllers[i++].text);
+                pickups.add(item.latlng);
+              }
+              List<String> itemIds = cart.itemIds;
               order.orderDate = DateTime.now();
               order.userId = user.userId;
               order.email = ShoppingCartRouteState._emailController.text;
@@ -1744,21 +1806,29 @@ class ShoppingCartRoute extends StatelessWidget {
               order.destination = LatLng(
                   ShoppingCartRoute._toAddress.coordinates.latitude,
                   ShoppingCartRoute._toAddress.coordinates.longitude);
-              order.price = Random().nextDouble() % 400.0 + 300;
               Firestore.instance
-                  .collection('receiveItOrders')
-                  .document('pendingOrders')
-                  .setData(order.toMap())
+                  .collection('postedOrders')
+                  .add(order.toMap())
                   .catchError((error) {})
                   .then((_) {
                 Firestore.instance
                     .collection('carts')
-                    .document('userId')
+                    .document(user.userId)
                     .delete()
                     .catchError((error) {})
                     .then(
                   (_) {
-                    Utils.showSnackBarSuccess(context, 'Order Submitted');
+                    Firestore.instance
+                        .collection('carts')
+                        .document(user.userId)
+                        .setData({});
+                    // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                    Navigator.pop(context);
+                    Session.data['cart'] = UserCart();
+                    Utils.showSuccessDialog('Your Order is on its way!');
+                    Future.delayed(Duration(seconds: 2)).then((_) {
+                      BotToast.cleanAll();
+                    });
                     Navigator.pop(context);
                   },
                 );
@@ -1788,17 +1858,10 @@ class ShoppingCartRoute extends StatelessWidget {
 
 class ShoppingCartRouteBody extends StatefulWidget {
   final ShoppingCartRouteState state = ShoppingCartRouteState();
-  getItemsIds() {
-    return state.itemIds;
-  }
-
-  getItems(){
-    return state.items;
-  }
 
   @override
   State<StatefulWidget> createState() {
-    return ShoppingCartRouteState();
+    return state;
   }
 }
 
@@ -1809,6 +1872,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double cardPadding = 20;
   double groupMargin = 30;
   double itemMargin = 10;
+  static List<TextEditingController> _controllers;
   static TextEditingController _emailController;
   static TextEditingController _houseController;
   static TextEditingController _phoneNumberController;
@@ -1818,9 +1882,23 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   bool sleeveNeeded = false;
 
   ShoppingCartRouteState() {
+    _controllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
+    User user = Session.data['user'];
+    _emailController.text = user.email;
+    _phoneNumberController.text = user.phoneNumber;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    UserCart cart = Session.data['cart'];
+    for (var _ in cart.itemIds) {
+      final TextEditingController controller = TextEditingController();
+      _controllers.add(controller);
+    }
   }
 
   @override
@@ -1829,6 +1907,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     _emailController.dispose();
     _houseController.dispose();
     _phoneNumberController.dispose();
+    _controllers = null;
   }
 
   @override
@@ -1837,9 +1916,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
       child: Column(
         children: [
           Card(
-            // margin: EdgeInsets.only(
-            //   top: groupMargin,
-            // ), //, left: cardMargin, right: cardMargin),
             elevation: 5,
             child: Container(
               padding: EdgeInsets.only(top: cardPadding),
@@ -1860,12 +1936,12 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       LocationResult result =
                           await Utils.showPlacePicker(context);
                       if (result != null) {
-                        setState(() async {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          ShoppingCartRoute._toAddress = (await Geocoder.local
-                              .findAddressesFromCoordinates(coordinates))[0];
-                        });
+                        Coordinates coordinates = Coordinates(
+                            result.latLng.latitude, result.latLng.longitude);
+                        ShoppingCartRoute._toAddress = (await Geocoder.local
+                            .findAddressesFromCoordinates(coordinates))[0];
+
+                        setState(() {});
                       }
                     },
                     leading: Icon(
@@ -1877,7 +1953,9 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                           ? ShoppingCartRoute._toAddress.addressLine
                           : 'Address Not Set',
                       style: TextStyle(
-                          color: Theme.of(context).accentColor, fontSize: 16),
+                        color: Theme.of(context).accentColor,
+                        fontSize: 16,
+                      ),
                     ),
                     trailing: Icon(
                       Icons.edit,
@@ -1963,12 +2041,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       children: <Widget>[
                         TextField(
                           decoration: InputDecoration(
-                              labelText: 'Apt/Suite/Floor/Building Name'),
+                            labelText: 'Apt/Suite/Floor/Building Name',
+                          ),
                           controller: _houseController,
                         ),
                         TextField(
-                          decoration:
-                              InputDecoration(labelText: 'Phone Number'),
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                          ),
                           keyboardType: TextInputType.phone,
                           controller: _phoneNumberController,
                         ),
@@ -1990,63 +2070,72 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               ),
             ),
           ),
-          FutureBuilder<Widget>(
-            future: _getCartItems(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(),
-                );
-              } else {
-                return snapshot.data;
-              }
-            },
-          ),
-          Card(
-            margin: EdgeInsets.only(
-              top: 10,
-            ), //, left: cardMargin, right: cardMargin),
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.only(top: cardPadding),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    children: [
-                      Text(
-                        '    Payment Method',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.left,
-                      ),
-                    ],
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      FontAwesomeIcons.cashRegister,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text('Cash'),
-                    trailing: Icon(
-                      Icons.radio_button_checked,
-                      color: Theme.of(context).accentColor,
-                    ),
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.credit_card,
-                    ),
-                    title: Text(
-                      'Selct payment method',
-                    ),
-                    trailing: Icon(Icons.navigate_next),
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _getCartItems(),
+          // FutureBuilder<Widget>(
+          //   future: _getCartItems(),
+          //   builder: (context, snapshot) {
+          //     if (snapshot.connectionState == ConnectionState.waiting) {
+          //       return Center(
+          //         child: CircularProgressIndicator(),
+          //       );
+          //     } else if(snapshot.data != null){
+          //       return snapshot.data;
+          //     }
+          //     else {
+          //       return Center(child: Text('No Item in Cart'));
+          //     }
+          //   },
+          // // ),
+
+          /***************************************************** */
+          //*****************Payment Methods*******************
+          //*************************************************** */
+
+          // Card(
+          //   margin: EdgeInsets.only(
+          //     top: 10,
+          //   ), //, left: cardMargin, right: cardMargin),
+          //   elevation: 5,
+          //   child: Container(
+          //     padding: EdgeInsets.only(top: cardPadding),
+          //     child: Column(
+          //       children: <Widget>[
+          //         Row(
+          //           children: [
+          //             Text(
+          //               '    Payment Method',
+          //               style: TextStyle(
+          //                 fontWeight: FontWeight.bold,
+          //               ),
+          //               textAlign: TextAlign.left,
+          //             ),
+          //           ],
+          //         ),
+          //         ListTile(
+          //           leading: Icon(
+          //             FontAwesomeIcons.cashRegister,
+          //             color: Theme.of(context).accentColor,
+          //           ),
+          //           title: Text('Cash'),
+          //           trailing: Icon(
+          //             Icons.radio_button_checked,
+          //             color: Theme.of(context).accentColor,
+          //           ),
+          //         ),
+          //         ListTile(
+          //           leading: Icon(
+          //             Icons.credit_card,
+          //           ),
+          //           title: Text(
+          //             'Selct payment method',
+          //           ),
+          //           trailing: Icon(Icons.navigate_next),
+          //           onTap: () {},
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -2054,25 +2143,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   List<model.StoreItem> items;
   List<String> itemIds;
-  List<TextEditingController> controllers;
 
   var count = [0, 0, 0, 0];
-  Future<Widget> cartItems;
-  Future<Widget> _getCartItems() async {
-    User user = Session.data['user'];
-    var documentSnapshot = await Firestore.instance
-        .collection("carts")
-        .document(user.userId)
-        .get();
+  // Widget cartItems;
 
-    itemIds = documentSnapshot.data.values;
-
-    for (String itemId in itemIds) {
-      var itemSnapshot =
-          await Firestore.instance.collection('items').document(itemId).get();
-      model.StoreItem item = model.StoreItem.fromMap(itemSnapshot.data);
-      items.add(item);
-    }
+  Widget _getCartItems() {
+    UserCart cart = Session.data['cart'];
+    itemIds = cart.itemIds;
+    items = cart.items;
 
     return Card(
       margin: EdgeInsets.only(
@@ -2095,9 +2173,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List<Widget>.generate(items.length, (index) {
-                TextEditingController controller = TextEditingController();
-                controllers.add(controller);
-                return CartItem(controller);
+                model.StoreItem item = items[index];
+                return CartItem(item, _controllers[index]);
               }),
             ),
           ],
@@ -2109,123 +2186,149 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
 class CartItem extends StatefulWidget {
   final controller;
-  CartItem(this.controller);
+  final model.StoreItem item;
+  CartItem(this.item, this.controller);
 
   @override
   State<StatefulWidget> createState() {
-    return CartItemState(controller: controller);
+    return CartItemState(item: item, controller: controller);
   }
 }
 
 class CartItemState extends State<CartItem> {
   model.StoreItem item;
   TextEditingController controller;
-  CartItemState({this.item, this.controller}) {
+  CartItemState({@required this.item, this.controller}) {
     controller.text = '1';
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Row(
-        children: [
-          Expanded(
-            child: Image.network(item.images[0]),
-            flex: 3,
-          ),
-          Expanded(
-            flex: 7,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.itemName,
-                  style: Theme.of(context).textTheme.title,
-                ),
-                Text(
-                  item.description,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: <Widget>[
-                    InkWell(
-                      child: Text(
-                        ' - ',
-                        style: TextStyle(
-                            color: Theme.of(context).accentColor,
-                            fontStyle: FontStyle.normal,
-                            fontSize: 28,
-                            fontFamily: "Roboto"),
-                      ),
-                      onTap: () {
-                        var value = int.parse(controller.text);
-                        if (int.parse(controller.text) == 1) {
-                          return;
-                        }
-                        setState(() {
-                          controller.text = '${value - 1}';
-                        });
-                      },
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: controller,
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: <TextInputFormatter>[
-                          LengthLimitingTextInputFormatter(2),
-                          WhitelistingTextInputFormatter.digitsOnly,
-                          BlacklistingTextInputFormatter.singleLineFormatter,
-                          // BlacklistingTextInputFormatter(RegExp(r'\n|-|.')),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      child: Text(
-                        ' +',
-                        style: TextStyle(
-                            color: Theme.of(context).accentColor,
-                            fontStyle: FontStyle.normal,
-                            fontSize: 20,
-                            fontFamily: "Roboto"),
-                      ),
-                      onTap: () {
-                        var value = int.parse(controller.text);
-                        if (int.parse(controller.text) == 99) {
-                          return;
-                        }
-                        setState(() {
-                          controller.text = '${value + 1}';
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Padding(
-                  // alignment: Alignment.bottomRight,
-                  padding: EdgeInsets.all(10),
-                  child: Text(
-                    'Price R${item.price.round()}',
-                    style: Theme.of(context).textTheme.subhead,
+      child: Padding(
+        padding: EdgeInsets.all(8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: ShapeDecoration(
+                  color: Theme.of(context).primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-              ],
+                child: ClipRRect(
+                  child: Image.network(item.images[0],
+                      height: 80, fit: BoxFit.fitWidth),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
             ),
-          ),
-        ],
+            SizedBox(
+              width: 8,
+            ),
+            Expanded(
+              flex: 3,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.itemName,
+                              style: Theme.of(context).textTheme.title,
+                            ),
+                            Text(
+                              item.description,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Row(
+                          children: <Widget>[
+                            InkWell(
+                              child: Text(
+                                ' - ',
+                                style: TextStyle(
+                                    color: Theme.of(context).accentColor,
+                                    fontStyle: FontStyle.normal,
+                                    fontSize: 28,
+                                    fontFamily: "Roboto"),
+                              ),
+                              onTap: () {
+                                var value = int.parse(controller.text);
+                                if (int.parse(controller.text) == 1) {
+                                  return;
+                                }
+                                setState(() {
+                                  controller.text = '${value - 1}';
+                                });
+                              },
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: controller,
+                                textAlign: TextAlign.center,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: <TextInputFormatter>[
+                                  LengthLimitingTextInputFormatter(2),
+                                  WhitelistingTextInputFormatter.digitsOnly,
+                                  BlacklistingTextInputFormatter
+                                      .singleLineFormatter,
+                                  // BlacklistingTextInputFormatter(RegExp(r'\n|-|.')),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              child: Text(
+                                ' +',
+                                style: TextStyle(
+                                    color: Theme.of(context).accentColor,
+                                    fontStyle: FontStyle.normal,
+                                    fontSize: 20,
+                                    fontFamily: "Roboto"),
+                              ),
+                              onTap: () {
+                                var value = int.parse(controller.text);
+                                if (int.parse(controller.text) == 99) {
+                                  return;
+                                }
+                                setState(() {
+                                  controller.text = '${value + 1}';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    height: 4,
+                  ),
+                  Align(
+                    child: Text(
+                      'Price: R${item.price.round()}',
+                      style: Theme.of(context).textTheme.subhead,
+                    ),
+                    alignment: Alignment.bottomRight,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

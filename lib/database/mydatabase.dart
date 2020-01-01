@@ -211,7 +211,6 @@ class DatabaseHelper {
             Tables.ORDER_FROM_RECIEVE_IT_TABLE,
             Tables.ORDER_FROM_SENNIT_TABLE,
             Tables.ORDER_ITEM_FOR_RECEIVE_IT_TABLE,
-            // Tables.ORDER_ITEM_FOR_SENNIT_TABLE,
             Tables.ORDER_OTHER_CHARGES_TABLE,
             Tables.USER_CART_TABLE,
             Tables.USER_LOCATION_HISTORY_TABLE,

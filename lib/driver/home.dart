@@ -1,6 +1,12 @@
+import 'package:bot_toast/bot_toast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/driver/active_order.dart';
+import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
+import 'package:sennit/user/recieveIt.dart' as receiveIt;
 
 class Delivery {
   final LatLng pickUp;
@@ -41,81 +47,99 @@ class _HomeScreenState extends State<HomeScreenDriver>
     });
   }
 
+  static var _willExit = false;
+
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          title: Text(
-            controller.index == 0 ? 'Notifications' : 'History',
-          ),
-        ),
-        bottomNavigationBar: BottomAppBar(
-          elevation: 10,
-          child: TabBar(
-            labelColor: Theme.of(context).accentColor,
-            indicatorColor: Theme.of(context).accentColor,
-            indicator:
-                // BoxDecoration(
-                //   border: Border(
-                //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
-                //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
-                //   ),
-                // ),
-                UnderlineTabIndicator(
-              insets: EdgeInsets.only(bottom: 47, left: 20, right: 20),
-              borderSide: BorderSide(
-                color: Theme.of(context).accentColor,
-                width: 2,
-              ),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_willExit) {
+          SystemNavigator.pop();
+        } else {
+          BotToast.showText(text: 'Press Again to Exit');
+          _willExit = true;
+          Future.delayed(Duration(seconds: 3)).then((value) {
+            _willExit = false;
+          });
+        }
+        return false;
+      },
+      child: DefaultTabController(
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            centerTitle: true,
+            title: Text(
+              controller.index == 0
+                  ? 'Notifications'
+                  : controller.index == 1 ? 'History' : 'Profile',
             ),
+          ),
+          bottomNavigationBar: BottomAppBar(
+            elevation: 10,
+            child: TabBar(
+              labelColor: Theme.of(context).accentColor,
+              indicatorColor: Theme.of(context).accentColor,
+              indicator:
+                  // BoxDecoration(
+                  //   border: Border(
+                  //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
+                  //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
+                  //   ),
+                  // ),
+                  UnderlineTabIndicator(
+                insets: EdgeInsets.only(bottom: 47, left: 20, right: 20),
+                borderSide: BorderSide(
+                  color: Theme.of(context).accentColor,
+                  width: 2,
+                ),
+              ),
+              controller: controller,
+              tabs: [
+                Tab(
+                  icon: Icon(Icons.notifications),
+                  // child: Container(
+                  //   child: IconButton(
+                  //     icon: Center(
+                  //       child: Icon(Icons.notifications),
+                  //     ),
+                  //     onPressed: () {},
+                  //   ),
+                  //   decoration: BoxDecoration(
+                  //     border: Border(
+                  //         right: BorderSide(color: Theme.of(context).accentColor)),
+                  //   ),
+                  // ),
+                ),
+                Tab(
+                  icon: Icon(Icons.history),
+                  // child: Container(
+                  //   child: IconButton(
+                  //     icon: Center(
+                  //       child: Icon(Icons.history),
+                  //     ),
+                  //     onPressed: () {},
+                  //   ),
+                  //   decoration: BoxDecoration(
+                  //     border: Border(
+                  //         left: BorderSide(color: Theme.of(context).accentColor)),
+                  //   ),
+                  // ),
+                ),
+                Tab(
+                  icon: Icon(Icons.person),
+                ),
+              ],
+            ),
+          ),
+          body: TabBarView(
             controller: controller,
-            tabs: [
-              Tab(
-                icon: Icon(Icons.notifications),
-                // child: Container(
-                //   child: IconButton(
-                //     icon: Center(
-                //       child: Icon(Icons.notifications),
-                //     ),
-                //     onPressed: () {},
-                //   ),
-                //   decoration: BoxDecoration(
-                //     border: Border(
-                //         right: BorderSide(color: Theme.of(context).accentColor)),
-                //   ),
-                // ),
-              ),
-              Tab(
-                icon: Icon(Icons.history),
-                // child: Container(
-                //   child: IconButton(
-                //     icon: Center(
-                //       child: Icon(Icons.history),
-                //     ),
-                //     onPressed: () {},
-                //   ),
-                //   decoration: BoxDecoration(
-                //     border: Border(
-                //         left: BorderSide(color: Theme.of(context).accentColor)),
-                //   ),
-                // ),
-              ),
-              Tab(
-                icon: Icon(Icons.person),
-              ),
+            children: <Widget>[
+              _NotificationPage(),
+              _HistoryPage(),
+              _ProfilePage(),
             ],
           ),
-        ),
-        body: TabBarView(
-          controller: controller,
-          children: <Widget>[
-            _NotificationPage(),
-            _HistoryPage(),
-            _ProfilePage(),
-          ],
         ),
       ),
     );
@@ -148,129 +172,344 @@ class _NotificationPage extends StatefulWidget {
 class _NotificationPageState extends State<_NotificationPage> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-          DeliveryTile(),
-        ],
-      ),
+    return StreamBuilder<QuerySnapshot>(
+      stream: Firestore.instance.collection("postedOrders").snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(Icons.replay),
+                Text('An Error Occurred'),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.data == null) {
+          return Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(Icons.replay),
+                Text('Unable To Load'),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.data.documents.isEmpty) {
+          return Center(
+            child: Text(
+              'No Notifications',
+              style: Theme.of(context).textTheme.title,
+            ),
+          );
+        }
+
+        var documents = snapshot.data.documents;
+
+        return SingleChildScrollView(
+          child: Column(
+              children: List.generate(documents.length, (index) {
+            documents[index].data.update("orderId", (value) {
+              return documents[index].documentID;
+            }, ifAbsent: () {
+              return documents[index].documentID;
+            });
+            if (documents[index].data.containsKey("numberOfBoxes")) {
+              return SennitNotificationTile(data: documents[index].data);
+            } else {
+              return ReceiveItNotificationTile(documents[index].data);
+            }
+          })),
+        );
+      },
     );
   }
 }
 
-class DeliveryTile extends StatelessWidget {
+class SennitNotificationTile extends StatelessWidget {
+  final Map<String, dynamic> data;
+  SennitNotificationTile({this.data});
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      child: Card(
-        child: Container(
-          padding: EdgeInsets.all(10),
+    return InkWell(
+      child: Container(
+        padding: EdgeInsets.all(10),
+        child: Card(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+            children: <Widget>[
               Text(
-                'Pick Up Available',
-                textAlign: TextAlign.start,
+                'Sennit',
                 style: Theme.of(context).textTheme.subhead,
               ),
-              Text.rich(
-                TextSpan(
-                  text: 'Pick Location: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                        text: 'Building, Street 1, City',
-                        style: Theme.of(context).textTheme.body1),
-                  ],
-                ),
+              SizedBox(
+                height: 4,
               ),
-              Text.rich(
-                TextSpan(
-                  text: 'Coordinates: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                        text: '80.009203, 99.223134',
-                        style: Theme.of(context).textTheme.body1),
-                  ],
-                ),
-              ),
-              Text.rich(
-                TextSpan(
-                  text: 'Drop Location: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                        text: 'Building, Street 1, City',
-                        style: Theme.of(context).textTheme.body1),
-                  ],
-                ),
-              ),
-              Text.rich(
-                TextSpan(
-                  text: 'Coordinates: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                        text: '80.009203, 99.223134',
-                        style: Theme.of(context).textTheme.body1),
-                  ],
-                ),
-              ),
-              Text.rich(
-                TextSpan(
-                  text: 'Number of Boxes: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                      text: '4',
-                      style: Theme.of(context).textTheme.body1,
+              Row(
+                children: <Widget>[
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('OrderID'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text(data['orderId']),
+                    ],
+                  ),
+                  Spacer(),
+                  Center(
+                    child: Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.black,
                     ),
-                    TextSpan(
-                      text: '\    Boxes\'s Size: ',
-                      style: Theme.of(context).textTheme.subtitle,
-                      children: [
-                        TextSpan(
-                          text: 'Medium',
-                          style: Theme.of(context).textTheme.body1,
-                        ),
-                      ],
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('Price'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text("${data['orderPrice']}"),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 4,
+                  ),
+                  Spacer(),
+                  Center(
+                    child: Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.black,
                     ),
-                  ],
-                ),
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('# of Boxes'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text(
+                          '${data['numberOfBoxes']} (${Utils.getBoxSizeFromString(data['boxSize'])})'),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 4,
+                  ),
+                ],
               ),
-              Text.rich(
-                TextSpan(
-                  text: 'Sleeves Required: ',
-                  style: Theme.of(context).textTheme.subtitle,
-                  children: [
-                    TextSpan(
-                        text: 'Yes', style: Theme.of(context).textTheme.body1),
-                  ],
-                ),
+              SizedBox(
+                height: 10,
+              ),
+              Row(
+                children: <Widget>[
+                  Icon(Icons.location_on),
+                  SizedBox(
+                    width: 2,
+                  ),
+                  Text(data['pickUpAddress']),
+                ],
+              ),
+              SizedBox(
+                height: 10,
               ),
             ],
           ),
+          elevation: 10,
         ),
       ),
       onTap: () {
-        final page = ActiveOrder();
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) {
-              return page;
-            },
+        Navigator.push(context, MaterialPageRoute(
+          builder: (context) {
+            return ActiveOrder(
+              orderData: data,
+            );
+          },
+        ));
+      },
+    );
+  }
+}
+
+class ReceiveItNotificationTile extends StatelessWidget {
+  final data;
+
+  ReceiveItNotificationTile(this.data);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      child: Container(
+        padding: EdgeInsets.all(10),
+        child: Card(
+          child: Column(
+            children: <Widget>[
+              Text(
+                'Sennit',
+                style: Theme.of(context).textTheme.subhead,
+              ),
+              SizedBox(
+                height: 4,
+              ),
+              Row(
+                children: <Widget>[
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('OrderID'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text(data['orderId']),
+                    ],
+                  ),
+                  Spacer(),
+                  Center(
+                    child: Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('Price'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text(data['price']),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 4,
+                  ),
+                  Spacer(),
+                  Center(
+                    child: Container(
+                      height: 50,
+                      width: 1,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('# of items'),
+                      SizedBox(
+                        height: 2,
+                      ),
+                      Text('${data['items'].length}'),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 4,
+                  ),
+                ],
+              ),
+              Text('Click to See Details'),
+              SizedBox(
+                height: 10,
+              ),
+            ],
           ),
+          elevation: 10,
+        ),
+      ),
+      onTap: () {
+        OrderItemRoute(
+          items: data['items'],
         );
       },
+    );
+  }
+}
+
+class OrderItemRoute extends StatelessWidget {
+  final List<String> items;
+  final Map<String, dynamic> data;
+  const OrderItemRoute({Key key, this.items, this.data}) : super(key: key);
+
+  Future<List<StoreItem>> getItems() async {
+    List<StoreItem> storeItems = [];
+    var documents = await Firestore.instance.collection("items").getDocuments();
+    for (DocumentSnapshot snapshot in documents.documents) {
+      StoreItem item = StoreItem.fromMap(snapshot.data);
+      storeItems.add(item);
+    }
+    return storeItems;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Itmes'),
+        centerTitle: true,
+      ),
+      body: FutureBuilder<List<StoreItem>>(
+          future: getItems(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            } else if (!snapshot.hasData || snapshot.data.length == 0) {
+              return Text('No Item Available');
+            }
+            var items = snapshot.data;
+            return SingleChildScrollView(
+                child: Column(
+              children: List.generate(items.length, (index) {
+                return InkWell(
+                  child: receiveIt.MenuItem(
+                    item: items[index],
+                  ),
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) {
+                      data.update('storeItems', (a) {
+                        return items;
+                      }, ifAbsent: () {
+                        return items;
+                      });
+                      return ActiveOrder(
+                        orderData: data,
+                      );
+                    }));
+                  },
+                );
+              }),
+            ));
+          }),
     );
   }
 }

@@ -12,13 +12,20 @@ import 'package:sqflite/sqlite_api.dart';
 class UserSignUpRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('User Sign Up'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: UserSignUpRouteBody(),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, MyApp.userStartPage);
+        return false;
+      },
+          child: Scaffold(
+        appBar: AppBar(
+          title: Text('User Sign Up'),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: UserSignUpRouteBody(),
+        ),
       ),
     );
   }

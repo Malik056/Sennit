@@ -23,11 +23,11 @@ class SearchWidgetState extends State<SearchWidget> {
   }
 
   List<model.StoreItem> items;
-  Future<List<model.StoreItem>> search(query) async {
+  Future<List<model.StoreItem>> search(String query) async {
     List<model.StoreItem> filtered = [];
     final storeItems = items;
     for (model.StoreItem item in storeItems) {
-      if (item.itemName.contains(query)) {
+      if (item.itemName.toLowerCase().contains(query.toLowerCase())) {
         filtered.add(item);
       }
     }
@@ -79,26 +79,26 @@ class SearchWidgetState extends State<SearchWidget> {
                   loader: Center(
                     child: CircularProgressIndicator(),
                   ),
-                  placeHolder: Column(
+                  placeHolder: ListView(
                     children: List<Widget>.generate(items.length, (index) {
                       return GestureDetector(
                         child: MenuItem(
                           item: items[index],
                         ),
+                        onTap: () {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return ItemDetailsRoute(
+                            item: items[index],
+                          );
+                        }));
+                      },
                       );
                     }),
                   ),
                   onItemFound: (model.StoreItem item, index) {
                     return GestureDetector(
                       child: MenuItem(item: item),
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return ItemDetailsRoute(
-                            item: item,
-                          );
-                        }));
-                      },
                     );
                   },
                 );

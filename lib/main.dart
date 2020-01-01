@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
@@ -52,13 +53,14 @@ databaseInitializer() async {
 class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String startPage = 'startPage';
   static final String searchPage = 'searchPage';
+  static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
-  static final String userSignup = 'userSignup';
-  static final String userSignin = 'userSignin';
-  static final String driverSignup = 'driverSignup';
-  static final String userStartPage = 'userStartPage';
-  static final String driverStartPage = 'driverStartPage';
-  static final String driverSignin = 'driverSignin';
+  static final String userSignup = '$userStartPage/userSignup';
+  static final String userSignin = '$userStartPage/userSignin';
+  static final String driverSignup = '$driverStartPage/driverSignup';
+  static final String userStartPage = '$startPage/userStartPage';
+  static final String driverStartPage = '$startPage/driverStartPage';
+  static final String driverSignin = '$driverStartPage/driverSignin';
   static final String userHome = 'userHome';
   static final String selectFromAddress = 'sendItSourceRoute';
   static final String deliverToAddresses = 'sendItDestinationRoute';
@@ -94,110 +96,114 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      initialRoute: notificationWidget,
-      routes: {
-        // '/': (context) => StartPage(),
-        driverNavigationRoute: (context) => DeliveryTrackingRoute(
-              OpenAs.NAVIGATION,
-              fromCoordinate: LatLng(31, 74),
-              toCoordinate: LatLng(40, 80),
-              myLocation: LatLng(42, 85),
-            ),
-        startPage: (context) => StartPage(),
-        driverHome: (context) => HomeScreenDriver(),
-        userSignup: (context) => UserSignUpRoute(),
-        userSignin: (context) => UserSignInRoute(),
-        userStartPage: (context) => UserStartPage(),
-        driverSignup: (context) => DriverSignUpRoute(),
-        driverSignin: (context) => DriverSignInRoute(),
-        driverStartPage: (context) => DriverStartPage(),
-        userHome: (context) => UserHomeRoute(),
-        selectFromAddress: (context) => SelectFromAddressRoute(MyApp._address),
-        recieveItRoute: (context) => StoresRoute(
-              address: _address,
-            ),
-        storeMainPage: (context) => StoreMainPage(),
-        activeOrderBody: (context) => ActiveOrder(),
-        searchPage: (context) => SearchWidget(),
-        notificationWidget: (context) => UserNotificationWidget(),
-      },
-      title: 'Sennit',
-      theme: ThemeData(
-        fontFamily: 'ArchivoNarrow',
-        primaryColor: secondaryColor,
-        accentColor: secondaryColor,
-        // buttonColor: primaryColor,
-        buttonTheme: ButtonThemeData(
-          buttonColor: secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(6),
+    return BotToastInit(
+      child: MaterialApp(
+        navigatorObservers: [BotToastNavigatorObserver()],
+        initialRoute: startPage,
+        routes: {
+          // '/': (context) => StartPage(),
+          driverNavigationRoute: (context) => DeliveryTrackingRoute(
+                OpenAs.NAVIGATION,
+                fromCoordinate: LatLng(31, 74),
+                toCoordinate: LatLng(40, 80),
+                myLocation: LatLng(42, 85),
+              ),
+          startPage: (context) => StartPage(),
+          driverHome: (context) => HomeScreenDriver(),
+          userSignup: (context) => UserSignUpRoute(),
+          userSignin: (context) => UserSignInRoute(),
+          userStartPage: (context) => UserStartPage(),
+          driverSignup: (context) => DriverSignUpRoute(),
+          driverSignin: (context) => DriverSignInRoute(),
+          driverStartPage: (context) => DriverStartPage(),
+          userHome: (context) => UserHomeRoute(),
+          selectFromAddress: (context) =>
+              SelectFromAddressRoute(MyApp._address),
+          recieveItRoute: (context) => StoresRoute(
+                address: _address,
+              ),
+          storeMainPage: (context) => StoreMainPage(),
+          // activeOrderBody: (context) => ActiveOrder(),
+          searchPage: (context) => SearchWidget(),
+          notificationWidget: (context) => UserNotificationWidget(),
+        },
+        title: 'Sennit',
+        theme: ThemeData(
+          fontFamily: 'ArchivoNarrow',
+          primaryColor: secondaryColor,
+          accentColor: secondaryColor,
+          // buttonColor: primaryColor,
+          buttonTheme: ButtonThemeData(
+            buttonColor: secondaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(6),
+              ),
             ),
           ),
-        ),
-        bottomAppBarColor: Colors.white,
-        bottomAppBarTheme: BottomAppBarTheme(
-          color: Colors.white,
-          elevation: 8,
-        ),
-        appBarTheme: AppBarTheme(
+          bottomAppBarColor: Colors.white,
+          bottomAppBarTheme: BottomAppBarTheme(
+            color: Colors.white,
+            elevation: 8,
+          ),
+          appBarTheme: AppBarTheme(
+            iconTheme: IconThemeData(
+              color: secondaryColor,
+            ),
+            color: Colors.white,
+            textTheme: TextTheme(
+              title: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontFamily: 'ArchivoNarrow',
+                fontSize: 22,
+                color: secondaryColor,
+              ),
+            ),
+          ),
           iconTheme: IconThemeData(
             color: secondaryColor,
           ),
-          color: Colors.white,
           textTheme: TextTheme(
-            title: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontFamily: 'ArchivoNarrow',
-              fontSize: 22,
-              color: secondaryColor,
-            ),
-          ),
+              title: TextStyle(
+                color: secondaryColor,
+                fontSize: 22,
+                fontWeight: FontWeight.normal,
+              ),
+              headline: TextStyle(
+                color: secondaryColor,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+              subhead: TextStyle(
+                color: secondaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+              subtitle: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+              ),
+              body1: TextStyle(
+                fontSize: 14,
+                decorationColor: Colors.black,
+                fontFamily: 'Roboto',
+              ),
+              body2: TextStyle(
+                fontSize: 14,
+                decorationColor: Colors.black,
+                fontFamily: 'Roboto',
+                fontStyle: FontStyle.italic,
+              ),
+              button: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+              display1: TextStyle(
+                fontSize: 26,
+                color: secondaryColor,
+                fontWeight: FontWeight.bold,
+              )),
         ),
-        iconTheme: IconThemeData(
-          color: secondaryColor,
-        ),
-        textTheme: TextTheme(
-            title: TextStyle(
-              color: secondaryColor,
-              fontSize: 22,
-              fontWeight: FontWeight.normal,
-            ),
-            headline: TextStyle(
-              color: secondaryColor,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-            ),
-            subhead: TextStyle(
-              color: secondaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-            subtitle: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-            ),
-            body1: TextStyle(
-              fontSize: 14,
-              decorationColor: Colors.black,
-              fontFamily: 'Roboto',
-            ),
-            body2: TextStyle(
-              fontSize: 14,
-              decorationColor: Colors.black,
-              fontFamily: 'Roboto',
-              fontStyle: FontStyle.italic,
-            ),
-            button: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-            display1: TextStyle(
-              fontSize: 26,
-              color: secondaryColor,
-              fontWeight: FontWeight.bold,
-            )),
       ),
     );
   }
@@ -262,6 +268,41 @@ class Utils {
     );
 
     Scaffold.of(context).showSnackBar(snackBar);
+  }
+
+  static void showSuccessDialog(String message) {
+                        BotToast.showEnhancedWidget(toastBuilder: (a) {
+                      return Center(
+                        child: Container(
+                          width: 300,
+                          height: 230,
+                          padding: EdgeInsets.only(
+                              top: 10, left: 20, right: 20, bottom: 10),
+                          child: Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Spacer(),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 32,
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                                Text('$message'),
+                                Spacer(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    });
   }
 
   static double calculateDistance(LatLng latlng1, LatLng latlng2) {
@@ -364,7 +405,7 @@ class Utils {
       return false;
     } else {
       RegExp re = RegExp(
-          r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+          r'^[a-zA-Z0-9]+(._([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
           caseSensitive: false,
           multiLine: false);
       if (!re.hasMatch(email)) {

@@ -1,20 +1,36 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:geocoder/geocoder.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/user/recieveIt.dart';
 
 class UserHomeRoute extends StatelessWidget {
+  static bool _willExit = false;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('User Home'),
-        centerTitle: true,
+    return WillPopScope(
+      onWillPop: () async {
+        if (_willExit) {
+          SystemNavigator.pop();
+        } else {
+          BotToast.showText(text: 'Press Again to Exit');
+          _willExit = true;
+          Future.delayed(Duration(seconds: 3)).then((value) {
+            _willExit = false;
+          });
+        }
+        return false;
+      },
+          child: Scaffold(
+        appBar: AppBar(
+          title: Text('User Home'),
+          centerTitle: true,
+        ),
+        body: UserHomeBody(MediaQuery.of(context).size),
+        backgroundColor: Colors.white,
       ),
-      body: UserHomeBody(MediaQuery.of(context).size),
-      backgroundColor: Colors.white,
     );
   }
 }

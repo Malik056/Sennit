@@ -3,6 +3,7 @@ import 'package:google_map_polyline/google_map_polyline.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
 
 class ActiveOrder extends StatelessWidget {
   static GoogleMap map;
@@ -14,27 +15,111 @@ class ActiveOrder extends StatelessWidget {
   final Set<Marker> markers = Set<Marker>();
   final Set<Polyline> polylines = Set<Polyline>();
   static bool orderConfirmed = false;
-  getLocation(context) async {
-    myLocation = await Utils.getMyLocation();
-    LatLng starting = LatLng(31.6537497, 74.2824057);
-    LatLng ending = LatLng(31.640333, 74.2859132);
+  static Map<String, dynamic> _orderData;
+  static var _itemName;
 
-    Marker markerPickup = Marker(
-      markerId: MarkerId("marker1"),
-      infoWindow:
-          InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
-      position: starting,
-      onTap: () {},
-      flat: false,
-      icon: await BitmapDescriptor.fromAssetImage(
-          ImageConfiguration(
-            size: Size(
-              100,
-              100,
+  ActiveOrder({@required Map<String, dynamic> orderData, itemNum}) {
+    _orderData = orderData;
+    ActiveOrder._itemName = itemNum;
+  }
+
+  bool _seachLatLngInListOfStoreItems(List<StoreItem> items, LatLng latLng) {
+    for (StoreItem item in items) {
+      if (item.latlng == latLng) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getLocation(context) async {
+    List<Marker> pickups = [];
+    Marker markerPickup;
+    if (_orderData.containsKey('numberOfBoxes')) {
+      LatLng pLatLng;
+      if(_orderData.containsKey('pickUpLatLng')) {
+        pLatLng = Utils.latLngFromString(_orderData['pickUpLatLng']);
+      }
+      else {
+        pLatLng = _orderData['pickupLatLng'];
+      }
+      LatLng starting = pLatLng;
+      LatLng ending = Utils.latLngFromString(_orderData['dropOffLatLng']);
+      
+      Marker markerPickup = Marker(
+        markerId: MarkerId("marker1"),
+        infoWindow:
+            InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
+        position: starting,
+        onTap: () {},
+        flat: false,
+        icon: await BitmapDescriptor.fromAssetImage(
+            ImageConfiguration(
+              size: Size(
+                100,
+                100,
+              ),
             ),
-          ),
-          'assets/images/pickup.png'),
-    );
+            'assets/images/pickup.png'),
+      );
+
+
+      pickups.add(markerPickup);
+    } else {
+      List<StoreItem> items = _orderData['storeItems'];
+      List<List<StoreItem>> groupItems = [];
+
+      for (StoreItem item in items) {
+        bool found = false;
+        int i = 0;
+        for (List<StoreItem> storeItems in groupItems) {
+          if (_seachLatLngInListOfStoreItems(storeItems, item.latlng)) {
+            if (i == 0) {
+              storeItems.add(item);
+            }
+            found = true;
+          }
+        }
+        if (!found) {
+          groupItems.add([item]);
+        }
+      }
+      for (List<StoreItem> itemList in groupItems) {
+        LatLng starting;
+        String title = "";
+        bool hasDestinationItem = false;
+        for (StoreItem item in itemList) {
+          starting = item.latlng;
+          title += item.itemName + ', ';
+          if (item.itemName == _itemName) {
+            hasDestinationItem = true;
+          }
+        }
+        int index = title.lastIndexOf(',');
+        title.replaceRange(index, index, '\0');
+        markerPickup = Marker(
+          markerId: MarkerId("pickup_index"),
+          infoWindow: InfoWindow(
+              title: "Items: $title", snippet: "Click to Navigate here!"),
+          position: starting,
+          onTap: () {},
+          flat: false,
+          icon: hasDestinationItem
+              ? await BitmapDescriptor.fromAssetImage(
+                  ImageConfiguration(
+                    size: Size(
+                      100,
+                      100,
+                    ),
+                  ),
+                  'assets/images/pickup.png')
+              : BitmapDescriptor.defaultMarker,
+        );
+        pickups.add(markerPickup);
+      }
+    }
+    myLocation = await Utils.getMyLocation();
+    LatLng ending = Utils.latLngFromString(_orderData['dropOffLatLng']);
 
     Marker marker = Marker(
       markerId: MarkerId("marker1"),
@@ -52,14 +137,22 @@ class ActiveOrder extends StatelessWidget {
       ),
     );
 
-    markers..add(marker)..add(markerPickup);
-    List<LatLng> route =
-        await GoogleMapPolyline(apiKey: await Utils.getAPIkey(context: context))
-            .getCoordinatesWithLocation(
-      origin: starting,
-      destination: ending,
-      mode: RouteMode.driving,
-    );
+    markers
+      ..add(marker)
+      ..addAll(pickups);
+    Marker lastMarker = markers.elementAt(0);
+    List<LatLng> route = [];
+    for (int i = 1; i < markers.length; i++) {
+      List<LatLng> latlngs = await GoogleMapPolyline(
+              apiKey: await Utils.getAPIkey(context: context))
+          .getCoordinatesWithLocation(
+        origin: lastMarker.position,
+        destination: markers.elementAt(i).position,
+        mode: RouteMode.driving,
+      );
+      lastMarker = markers.elementAt(i);
+      route.addAll(latlngs);
+    }
 
     // List<LatLng> route = List();
     // pointLatLngList.forEach((value) {
@@ -104,7 +197,7 @@ class ActiveOrder extends StatelessWidget {
     map = GoogleMap(
       compassEnabled: true,
       initialCameraPosition:
-          CameraPosition(target: starting, zoom: 14, tilt: 30),
+          CameraPosition(target: myLocation, zoom: 14, tilt: 30),
       myLocationEnabled: true,
       markers: markers,
       polylines: polylines,
@@ -157,7 +250,7 @@ class ActiveOrder extends StatelessWidget {
             // myLocation = snapshot.data;
             return Scaffold(
               appBar: AppBar(
-                title: Text('${200} R'),
+                title: Text('${_orderData['orderPrice']} R'),
                 centerTitle: true,
                 actions: <Widget>[
                   FlatButton(
@@ -194,11 +287,9 @@ class ActiveOrder extends StatelessWidget {
               ),
             );
           } else {
-            return Opacity(
-              opacity: 0,
-            ); //Center(
-            //   child: CircularProgressIndicator(),
-            // );
+            return Center(
+              child: CircularProgressIndicator(),
+            );
           }
         },
       ),
@@ -317,9 +408,9 @@ class _NavigationState extends State<_Navigation> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      initialData: widget.myLocation as dynamic,
-      stream: Utils.getLocationStream(),
+    return FutureBuilder<LatLng>(
+      initialData: widget.myLocation,
+      future: Utils.getMyLocation(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           return widget.map;
@@ -476,7 +567,7 @@ class _CancelOrderPopUpState extends State<_CancelOrderPopUp> {
                     ),
                     onPressed: () {
                       ActiveOrder.cancelOrderConfirmationShown = false;
-                      // widget.parent.setState(() {});
+                      widget.parent.setState(() {});
                       setState(() {});
                     },
                   ),
@@ -519,7 +610,6 @@ class _OrderConfirmation extends StatefulWidget {
 }
 
 class _OrderConfirmationState extends State<_OrderConfirmation> {
-
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -592,6 +682,7 @@ class _OrderConfirmationState extends State<_OrderConfirmation> {
                         onPressed: () {
                           ActiveOrder.orderConfirmed = true;
                           setState(() {});
+                          
                         },
                         color: Theme.of(context).primaryColor,
                         child: Text(

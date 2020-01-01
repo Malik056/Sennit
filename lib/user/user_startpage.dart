@@ -5,82 +5,91 @@ import 'package:sennit/main.dart';
 class UserStartPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('User'),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            // mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Opacity(
-                opacity: 0,
-                child: Container(
-                  height: 40,
-                ),
-              ),
-              Image.asset(
-                'assets/images/user.png',
-                width: 200,
-                color: Theme.of(context).accentColor,
-              ),
-              Opacity(
-                opacity: 0,
-                child: Container(
-                  height: 80,
-                ),
-              ),
-              RaisedButton(
-                padding:
-                    EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
-                child: Text(
-                  'Sign up',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: Theme.of(context).textTheme.button.fontSize),
-                ),
-                // color:  Theme.of(context).accentColor,
-                shape: RoundedRectangleBorder(
-                    // side: BorderSide(
-                    //   width: 2,
-                    // ), //color: Theme.of(context).primaryColor),
-                    borderRadius:
-                        BorderRadius.all(Radius.elliptical(100, 100))),
-                onPressed: () {
-                  Navigator.of(context).pushNamed(MyApp.userSignup);
-                },
-              ),
-              Opacity(
-                opacity: 0,
-                child: Container(
-                  height: 10,
-                ),
-              ),
-              RaisedButton(
-                color: Colors.white,
-                padding:
-                    EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
-                // color: Theme.of(context).accentColor,
-                child: Text(
-                  'Log in',
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: Theme.of(context).textTheme.button.fontSize,
-                    // color: Colors.white //Theme.of(context).primaryColor,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context);
+        Navigator.of(context).pushNamed(MyApp.startPage);
+        return false;
+      },
+          child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text('User'),
+          centerTitle: true,
+        ),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              // mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Opacity(
+                  opacity: 0,
+                  child: Container(
+                    height: 40,
                   ),
                 ),
-                // color: Theme.of(context).accentColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.all(Radius.elliptical(100, 100))),
-                onPressed: () {
-                  Navigator.of(context).pushNamed(MyApp.userSignin);
-                },
-              ),
-            ],
+                Image.asset(
+                  'assets/images/user.png',
+                  width: 200,
+                  color: Theme.of(context).accentColor,
+                ),
+                Opacity(
+                  opacity: 0,
+                  child: Container(
+                    height: 80,
+                  ),
+                ),
+                RaisedButton(
+                  padding:
+                      EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
+                  child: Text(
+                    'Sign up',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: Theme.of(context).textTheme.button.fontSize),
+                  ),
+                  // color:  Theme.of(context).accentColor,
+                  shape: RoundedRectangleBorder(
+                      // side: BorderSide(
+                      //   width: 2,
+                      // ), //color: Theme.of(context).primaryColor),
+                      borderRadius:
+                          BorderRadius.all(Radius.elliptical(100, 100))),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).pushNamed(MyApp.userSignup);
+                  },
+                ),
+                Opacity(
+                  opacity: 0,
+                  child: Container(
+                    height: 10,
+                  ),
+                ),
+                RaisedButton(
+                  color: Colors.white,
+                  padding:
+                      EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
+                  // color: Theme.of(context).accentColor,
+                  child: Text(
+                    'Log in',
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontSize: Theme.of(context).textTheme.button.fontSize,
+                      // color: Colors.white //Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                  shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.all(Radius.elliptical(100, 100))),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).pushNamed(MyApp.userSignin);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

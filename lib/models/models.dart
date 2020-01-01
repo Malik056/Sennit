@@ -1,6 +1,4 @@
 import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/main.dart';
 
@@ -303,6 +301,7 @@ class OrderFromReceiveIt {
   String email;
   String phoneNumber;
   String house;
+  List<LatLng> pickups = [];
   LatLng destination;
   String userId;
   String driverId;
@@ -314,6 +313,7 @@ class OrderFromReceiveIt {
     this.email,
     this.phoneNumber,
     this.house,
+    this.pickups,
     this.destination,
     this.userId,
     this.driverId,
@@ -327,6 +327,7 @@ class OrderFromReceiveIt {
     String email,
     String phoneNumber,
     String house,
+    List<LatLng> pickups,
     LatLng destination,
     String userId,
     String driverId,
@@ -339,6 +340,7 @@ class OrderFromReceiveIt {
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       house: house ?? this.house,
+      pickups: pickups ?? this.pickups,
       destination: destination ?? this.destination,
       userId: userId ?? this.userId,
       driverId: driverId ?? this.driverId,
@@ -354,12 +356,14 @@ class OrderFromReceiveIt {
       'email': email,
       'phoneNumber': phoneNumber,
       'house': house,
+      'pickups':
+          List<dynamic>.from(pickups.map((x) => Utils.latLngToString(x))),
       'destination': Utils.latLngToString(destination),
       'userId': userId,
       'driverId': driverId,
       'price': price,
       'orderDate': orderDate.millisecondsSinceEpoch,
-      'deliveryTime': deliveryTime.millisecondsSinceEpoch,
+      'deliveryTime': deliveryTime == null ? null : deliveryTime.millisecondsSinceEpoch,
     };
   }
 
@@ -371,6 +375,8 @@ class OrderFromReceiveIt {
       email: map['email'],
       phoneNumber: map['phoneNumber'],
       house: map['house'],
+      pickups: List<LatLng>.from(
+          map['pickups']?.map((x) => Utils.latLngFromString(x))),
       destination: Utils.latLngFromString(map['destination']),
       userId: map['userId'],
       driverId: map['driverId'],
@@ -387,7 +393,7 @@ class OrderFromReceiveIt {
 
   @override
   String toString() {
-    return 'OrderFromReceiveIt items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $orderDate, deliveryTime: $deliveryTime';
+    return 'OrderFromReceiveIt items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $orderDate, deliveryTime: $deliveryTime';
   }
 
   @override
@@ -399,6 +405,7 @@ class OrderFromReceiveIt {
         o.email == email &&
         o.phoneNumber == phoneNumber &&
         o.house == house &&
+        o.pickups == pickups &&
         o.destination == destination &&
         o.userId == userId &&
         o.driverId == driverId &&
@@ -413,6 +420,7 @@ class OrderFromReceiveIt {
         email.hashCode ^
         phoneNumber.hashCode ^
         house.hashCode ^
+        pickups.hashCode ^
         destination.hashCode ^
         userId.hashCode ^
         driverId.hashCode ^
@@ -421,120 +429,6 @@ class OrderFromReceiveIt {
         deliveryTime.hashCode;
   }
 }
-// class OrderFromReceiveIt {}
-//   String storeName;
-//   String storeLocationAddress;
-//   LatLng storeLatLng;
-//   String dropOffAddress;
-//   LatLng dropOffLatLng;
-//   String orderId;
-//   DateTime dateOrdered;
-//   double orderPrice;
-//   String userId;
-//   String driverId;
-//   OrderFromRecieveIt({
-//     this.storeName,
-//     this.storeLocationAddress,
-//     this.storeLatLng,
-//     this.dropOffAddress,
-//     this.dropOffLatLng,
-//     this.orderId,
-//     this.dateOrdered,
-//     this.orderPrice,
-//     this.userId,
-//     this.driverId,
-//   });
-
-//   OrderFromRecieveIt copyWith({
-//     String storeName,
-//     String storeLocationAddress,
-//     LatLng storeLatLng,
-//     String dropOffAddress,
-//     LatLng dropOffLatLng,
-//     String orderId,
-//     DateTime dateOrdered,
-//     double orderPrice,
-//     String userId,
-//     String driverId,
-//   }) {
-//     return OrderFromRecieveIt(
-//       storeName: storeName ?? this.storeName,
-//       storeLocationAddress: storeLocationAddress ?? this.storeLocationAddress,
-//       storeLatLng: storeLatLng ?? this.storeLatLng,
-//       dropOffAddress: dropOffAddress ?? this.dropOffAddress,
-//       dropOffLatLng: dropOffLatLng ?? this.dropOffLatLng,
-//       orderId: orderId ?? this.orderId,
-//       dateOrdered: dateOrdered ?? this.dateOrdered,
-//       orderPrice: orderPrice ?? this.orderPrice,
-//       userId: userId ?? this.userId,
-//       driverId: driverId ?? this.driverId,
-//     );
-//   }
-
-//   Map<String, dynamic> toMap() {
-//     return {
-//       'storeName': storeName,
-//       'storeLocationAddress': storeLocationAddress,
-//       'storeLatLng': Utils.latLngToString(storeLatLng),
-//       'dropOffAddress': dropOffAddress,
-//       'dropOffLatLng': Utils.latLngToString(dropOffLatLng),
-//       'orderId': orderId,
-//       'dateOrdered': dateOrdered.millisecondsSinceEpoch,
-//       'orderPrice': orderPrice,
-//       'userId': userId,
-//       'driverId': driverId,
-//     };
-//   }
-
-//   static OrderFromRecieveIt fromMap(Map<String, dynamic> map) {
-//     if (map == null) return null;
-
-//     return OrderFromRecieveIt(
-//       storeName: map['storeName'],
-//       storeLocationAddress: map['storeLocationAddress'],
-//       storeLatLng: Utils.latLngFromString(map['storeLatLng']),
-//       dropOffAddress: map['dropOffAddress'],
-//       dropOffLatLng: Utils.latLngFromString(map['dropOffLatLng']),
-//       orderId: map['orderId'],
-//       dateOrdered: DateTime.fromMillisecondsSinceEpoch(map['dateOrdered']),
-//       orderPrice: map['orderPrice'],
-//       userId: map['userId'],
-//       driverId: map['driverId'],
-//     );
-//   }
-
-//   String toJson() => json.encode(toMap());
-
-//   static OrderFromRecieveIt fromJson(String source) =>
-//       fromMap(json.decode(source));
-
-//   @override
-//   String toString() {
-//     return 'OrderFromRecieveIt storeName: $storeName, storeLocationAddress: $storeLocationAddress, storeLatLng: $storeLatLng, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, userId: $userId, driverId: $driverId';
-//   }
-
-//   @override
-//   bool operator ==(Object o) {
-//     if (identical(this, o)) return true;
-
-//     return (o is OrderFromRecieveIt && o.orderId == orderId) ||
-//         (o is String && o == orderId);
-//   }
-
-//   @override
-//   int get hashCode {
-//     return storeName.hashCode ^
-//         storeLocationAddress.hashCode ^
-//         storeLatLng.hashCode ^
-//         dropOffAddress.hashCode ^
-//         dropOffLatLng.hashCode ^
-//         orderId.hashCode ^
-//         dateOrdered.hashCode ^
-//         orderPrice.hashCode ^
-//         userId.hashCode ^
-//         driverId.hashCode;
-//   }
-// }
 
 class OrderFromSennit {
   String orderId;
@@ -549,11 +443,14 @@ class OrderFromSennit {
   String receiverName;
   String receiverPhone;
   String receiverEmail;
+  String senderEmail;
+  String senderPhone;
   String driverId;
   BoxSize boxSize;
+  bool pickupFromDoor;
+  bool dropToDoor;
   int numberOfBoxes;
   bool sleevesRequired;
-
   OrderFromSennit({
     this.orderId,
     this.dateOrdered,
@@ -567,8 +464,12 @@ class OrderFromSennit {
     this.receiverName,
     this.receiverPhone,
     this.receiverEmail,
+    this.senderEmail,
+    this.senderPhone,
     this.driverId,
     this.boxSize,
+    this.pickupFromDoor,
+    this.dropToDoor,
     this.numberOfBoxes,
     this.sleevesRequired,
   });
@@ -586,8 +487,12 @@ class OrderFromSennit {
     String receiverName,
     String receiverPhone,
     String receiverEmail,
+    String senderEmail,
+    String senderPhone,
     String driverId,
     BoxSize boxSize,
+    bool pickupFromDoor,
+    bool dropToDoor,
     int numberOfBoxes,
     bool sleevesRequired,
   }) {
@@ -604,8 +509,12 @@ class OrderFromSennit {
       receiverName: receiverName ?? this.receiverName,
       receiverPhone: receiverPhone ?? this.receiverPhone,
       receiverEmail: receiverEmail ?? this.receiverEmail,
+      senderEmail: senderEmail ?? this.senderEmail,
+      senderPhone: senderPhone ?? this.senderPhone,
       driverId: driverId ?? this.driverId,
       boxSize: boxSize ?? this.boxSize,
+      pickupFromDoor: pickupFromDoor ?? this.pickupFromDoor,
+      dropToDoor: dropToDoor ?? this.dropToDoor,
       numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
       sleevesRequired: sleevesRequired ?? this.sleevesRequired,
     );
@@ -625,8 +534,12 @@ class OrderFromSennit {
       'receiverName': receiverName,
       'receiverPhone': receiverPhone,
       'receiverEmail': receiverEmail,
+      'senderEmail': senderEmail,
+      'senderPhone': senderPhone,
       'driverId': driverId,
       'boxSize': Utils.boxSizeToString(boxSize),
+      'pickupFromDoor': pickupFromDoor,
+      'dropToDoor': dropToDoor,
       'numberOfBoxes': numberOfBoxes,
       'sleevesRequired': sleevesRequired,
     };
@@ -648,8 +561,12 @@ class OrderFromSennit {
       receiverName: map['receiverName'],
       receiverPhone: map['receiverPhone'],
       receiverEmail: map['receiverEmail'],
+      senderEmail: map['senderEmail'],
+      senderPhone: map['senderPhone'],
       driverId: map['driverId'],
       boxSize: Utils.getBoxSizeFromString(map['boxSize']),
+      pickupFromDoor: map['pickupFromDoor'],
+      dropToDoor: map['dropToDoor'],
       numberOfBoxes: map['numberOfBoxes'],
       sleevesRequired: map['sleevesRequired'],
     );
@@ -662,14 +579,34 @@ class OrderFromSennit {
 
   @override
   String toString() {
-    return 'OrderFromSennit orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, driverId: $driverId, boxSize: $boxSize, numberOfBoxes: $numberOfBoxes, sleevesRequired: $sleevesRequired';
+    return 'OrderFromSennit orderId: $orderId, dateOrdered: $dateOrdered, orderPrice: $orderPrice, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, senderEmail: $senderEmail, senderPhone: $senderPhone, driverId: $driverId, boxSize: $boxSize, pickupFromDoor: $pickupFromDoor, dropToDoor: $dropToDoor, numberOfBoxes: $numberOfBoxes, sleevesRequired: $sleevesRequired';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return o is OrderFromSennit && o.orderId == orderId;
+    return o is OrderFromSennit &&
+        o.orderId == orderId &&
+        o.dateOrdered == dateOrdered &&
+        o.orderPrice == orderPrice &&
+        o.pickUpLatLng == pickUpLatLng &&
+        o.pickUpAddress == pickUpAddress &&
+        o.dropOffAddress == dropOffAddress &&
+        o.dropOffLatLng == dropOffLatLng &&
+        o.serviceCharges == serviceCharges &&
+        o.userId == userId &&
+        o.receiverName == receiverName &&
+        o.receiverPhone == receiverPhone &&
+        o.receiverEmail == receiverEmail &&
+        o.senderEmail == senderEmail &&
+        o.senderPhone == senderPhone &&
+        o.driverId == driverId &&
+        o.boxSize == boxSize &&
+        o.pickupFromDoor == pickupFromDoor &&
+        o.dropToDoor == dropToDoor &&
+        o.numberOfBoxes == numberOfBoxes &&
+        o.sleevesRequired == sleevesRequired;
   }
 
   @override
@@ -686,13 +623,18 @@ class OrderFromSennit {
         receiverName.hashCode ^
         receiverPhone.hashCode ^
         receiverEmail.hashCode ^
+        senderEmail.hashCode ^
+        senderPhone.hashCode ^
         driverId.hashCode ^
         boxSize.hashCode ^
+        pickupFromDoor.hashCode ^
+        dropToDoor.hashCode ^
         numberOfBoxes.hashCode ^
         sleevesRequired.hashCode;
   }
 }
-// class OrderItemForSennit {
+
+// class OrderItemForSennita {
 //   String orderItemId;
 //   double price;
 //   String itemId;
@@ -1104,39 +1046,41 @@ class OrderOtherCharges {
 // }
 
 class UserCart {
-  String cartId;
-  String userId;
   List<StoreItem> items = List();
+  List<String> itemIds;
+  
   UserCart({
-    this.cartId,
-    this.userId,
-  });
+    this.itemIds,
+  }){
+    if(itemIds == null) {
+      itemIds = [];
+    }
+  }
 
   UserCart copyWith({
-    String cartId,
-    String userId,
-    double totalPrice,
+    List<String> itemIds,
   }) {
     return UserCart(
-      cartId: cartId ?? this.cartId,
-      userId: userId ?? this.userId,
-      // totalPrice: totalPrice ?? this.totalPrice,
+      itemIds: itemIds ?? this.itemIds,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'cartId': cartId,
-      'userId': userId,
-    };
+    return Map<String, dynamic>.fromIterable(itemIds, key: (v) {
+      return v;
+    }, value: (v) {
+      return v;
+    });
   }
 
   static UserCart fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-
+    List<String> ids = [];
+    map.forEach((k, v) {
+      ids.add(v);
+    });
     return UserCart(
-      cartId: map['cartId'],
-      userId: map['userId'],
+      itemIds: ids,
     );
   }
 
@@ -1145,17 +1089,17 @@ class UserCart {
   static UserCart fromJson(String source) => fromMap(json.decode(source));
 
   @override
-  String toString() => 'UserCart cartId: $cartId, userId: $userId';
+  String toString() => 'UserCart itemIds: $itemIds';
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return o is UserCart && o.cartId == cartId;
+    return o is UserCart && o.itemIds == itemIds;
   }
 
   @override
-  int get hashCode => cartId.hashCode ^ userId.hashCode;
+  int get hashCode => itemIds.hashCode;
 }
 
 class UserLocationHistory {
@@ -1234,9 +1178,7 @@ class UserLocationHistory {
   }
 }
 
-
 class UserNotification {
-
   static const String ORDER_COMPLETE = "complete";
   static const String ORDER_PENDING = "pending";
   static const String ORDER_POSTED = "posted";
@@ -1282,7 +1224,7 @@ class UserNotification {
 
   static UserNotification fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-  
+
     return UserNotification(
       notificationId: map['notificationId'],
       title: map['title'],
@@ -1294,7 +1236,8 @@ class UserNotification {
 
   String toJson() => json.encode(toMap());
 
-  static UserNotification fromJson(String source) => fromMap(json.decode(source));
+  static UserNotification fromJson(String source) =>
+      fromMap(json.decode(source));
 
   @override
   String toString() {
@@ -1304,24 +1247,25 @@ class UserNotification {
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
-  
+
     return o is UserNotification &&
-      o.notificationId == notificationId &&
-      o.title == title &&
-      o.orderId == orderId &&
-      o.description == description &&
-      o.type == type;
+        o.notificationId == notificationId &&
+        o.title == title &&
+        o.orderId == orderId &&
+        o.description == description &&
+        o.type == type;
   }
 
   @override
   int get hashCode {
     return notificationId.hashCode ^
-      title.hashCode ^
-      orderId.hashCode ^
-      description.hashCode ^
-      type.hashCode;
+        title.hashCode ^
+        orderId.hashCode ^
+        description.hashCode ^
+        type.hashCode;
   }
 }
+
 class DriverNotification {
   String notificationId;
   String pickUpAddress;
@@ -1491,12 +1435,14 @@ class StoreItem {
   double price;
   String description;
   String itemName;
+  LatLng latlng;
   StoreItem({
     this.itemId,
     this.images,
     this.price,
     this.description,
     this.itemName,
+    this.latlng,
   });
 
   StoreItem copyWith({
@@ -1505,6 +1451,7 @@ class StoreItem {
     double price,
     String description,
     String itemName,
+    LatLng latlng,
   }) {
     return StoreItem(
       itemId: itemId ?? this.itemId,
@@ -1512,6 +1459,7 @@ class StoreItem {
       price: price ?? this.price,
       description: description ?? this.description,
       itemName: itemName ?? this.itemName,
+      latlng: latlng ?? this.latlng,
     );
   }
 
@@ -1522,6 +1470,7 @@ class StoreItem {
       'price': price,
       'description': description,
       'itemName': itemName,
+      'latlng': Utils.latLngToString(latlng),
     };
   }
 
@@ -1531,9 +1480,12 @@ class StoreItem {
     return StoreItem(
       itemId: map['itemId'],
       images: List<String>.from(map['images']),
-      price: (map['price'] as int).toDouble(),
+      price: map['price'].runtimeType == int
+          ? (map['price'] as int).toDouble()
+          : map['price'],
       description: map['description'],
       itemName: map['itemName'],
+      latlng: Utils.latLngFromString(map['latlng']),
     );
   }
 
@@ -1543,7 +1495,7 @@ class StoreItem {
 
   @override
   String toString() {
-    return 'StoreItem itemId: $itemId, images: $images, price: $price, description: $description, itemName: $itemName';
+    return 'StoreItem itemId: $itemId, images: $images, price: $price, description: $description, itemName: $itemName, location: $latlng';
   }
 
   @override
@@ -1555,7 +1507,8 @@ class StoreItem {
         o.images == images &&
         o.price == price &&
         o.description == description &&
-        o.itemName == itemName;
+        o.itemName == itemName &&
+        o.latlng == latlng;
   }
 
   @override
@@ -1564,7 +1517,8 @@ class StoreItem {
         images.hashCode ^
         price.hashCode ^
         description.hashCode ^
-        itemName.hashCode;
+        itemName.hashCode ^
+        latlng.hashCode;
   }
 }
 
