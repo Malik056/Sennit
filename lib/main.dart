@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:bot_toast/bot_toast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:place_picker/place_picker.dart';
-import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
@@ -43,6 +44,38 @@ main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   locationInitializer();
   await databaseInitializer();
+  final user = await FirebaseAuth.instance.currentUser();
+  if (user != null) {
+    final result =
+        await Firestore.instance.collection('users').document(user.uid).get();
+    if (result != null &&
+        result.data != null &&
+        result.data.length > 0 &&
+        result.exists) {
+      Session.data.update('user', (a) {
+        return User.fromMap(result.data);
+      }, ifAbsent: () {
+        return User.fromMap(result.data);
+      });
+      MyApp.initialRoute = MyApp.userHome;
+    } else {
+      final driverResult = await Firestore.instance
+          .collection('drivers')
+          .document(user.uid)
+          .get();
+      if (driverResult != null &&
+          driverResult.data != null &&
+          driverResult.data.length > 0 &&
+          driverResult.exists) {
+        Session.data.update('driver', (a) {
+          return Driver.fromMap(result.data);
+        }, ifAbsent: () {
+          return Driver.fromMap(result.data);
+        });
+        MyApp.initialRoute = MyApp.driverHome;
+      }
+    }
+  }
   runApp(MyApp());
 }
 
@@ -52,6 +85,7 @@ databaseInitializer() async {
 
 class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String startPage = 'startPage';
+  static String initialRoute = startPage;
   static final String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
@@ -78,6 +112,8 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
 
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
+  static Color disabledPrimaryColor =
+      Color.fromARGB(255, 87 + 40, 89 + 40, 152 + 40);
   static Stream<LocationData> _locationData;
   static Address _address;
   static Location _location;
@@ -99,7 +135,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
     return BotToastInit(
       child: MaterialApp(
         navigatorObservers: [BotToastNavigatorObserver()],
-        initialRoute: startPage,
+        initialRoute: initialRoute,
         routes: {
           // '/': (context) => StartPage(),
           driverNavigationRoute: (context) => DeliveryTrackingRoute(
@@ -271,38 +307,37 @@ class Utils {
   }
 
   static void showSuccessDialog(String message) {
-                        BotToast.showEnhancedWidget(toastBuilder: (a) {
-                      return Center(
-                        child: Container(
-                          width: 300,
-                          height: 230,
-                          padding: EdgeInsets.only(
-                              top: 10, left: 20, right: 20, bottom: 10),
-                          child: Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Spacer(),
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                  size: 32,
-                                ),
-                                SizedBox(
-                                  height: 10,
-                                ),
-                                Text('$message'),
-                                Spacer(),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    });
+    BotToast.showEnhancedWidget(toastBuilder: (a) {
+      return Center(
+        child: Container(
+          width: 300,
+          height: 230,
+          padding: EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 10),
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Spacer(),
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 32,
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Text('$message'),
+                Spacer(),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   static double calculateDistance(LatLng latlng1, LatLng latlng2) {

@@ -47,7 +47,8 @@ dependencies:
   firebase_auth: ^0.15.3
   flappy_search_bar: ^1.4.1
   bot_toast: ^2.2.0
-
+  argon_buttons_flutter: ^1.0.2
+  flutter_email_sender: ^2.2.2
 
 
 

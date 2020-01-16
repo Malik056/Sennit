@@ -41,7 +41,7 @@ class UserHomeBody extends StatefulWidget {
   final Size screenWidth;
 
   UserHomeBody(this.screenWidth);
-
+  
   @override
   State<StatefulWidget> createState() {
     return UserHomeState();

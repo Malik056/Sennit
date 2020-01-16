@@ -43,9 +43,7 @@ class ActiveOrder extends StatelessWidget {
       else {
         pLatLng = _orderData['pickupLatLng'];
       }
-      LatLng starting = pLatLng;
-      LatLng ending = Utils.latLngFromString(_orderData['dropOffLatLng']);
-      
+      LatLng starting = pLatLng;      
       Marker markerPickup = Marker(
         markerId: MarkerId("marker1"),
         infoWindow:
@@ -122,7 +120,7 @@ class ActiveOrder extends StatelessWidget {
     LatLng ending = Utils.latLngFromString(_orderData['dropOffLatLng']);
 
     Marker marker = Marker(
-      markerId: MarkerId("marker1"),
+      markerId: MarkerId("markerDrop"),
       infoWindow:
           InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
       position: ending,
@@ -682,7 +680,7 @@ class _OrderConfirmationState extends State<_OrderConfirmation> {
                         onPressed: () {
                           ActiveOrder.orderConfirmed = true;
                           setState(() {});
-                          
+
                         },
                         color: Theme.of(context).primaryColor,
                         child: Text(

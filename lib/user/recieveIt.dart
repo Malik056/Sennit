@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:bot_toast/bot_toast.dart';
@@ -12,6 +11,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:place_picker/place_picker.dart';
 import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/models/models.dart';
+import 'package:sennit/my_widgets/changePassword.dart';
 import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import '../main.dart';
@@ -65,6 +65,11 @@ class ReceiveItRoute extends StatelessWidget {
             Card(
               child: ListTile(
                 title: Text('Change Password'),
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (c) {
+                    return AuthenticateAgainRoute();
+                  }));
+                },
               ),
             ),
             Card(
@@ -1754,6 +1759,7 @@ class ShoppingCartRoute extends StatelessWidget {
           FlatButton(
             onPressed: () {
               Utils.showLoadingDialog(context);
+              UserCart cart = Session.data['cart'];
               if (ShoppingCartRouteState._emailController.text == "" ||
                   ShoppingCartRouteState._emailController.text == null) {
                 Utils.showSnackBarError(
@@ -1764,7 +1770,9 @@ class ShoppingCartRoute extends StatelessWidget {
                       "" ||
                   ShoppingCartRouteState._phoneNumberController.text == null) {
                 Utils.showSnackBarError(
-                    context, 'Please Provide your phone Number');
+                  context,
+                  'Please Provide your phone Number',
+                );
                 Navigator.pop(context);
                 return;
               } else if (ShoppingCartRoute._toAddress == null) {
@@ -1774,13 +1782,16 @@ class ShoppingCartRoute extends StatelessWidget {
                 // Utils.showSnackBarError(context, 'Please Select a Destination');
                 Navigator.pop(context);
                 return;
+              } else if (cart.itemIds == null || cart.itemIds.length == 0) {
+                BotToast.showText(
+                    text: "You Cart is Empty", duration: Duration(seconds: 2));
+                return;
               }
 
               User user = Session.data['user'];
               model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
               List<TextEditingController> controllers =
                   ShoppingCartRouteState._controllers;
-              model.UserCart cart = Session.data['cart'];
               List<model.StoreItem> items = cart.items;
 
               double price = 0.0;
@@ -1811,6 +1822,31 @@ class ShoppingCartRoute extends StatelessWidget {
                   .add(order.toMap())
                   .catchError((error) {})
                   .then((_) {
+                Firestore.instance
+                    .collection("notifications")
+                    .document(user.userId)
+                    .setData({
+                  "${DateTime.now().millisecondsSinceEpoch}": {
+                    "price": order.price,
+                    "destination": Utils.latLngToString(order.destination),
+                    "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
+                    "items": items.map((x) => x.itemName),
+                    "sleevesRequried": null,
+                  }
+                });
+                Firestore.instance
+                    .collection("userOrders")
+                    .document(user.userId)
+                    .setData({
+                  _.documentID: {
+                    "price": order.price,
+                    "destination": Utils.latLngToString(order.destination),
+                    "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
+                    "items": items.map((x) => x.itemName),
+                    "status": "posted",
+                  }
+                });
+
                 Firestore.instance
                     .collection('carts')
                     .document(user.userId)
@@ -2151,7 +2187,18 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     UserCart cart = Session.data['cart'];
     itemIds = cart.itemIds;
     items = cart.items;
-
+    if (items.length == 0) {
+      return Card(
+        child: Container(
+          child: Center(
+            child: Text(
+              'Cart Is Empty',
+              style: Theme.of(context).textTheme.subhead,
+            ),
+          ),
+        ),
+      );
+    }
     return Card(
       margin: EdgeInsets.only(
         top: groupMargin,

@@ -7,6 +7,8 @@ import 'package:password/password.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/my_widgets/forgot_password.dart';
+import 'package:sennit/my_widgets/verify_email_route.dart';
 
 class UserSignInRoute extends StatelessWidget {
   @override
@@ -50,250 +52,286 @@ class _UserSignInState extends State<UserSignIn> {
   Widget build(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.only(left: 20, right: 20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+        padding: EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              TextFormField(
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                    labelText: 'Email',
+                    focusColor: Theme.of(context).accentColor),
+                // style: Theme.of(context).textTheme.body1,
+                validator: (email) {
+                  if (email.isEmpty) {
+                    return "Email can't be empty";
+                  } else {
+                    RegExp re = RegExp(
+                        r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+                        caseSensitive: false,
+                        multiLine: false);
+                    if (!re.hasMatch(email)) {
+                      return 'Invalid Email Format';
+                    }
+                    this.email = email;
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                obscureText: true,
+                keyboardType: TextInputType.visiblePassword,
+                maxLines: 1,
+                decoration: InputDecoration(
+                    labelText: 'Password',
+                    focusColor: Theme.of(context).accentColor),
+                validator: (password) {
+                  if (password.isEmpty) {
+                    return "Please enter a password";
+                  } else if (password.length < 6) {
+                    return "Your password should be at least 6 characters long";
+                  }
+                  this.password = password;
+                  return null;
+                },
+              ),
+              Opacity(
+                opacity: 0,
+                child: Container(
+                  height: 15,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
-                  TextFormField(
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                        labelText: 'Email',
-                        focusColor: Theme.of(context).accentColor),
-                    // style: Theme.of(context).textTheme.body1,
-                    validator: (email) {
-                      if (email.isEmpty) {
-                        return "Email can't be empty";
-                      } else {
-                        RegExp re = RegExp(
-                            r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-                            caseSensitive: false,
-                            multiLine: false);
-                        if (!re.hasMatch(email)) {
-                          return 'Invalid Email Format';
-                        }
-                        this.email = email;
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    obscureText: true,
-                    keyboardType: TextInputType.visiblePassword,
-                    maxLines: 1,
-                    decoration: InputDecoration(
-                        labelText: 'Password',
-                        focusColor: Theme.of(context).accentColor),
-                    validator: (password) {
-                      if (password.isEmpty) {
-                        return "Please enter a password";
-                      } else if (password.length < 6) {
-                        return "Your password should be at least 8 characters long";
-                      }
-                      this.password = password;
-                      return null;
-                    },
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: 15,
-                    ),
-                  ),
                   GestureDetector(
-                      child: Row(
-                        children: <Widget>[
-                          Icon(
-                            !rememberMeChecked
-                                ? FontAwesomeIcons.circle
-                                : FontAwesomeIcons.solidCheckCircle,
-                            size: 18,
-                          ),
-                          Text(' Remember me'),
-                        ],
-                      ),
-                      onTap: () {
-                        setState(() {
-                          rememberMeChecked = !rememberMeChecked;
-                        });
-                      }),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: 20,
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          !rememberMeChecked
+                              ? FontAwesomeIcons.circle
+                              : FontAwesomeIcons.solidCheckCircle,
+                          size: 18,
+                        ),
+                        Text(' Remember me'),
+                      ],
                     ),
+                    onTap: () {
+                      setState(() {
+                        rememberMeChecked = !rememberMeChecked;
+                      });
+                    },
                   ),
-                  RaisedButton(
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.all(Radius.elliptical(100, 100)),
+                  Spacer(),
+                  GestureDetector(
+                    child: Text(
+                      'Forgot?',
+                      style: TextStyle(color: Colors.blue),
                     ),
-                    onPressed: () async {
-                      if (signInButtonEnabled) {
-                        signInButtonEnabled = false;
-                        Utils.showLoadingDialog(context);
-                        if (_formKey.currentState.validate()) {
-                          try {
-                            var documents = await Firestore.instance
-                                .collection("users")
-                                .getDocuments();
+                    onTap: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return ForgotPasswordRoute(
+                          userType: UserType.user,
+                        );
+                      }));
+                    },
+                  ),
+                ],
+              ),
+              Opacity(
+                opacity: 0,
+                child: Container(
+                  height: 20,
+                ),
+              ),
+              RaisedButton(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.elliptical(100, 100)),
+                ),
+                onPressed: () async {
+                  if (signInButtonEnabled) {
+                    signInButtonEnabled = false;
+                    Utils.showLoadingDialog(context);
+                    if (_formKey.currentState.validate()) {
+                      try {
+                        var documents = await Firestore.instance
+                            .collection("users")
+                            .getDocuments();
 
-                            bool founduser = false;
+                        bool founduser = false;
 
-                            for (DocumentSnapshot snapshot
-                                in documents.documents) {
-                              if (snapshot.data['email'] == email) {
-                                founduser = true;
-                              }
-                            }
+                        for (DocumentSnapshot snapshot in documents.documents) {
+                          if (snapshot.data['email'] == email) {
+                            founduser = true;
+                          }
+                        }
 
-                            if (!founduser) {
-                              Navigator.pop(context);
-                              signInButtonEnabled = true;
-                              Utils.showSnackBarError(
-                                context,
-                                "This email account does not exists",
-                              );
-                              return;
-                            }
+                        if (!founduser) {
+                          Navigator.pop(context);
+                          signInButtonEnabled = true;
+                          Utils.showSnackBarError(
+                            context,
+                            "This email account does not exists",
+                          );
+                          return;
+                        }
 
-                            var auth = FirebaseAuth.instance;
-                            auth
-                                .signInWithEmailAndPassword(
-                                    email: email, password: password)
-                                .then((result) {
-                              if (result.user != null) {
-                                String userId = result.user.uid;
-                                Firestore.instance
-                                    .collection('users')
-                                    .document(userId)
-                                    .get()
-                                    .then((userData) async {
-                                  User user = User.fromMap(userData.data);
-                                  Session.data.update('user', (a) {
+                        var auth = FirebaseAuth.instance;
+                        auth
+                            .signInWithEmailAndPassword(
+                          email: email,
+                          password: password,
+                        )
+                            .then((result) {
+                          if (result.user != null) {
+                            String userId = result.user.uid;
+                            Firestore.instance
+                                .collection('users')
+                                .document(userId)
+                                .get()
+                                .then(
+                              (userData) async {
+                                User user = User.fromMap(userData.data);
+                                Session.data.update(
+                                  'user',
+                                  (a) {
                                     return user;
-                                  }, ifAbsent: () {
+                                  },
+                                  ifAbsent: () {
                                     return user;
-                                  });
-                                  await DatabaseHelper.signInUser(userId);
-                                  List<UserLocationHistory>
-                                      userLocationHistory = await DatabaseHelper
-                                          .getUserLocationHistory();
-                                  Session.data
-                                      .putIfAbsent("userLocationHistory", () {
+                                  },
+                                );
+                                await DatabaseHelper.signInUser(userId);
+                                List<UserLocationHistory> userLocationHistory =
+                                    await DatabaseHelper
+                                        .getUserLocationHistory();
+                                Session.data.putIfAbsent(
+                                  "userLocationHistory",
+                                  () {
                                     return userLocationHistory;
-                                  });
-                                  MyApp.futureCart =
-                                      initializeCart(user.userId);
-                                  Navigator.pop(context);
+                                  },
+                                );
+                                MyApp.futureCart = initializeCart(user.userId);
+                                Navigator.pop(context);
+                                if (result.user.isEmailVerified) {
                                   Navigator.of(context)
                                       .popAndPushNamed(MyApp.userHome);
-                                });
-                              } else {
-                                Navigator.pop(context);
-                                signInButtonEnabled = true;
-                                SnackBar snackBar = SnackBar(
-                                  content: Text(
-                                    'Invalid Email or Password',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  backgroundColor: Colors.red,
-                                  duration: Duration(seconds: 1),
-                                );
-                                Scaffold.of(context).showSnackBar(snackBar);
-                                return;
-                              }
-                            }).catchError((_) {
-                              Navigator.pop(context);
-                              signInButtonEnabled = true;
-                              Utils.showSnackBarError(
-                                context,
-                                '${_.message}',
-                              );
-                              return;
-                            }).timeout(
-                              Duration(seconds: 12),
-                              onTimeout: () {
-                                Navigator.pop(context);
-                                signInButtonEnabled = true;
-                                Utils.showSnackBarError(
-                                  context,
-                                  'Request Timed out',
-                                );
+                                } else {
+                                  result.user.sendEmailVerification();
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (context) {
+                                      return VerifyEmailRoute(
+                                        context: context,
+                                      );
+                                    }),
+                                  );
+                                }
                               },
                             );
-                          } on dynamic catch (_) {
+                          } else {
+                            Navigator.pop(context);
+                            signInButtonEnabled = true;
+                            SnackBar snackBar = SnackBar(
+                              content: Text(
+                                'Invalid Email or Password',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                ),
+                              ),
+                              backgroundColor: Colors.red,
+                              duration: Duration(seconds: 1),
+                            );
+                            Scaffold.of(context).showSnackBar(snackBar);
+                            return;
+                          }
+                        }).catchError((_) {
+                          Navigator.pop(context);
+                          signInButtonEnabled = true;
+                          Utils.showSnackBarError(
+                            context,
+                            '${_.message}',
+                          );
+                          return;
+                        }).timeout(
+                          Duration(seconds: 12),
+                          onTimeout: () {
                             Navigator.pop(context);
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
                               context,
-                              'User not Found',
+                              'Request Timed out',
                             );
-                            return;
-                          }
-                          // Firestore.instance
-                          //     .collection('credentials')
-                          //     .document(email)
-                          //     .get()
-                          //     .then((data) async {
-                          //   if (!data.exists && data.data == null) {}
-                          //   compute(verifyPassword,
-                          //           "$password;${data.data['password']}")
-                          //       .then((passwordIsCorrect) {
-                          //     if (passwordIsCorrect) {
-                          //     } else {
-                          //       Navigator.pop(context);
-                          //       signInButtonEnabled = true;
-                          //       SnackBar snackBar = SnackBar(
-                          //         content: Text(
-                          //           'Invalid Password',
-                          //           style: TextStyle(
-                          //             color: Colors.white,
-                          //           ),
-                          //         ),
-                          //         backgroundColor: Colors.red,
-                          //         duration: Duration(seconds: 1),
-                          //       );
-                          //       Scaffold.of(context).showSnackBar(snackBar);
-                          //     }
-                          //   });
-                          // });
-                        } else {
-                          Navigator.pop(context);
-                          signInButtonEnabled = true;
-                          SnackBar snackBar = SnackBar(
-                            content: Text(
-                              'Please fix errors',
-                              style: TextStyle(
-                                color: Colors.white,
-                              ),
-                            ),
-                            backgroundColor: Colors.red,
-                            duration: Duration(seconds: 1),
-                          );
-                          Scaffold.of(context).showSnackBar(snackBar);
-                        }
+                          },
+                        );
+                      } on dynamic catch (_) {
+                        Navigator.pop(context);
+                        signInButtonEnabled = true;
+                        Utils.showSnackBarError(
+                          context,
+                          'User not Found',
+                        );
+                        return;
                       }
-                    },
-                    padding: EdgeInsets.only(
-                        left: 60, right: 60, top: 10, bottom: 10),
-                    color: Theme.of(context).accentColor,
-                    child: Text(
-                      'Sign in',
-                      style: TextStyle(
-                        fontSize: Theme.of(context).textTheme.button.fontSize,
-                        color: Colors.white,
-                      ),
-                    ),
-                  )
-                ],
+                      // Firestore.instance
+                      //     .collection('credentials')
+                      //     .document(email)
+                      //     .get()
+                      //     .then((data) async {
+                      //   if (!data.exists && data.data == null) {}
+                      //   compute(verifyPassword,
+                      //           "$password;${data.data['password']}")
+                      //       .then((passwordIsCorrect) {
+                      //     if (passwordIsCorrect) {
+                      //     } else {
+                      //       Navigator.pop(context);
+                      //       signInButtonEnabled = true;
+                      //       SnackBar snackBar = SnackBar(
+                      //         content: Text(
+                      //           'Invalid Password',
+                      //           style: TextStyle(
+                      //             color: Colors.white,
+                      //           ),
+                      //         ),
+                      //         backgroundColor: Colors.red,
+                      //         duration: Duration(seconds: 1),
+                      //       );
+                      //       Scaffold.of(context).showSnackBar(snackBar);
+                      //     }
+                      //   });
+                      // });
+                    } else {
+                      Navigator.pop(context);
+                      signInButtonEnabled = true;
+                      SnackBar snackBar = SnackBar(
+                        content: Text(
+                          'Please fix errors',
+                          style: TextStyle(
+                            color: Colors.white,
+                          ),
+                        ),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 1),
+                      );
+                      Scaffold.of(context).showSnackBar(snackBar);
+                    }
+                  }
+                },
+                padding:
+                    EdgeInsets.only(left: 60, right: 60, top: 10, bottom: 10),
+                color: Theme.of(context).accentColor,
+                child: Text(
+                  'Sign in',
+                  style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.button.fontSize,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -327,7 +365,7 @@ class _UserSignInState extends State<UserSignIn> {
         storeItems.add(StoreItem.fromMap(snapshot.data));
       }
     }
-    
+
     cart.items = storeItems;
     Session.data.update("cart", (value) {
       return cart;

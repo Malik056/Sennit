@@ -4,23 +4,8 @@ import 'package:flutter_rating/flutter_rating.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 
-// class ReviewWidget extends StatefulWidget {
-//   final User user;
-//   final String itemId;
-
-//   const ReviewWidget({
-//     Key key,
-//     @required this.user,
-//     @required this.itemId,
-//   }) : super(key: key);
-
-//   @override
-//   State<StatefulWidget> createState() {
-//     return ReviewWidgetState();
-//   }
-// }
-
 class ReviewWidget extends StatelessWidget {
+
   static TextEditingController _commentController;
   final User user;
   final String itemId;
@@ -29,7 +14,7 @@ class ReviewWidget extends StatelessWidget {
   final bool driver;
   static bool _isDriverMode;
   static String _driverId;
-
+  
   ReviewWidget({
     @required this.user,
     @required this.itemId,
@@ -66,9 +51,12 @@ class ReviewWidget extends StatelessWidget {
     return FutureBuilder<Review>(
         future: !ReviewWidget._isDriverMode
             ? initReview()
-            : Future.delayed(Duration(seconds: 0), () {
-                return null;
-              }),
+            : Future.delayed(
+                Duration(seconds: 0),
+                () {
+                  return null;
+                },
+              ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -106,7 +94,7 @@ class ReviewWidget extends StatelessWidget {
               title: Text('Review'),
               centerTitle: true,
             ),
-            body: SingleChildScrollView(
+            body: SingleChildScrollView (
               child: Form(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +114,7 @@ class ReviewWidget extends StatelessWidget {
                     SizedBox(
                       height: 20,
                     ),
-                    Card(
+                    Card (
                       elevation: 6,
                       child: Container(
                         margin: EdgeInsets.all(8),

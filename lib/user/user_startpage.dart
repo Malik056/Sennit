@@ -11,7 +11,7 @@ class UserStartPage extends StatelessWidget {
         Navigator.of(context).pushNamed(MyApp.startPage);
         return false;
       },
-          child: Scaffold(
+        child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           title: Text('User'),
@@ -48,11 +48,7 @@ class UserStartPage extends StatelessWidget {
                         color: Colors.white,
                         fontSize: Theme.of(context).textTheme.button.fontSize),
                   ),
-                  // color:  Theme.of(context).accentColor,
                   shape: RoundedRectangleBorder(
-                      // side: BorderSide(
-                      //   width: 2,
-                      // ), //color: Theme.of(context).primaryColor),
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
