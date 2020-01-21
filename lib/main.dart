@@ -16,6 +16,7 @@ import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/search.dart';
+import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/recieveIt.dart';
@@ -57,7 +58,11 @@ main() async {
       }, ifAbsent: () {
         return User.fromMap(result.data);
       });
-      MyApp.initialRoute = MyApp.userHome;
+      if (user.isEmailVerified) {
+        MyApp.initialRoute = MyApp.userHome;
+      } else {
+        MyApp.initialRoute = MyApp.verifyEmailRoute;
+      }
     } else {
       final driverResult = await Firestore.instance
           .collection('drivers')
@@ -72,7 +77,11 @@ main() async {
         }, ifAbsent: () {
           return Driver.fromMap(result.data);
         });
-        MyApp.initialRoute = MyApp.driverHome;
+        if (user.isEmailVerified) {
+          MyApp.initialRoute = MyApp.driverHome;
+        } else {
+          MyApp.initialRoute = MyApp.verifyEmailRoute;
+        }
       }
     }
   }
@@ -95,6 +104,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String userStartPage = '$startPage/userStartPage';
   static final String driverStartPage = '$startPage/driverStartPage';
   static final String driverSignin = '$driverStartPage/driverSignin';
+  static final String verifyEmailRoute = 'verifyEmailRoute';
   static final String userHome = 'userHome';
   static final String selectFromAddress = 'sendItSourceRoute';
   static final String deliverToAddresses = 'sendItDestinationRoute';
@@ -153,6 +163,9 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
           driverSignin: (context) => DriverSignInRoute(),
           driverStartPage: (context) => DriverStartPage(),
           userHome: (context) => UserHomeRoute(),
+          verifyEmailRoute: (context) => VerifyEmailRoute(
+                context: context,
+              ),
           selectFromAddress: (context) =>
               SelectFromAddressRoute(MyApp._address),
           recieveItRoute: (context) => StoresRoute(
@@ -274,6 +287,35 @@ class Utils {
     return _apiKey;
   }
 
+  static showWidgetInDialoge(context, Widget widget) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return SizedBox(
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+            child: Center(
+              child: Container(
+                height: 400,
+                width: MediaQuery.of(context).size.width - 20,
+                child: Card(
+                  elevation: 8.0,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 40,
+                      bottom: 40,
+                    ),
+                    child: widget,
+                  ),
+                ),
+              ),
+            ),
+          );
+        });
+  }
+
   static Stream<LatLng> getLocationStream() {
     Stream<LatLng> stream = Stream.empty();
     MyApp._locationData
@@ -293,6 +335,45 @@ class Utils {
     Scaffold.of(context).showSnackBar(snackBar);
   }
 
+  // static showSnackBarErrorUsingState(ScaffoldState state, String message) {
+  //   SnackBar snackBar = SnackBar(
+  //     backgroundColor: Colors.red.shade500,
+  //     content: Text(
+  //       message,
+  //       style: TextStyle(color: Colors.white),
+  //     ),
+  //     duration: Duration(seconds: 4),
+  //   );
+
+  //   state.showSnackBar(snackBar);
+  // }
+
+  static showSnackBarWarning(BuildContext context, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.yellow.shade700,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.black),
+      ),
+      duration: Duration(seconds: 4),
+    );
+
+    Scaffold.of(context).showSnackBar(snackBar);
+  }
+
+  // static showSnackBarWarningUsingState(ScaffoldState state, String message) {
+  //   SnackBar snackBar = SnackBar(
+  //     backgroundColor: Colors.yellow.shade700,
+  //     content: Text(
+  //       message,
+  //       style: TextStyle(color: Colors.black),
+  //     ),
+  //     duration: Duration(seconds: 4),
+  //   );
+
+  //   state.showSnackBar(snackBar);
+  // }
+
   static showSnackBarSuccess(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.green.shade700,
@@ -305,6 +386,19 @@ class Utils {
 
     Scaffold.of(context).showSnackBar(snackBar);
   }
+
+  // static showSnackBarSuccessUsingState(ScaffoldState state, String message) {
+  //   SnackBar snackBar = SnackBar(
+  //     backgroundColor: Colors.green.shade700,
+  //     content: Text(
+  //       message,
+  //       style: TextStyle(color: Colors.white),
+  //     ),
+  //     duration: Duration(seconds: 2),
+  //   );
+
+  //   state.showSnackBar(snackBar);
+  // }
 
   static void showSuccessDialog(String message) {
     BotToast.showEnhancedWidget(toastBuilder: (a) {
@@ -325,12 +419,19 @@ class Utils {
                 Icon(
                   Icons.check_circle,
                   color: Colors.green,
-                  size: 32,
+                  size: 36,
                 ),
                 SizedBox(
                   height: 10,
                 ),
-                Text('$message'),
+                Text(
+                  '$message',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 87, 89, 152),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 Spacer(),
               ],
             ),

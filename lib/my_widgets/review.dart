@@ -5,7 +5,6 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 
 class ReviewWidget extends StatelessWidget {
-
   static TextEditingController _commentController;
   final User user;
   final String itemId;
@@ -14,7 +13,7 @@ class ReviewWidget extends StatelessWidget {
   final bool driver;
   static bool _isDriverMode;
   static String _driverId;
-  
+
   ReviewWidget({
     @required this.user,
     @required this.itemId,
@@ -85,16 +84,12 @@ class ReviewWidget extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               actions: <Widget>[
-                _StarWidgetState._update == null
-                    ? Opacity(
-                        opacity: 0,
-                      )
-                    : actionButton,
+                actionButton,
               ],
               title: Text('Review'),
               centerTitle: true,
             ),
-            body: SingleChildScrollView (
+            body: SingleChildScrollView(
               child: Form(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +109,7 @@ class ReviewWidget extends StatelessWidget {
                     SizedBox(
                       height: 20,
                     ),
-                    Card (
+                    Card(
                       elevation: 6,
                       child: Container(
                         margin: EdgeInsets.all(8),
@@ -205,7 +200,9 @@ class _ActionButtonState extends State<_ActionButton> {
     return FlatButton(
       child: Text(
         ReviewWidget._isDriverMode
-            ? 'Done'
+            ? _StarWidgetState._rating == null || _StarWidgetState._rating == 0
+                ? 'Cancel'
+                : 'Done'
             : !_StarWidgetState._update
                 ? _StarWidgetState._rating == null ||
                         _StarWidgetState._rating == 0
@@ -235,9 +232,12 @@ class _ActionButtonState extends State<_ActionButton> {
               .document(ReviewWidget._driverId)
               .setData(
             {"${widget.user.userId}": review.toMap()},
+            merge: true,
           );
           Navigator.of(context).pop({});
-        } else if (!_StarWidgetState._update) {
+        } else if (!_StarWidgetState._update &&
+            _StarWidgetState._rating != null &&
+            _StarWidgetState._rating > 0) {
           DateTime lastUpdated = DateTime.now();
           Review review = Review(
             userId: widget.user.userId,
@@ -252,9 +252,14 @@ class _ActionButtonState extends State<_ActionButton> {
           Firestore.instance
               .collection('reviews')
               .document(widget.itemId)
-              .setData({"${widget.user.userId}": review.toMap()});
+              .setData(
+            {"${widget.user.userId}": review.toMap()},
+            merge: true,
+          );
           Navigator.of(context).pop({});
-        } else {
+        } else if (_StarWidgetState._rating != null &&
+            _StarWidgetState._rating > 0) {
+
           ReviewWidget._review.lastUpdated = DateTime.now();
           ReviewWidget._review.reviewDescription =
               ReviewWidget._commentController.text;
@@ -262,7 +267,10 @@ class _ActionButtonState extends State<_ActionButton> {
           Firestore.instance
               .collection('reviews')
               .document(widget.itemId)
-              .setData({widget.user.userId: ReviewWidget._review.toMap()});
+              .setData({widget.user.userId: ReviewWidget._review.toMap()},
+                  merge: true);
+          Navigator.of(context).pop({});
+        } else {
           Navigator.of(context).pop({});
         }
       },
@@ -284,7 +292,7 @@ class _StarWidget extends StatefulWidget {
 
 class _StarWidgetState extends State<_StarWidget> {
   static double _rating;
-  static bool _update;
+  static bool _update = false;
 
   _StarWidgetState(rating) {
     _rating = rating;
@@ -294,7 +302,7 @@ class _StarWidgetState extends State<_StarWidget> {
   void dispose() {
     super.dispose();
     _rating = null;
-    _update = null;
+    _update = false;
   }
 
   @override

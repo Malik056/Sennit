@@ -1,4 +1,5 @@
 import 'package:bot_toast/bot_toast.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,10 +24,19 @@ class UserHomeRoute extends StatelessWidget {
         }
         return false;
       },
-          child: Scaffold(
+      child: Scaffold(
         appBar: AppBar(
           title: Text('User Home'),
           centerTitle: true,
+          actions: <Widget>[
+            FlatButton(
+              child: Text('Signout'),
+              onPressed: () async {
+                FirebaseAuth.instance.signOut();
+                Navigator.pushReplacementNamed(context, MyApp.startPage);
+              },
+            ),
+          ],
         ),
         body: UserHomeBody(MediaQuery.of(context).size),
         backgroundColor: Colors.white,
@@ -41,7 +51,7 @@ class UserHomeBody extends StatefulWidget {
   final Size screenWidth;
 
   UserHomeBody(this.screenWidth);
-  
+
   @override
   State<StatefulWidget> createState() {
     return UserHomeState();

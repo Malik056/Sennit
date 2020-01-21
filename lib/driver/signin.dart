@@ -5,6 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/my_widgets/forgot_password.dart';
+import 'package:sennit/my_widgets/verify_email_route.dart';
 
 class DriverSignInRoute extends StatelessWidget {
   @override
@@ -95,23 +97,43 @@ class _DriverSignInState extends State<DriverSignIn> {
                   height: 15,
                 ),
               ),
-              GestureDetector(
-                child: Row(
-                  children: <Widget>[
-                    Icon(
-                      !rememberMeChecked
-                          ? FontAwesomeIcons.circle
-                          : FontAwesomeIcons.solidCheckCircle,
-                      size: 18,
+              Row(
+                mainAxisSize: MainAxisSize.max,
+                children: <Widget>[
+                  GestureDetector(
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          !rememberMeChecked
+                              ? FontAwesomeIcons.circle
+                              : FontAwesomeIcons.solidCheckCircle,
+                          size: 18,
+                        ),
+                        Text(' Remember me'),
+                      ],
                     ),
-                    Text(' Remember me'),
-                  ],
-                ),
-                onTap: () {
-                  setState(() {
-                    rememberMeChecked = !rememberMeChecked;
-                  });
-                },
+                    onTap: () {
+                      setState(() {
+                        rememberMeChecked = !rememberMeChecked;
+                      });
+                    },
+                  ),
+                  Spacer(),
+                  GestureDetector(
+                    child: Text(
+                      'Forgot?',
+                      style: TextStyle(color: Colors.blue),
+                    ),
+                    onTap: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return ForgotPasswordRoute(
+                          userType: UserType.driver,
+                        );
+                      }));
+                    },
+                  ),
+                ],
               ),
               Opacity(
                 opacity: 0,
@@ -129,27 +151,31 @@ class _DriverSignInState extends State<DriverSignIn> {
                     Utils.showLoadingDialog(context);
                     if (_formKey.currentState.validate()) {
                       try {
-                        var documents = await Firestore.instance
-                            .collection("drivers")
-                            .getDocuments();
+                        // FirebaseAuth.instance
+                        //     .signInWithEmailAndPassword(
+                        //         email: email, password: password)
+                        //     .then((result) {});
+                        // var documents = await Firestore.instance
+                        //     .collection("drivers")
+                        //     .getDocuments();
 
-                        bool founduser = false;
+                        // bool founduser = false;
 
-                        for (DocumentSnapshot snapshot in documents.documents) {
-                          if (snapshot.data['email'] == email) {
-                            founduser = true;
-                          }
-                        }
+                        // for (DocumentSnapshot snapshot in documents.documents) {
+                        //   if (snapshot.data['email'] == email) {
+                        //     founduser = true;
+                        //   }
+                        // }
 
-                        if (!founduser) {
-                          Navigator.pop(context);
-                          signInButtonEnabled = true;
-                          Utils.showSnackBarError(
-                            context,
-                            "This email account does not exists",
-                          );
-                          return;
-                        }
+                        // if (!founduser) {
+                        //   Navigator.pop(context);
+                        //   signInButtonEnabled = true;
+                        //   Utils.showSnackBarError(
+                        //     context,
+                        //     "This email account does not exists",
+                        //   );
+                        //   return;
+                        // }
 
                         var auth = FirebaseAuth.instance;
                         auth
@@ -163,6 +189,16 @@ class _DriverSignInState extends State<DriverSignIn> {
                                 .document(userId)
                                 .get()
                                 .then((userData) async {
+                              if (userData == null ||
+                                  !userData.exists ||
+                                  userData.data == null ||
+                                  userData.data.length <= 0) {
+                                FirebaseAuth.instance.signOut();
+                                Navigator.pop(context);
+                                signInButtonEnabled = true;
+                                Utils.showSnackBarError(context,
+                                    "This email address is not associated with a driver.");
+                              }
                               Driver user = Driver.fromMap(userData.data);
                               Session.data.update('driver', (a) {
                                 return user;
@@ -170,8 +206,15 @@ class _DriverSignInState extends State<DriverSignIn> {
                                 return user;
                               });
                               await DatabaseHelper.signInUser(userId);
-                              Navigator.of(context)
-                                  .popAndPushNamed(MyApp.driverHome);
+                              if (result.user.isEmailVerified) {
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (c) {
+                                  return VerifyEmailRoute(context: context);
+                                }));
+                              } else {
+                                Navigator.of(context)
+                                    .popAndPushNamed(MyApp.driverHome);
+                              }
                             });
                           } else {
                             Navigator.pop(context);

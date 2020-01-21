@@ -3,6 +3,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -81,6 +82,10 @@ class ReceiveItRoute extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.exit_to_app),
                 title: Text('Logout'),
+                onTap: () {
+                  FirebaseAuth.instance.signOut();
+                  Navigator.of(context).popAndPushNamed(MyApp.startPage);
+                },
               ),
             )
           ],
@@ -562,6 +567,11 @@ class StoreMainPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      floatingActionButton: FloatingActionButton.extended(
+        icon: Icon(Icons.shopping_cart),
+        label: Text('Goto Cart'),
+        onPressed: () {},
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrooled) {
           return <Widget>[
@@ -790,7 +800,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
   searchItemInCart() {
     model.StoreItem item = ItemDetailsRoute._item;
     UserCart cart = Session.data['cart'];
-    if (cart.itemIds.contains(item.itemId)) {
+    if (cart != null && cart.itemIds.contains(item.itemId)) {
       return true;
     }
     return false;
@@ -820,6 +830,11 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
           });
           User user = Session.data['user'];
           UserCart cart = Session.data['cart'];
+          if (cart == null) {
+            Session.data.putIfAbsent('cart', () {
+              return UserCart();
+            });
+          }
           if (!isInCart) {
             Firestore.instance
                 .collection('carts')
@@ -1775,16 +1790,36 @@ class ShoppingCartRoute extends StatelessWidget {
                 );
                 Navigator.pop(context);
                 return;
+              } else if (cart.itemIds == null || cart.itemIds.length == 0) {
+                Navigator.pop(context);
+
+                BotToast.showNotification(
+                  title: (_) {
+                    return Text("Your Cart is Empty");
+                  },
+                  align: Alignment.bottomCenter,
+                  subtitle: (_) => Text("Please Add some items in your cart"),
+                  trailing: (_) => RaisedButton(
+                    color: Theme.of(context).primaryColor,
+                    child: Text(
+                      'Shop now',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+
+                // BotToast.showText(
+                //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
+                return;
               } else if (ShoppingCartRoute._toAddress == null) {
                 BotToast.showText(
                     text: 'Please Select a Destination First!',
                     duration: Duration(seconds: 2));
                 // Utils.showSnackBarError(context, 'Please Select a Destination');
                 Navigator.pop(context);
-                return;
-              } else if (cart.itemIds == null || cart.itemIds.length == 0) {
-                BotToast.showText(
-                    text: "You Cart is Empty", duration: Duration(seconds: 2));
                 return;
               }
 
@@ -1795,15 +1830,15 @@ class ShoppingCartRoute extends StatelessWidget {
               List<model.StoreItem> items = cart.items;
 
               double price = 0.0;
-              List<LatLng> pickups = order.pickups;
-              if (pickups == null) {
-                pickups = [];
-                order.pickups = pickups;
-              }
+              List<LatLng> pickups = [];
+              order.pickups = pickups;
+              List<String> stores = [];
+              order.stores = stores;
               int i = 0;
               for (model.StoreItem item in items) {
                 price += item.price * int.parse(controllers[i++].text);
                 pickups.add(item.latlng);
+                stores.add(item.storeName);
               }
               List<String> itemIds = cart.itemIds;
               order.orderDate = DateTime.now();
@@ -1815,8 +1850,9 @@ class ShoppingCartRoute extends StatelessWidget {
               order.items = itemIds;
               order.price = price;
               order.destination = LatLng(
-                  ShoppingCartRoute._toAddress.coordinates.latitude,
-                  ShoppingCartRoute._toAddress.coordinates.longitude);
+                ShoppingCartRoute._toAddress.coordinates.latitude,
+                ShoppingCartRoute._toAddress.coordinates.longitude,
+              );
               Firestore.instance
                   .collection('postedOrders')
                   .add(order.toMap())
@@ -2190,10 +2226,15 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     if (items.length == 0) {
       return Card(
         child: Container(
+          padding: EdgeInsets.only(
+            top: 50,
+            bottom: 50,
+          ),
           child: Center(
             child: Text(
-              'Cart Is Empty',
-              style: Theme.of(context).textTheme.subhead,
+              'Cart is Empty',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headline,
             ),
           ),
         ),
@@ -2333,7 +2374,6 @@ class CartItemState extends State<CartItem> {
                                   WhitelistingTextInputFormatter.digitsOnly,
                                   BlacklistingTextInputFormatter
                                       .singleLineFormatter,
-                                  // BlacklistingTextInputFormatter(RegExp(r'\n|-|.')),
                                 ],
                               ),
                             ),

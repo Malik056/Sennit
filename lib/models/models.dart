@@ -302,6 +302,7 @@ class OrderFromReceiveIt {
   String phoneNumber;
   String house;
   List<LatLng> pickups = [];
+  List<String> stores = [];
   LatLng destination;
   String userId;
   String driverId;
@@ -318,12 +319,14 @@ class OrderFromReceiveIt {
     this.userId,
     this.driverId,
     this.price,
+    this.stores,
     this.orderDate,
     this.deliveryTime,
   });
 
   OrderFromReceiveIt copyWith({
     List<String> items,
+    List<String> stores,
     String email,
     String phoneNumber,
     String house,
@@ -337,6 +340,7 @@ class OrderFromReceiveIt {
   }) {
     return OrderFromReceiveIt(
       items: items ?? this.items,
+      stores: stores ?? this.stores,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       house: house ?? this.house,
@@ -358,12 +362,14 @@ class OrderFromReceiveIt {
       'house': house,
       'pickups':
           List<dynamic>.from(pickups.map((x) => Utils.latLngToString(x))),
+      'stores': stores,
       'destination': Utils.latLngToString(destination),
       'userId': userId,
       'driverId': driverId,
       'price': price,
       'orderDate': orderDate.millisecondsSinceEpoch,
-      'deliveryTime': deliveryTime == null ? null : deliveryTime.millisecondsSinceEpoch,
+      'deliveryTime':
+          deliveryTime == null ? null : deliveryTime.millisecondsSinceEpoch,
     };
   }
 
@@ -377,6 +383,7 @@ class OrderFromReceiveIt {
       house: map['house'],
       pickups: List<LatLng>.from(
           map['pickups']?.map((x) => Utils.latLngFromString(x))),
+      stores: List<String>.from(map['stores']?.map((x) => x)),
       destination: Utils.latLngFromString(map['destination']),
       userId: map['userId'],
       driverId: map['driverId'],
@@ -393,7 +400,7 @@ class OrderFromReceiveIt {
 
   @override
   String toString() {
-    return 'OrderFromReceiveIt items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $orderDate, deliveryTime: $deliveryTime';
+    return 'OrderFromReceiveIt items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, stores: $stores destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $orderDate, deliveryTime: $deliveryTime';
   }
 
   @override
@@ -406,6 +413,7 @@ class OrderFromReceiveIt {
         o.phoneNumber == phoneNumber &&
         o.house == house &&
         o.pickups == pickups &&
+        o.stores == stores &&
         o.destination == destination &&
         o.userId == userId &&
         o.driverId == driverId &&
@@ -421,6 +429,7 @@ class OrderFromReceiveIt {
         phoneNumber.hashCode ^
         house.hashCode ^
         pickups.hashCode ^
+        stores.hashCode ^
         destination.hashCode ^
         userId.hashCode ^
         driverId.hashCode ^
@@ -1048,11 +1057,11 @@ class OrderOtherCharges {
 class UserCart {
   List<StoreItem> items = List();
   List<String> itemIds;
-  
+
   UserCart({
     this.itemIds,
-  }){
-    if(itemIds == null) {
+  }) {
+    if (itemIds == null) {
       itemIds = [];
     }
   }
@@ -1432,12 +1441,14 @@ class ItemProperty {
 class StoreItem {
   String itemId;
   List<String> images;
+  String storeName;
   double price;
   String description;
   String itemName;
   LatLng latlng;
   StoreItem({
     this.itemId,
+    this.storeName,
     this.images,
     this.price,
     this.description,
@@ -1449,6 +1460,7 @@ class StoreItem {
     String itemId,
     List<String> images,
     double price,
+    String storeName,
     String description,
     String itemName,
     LatLng latlng,
@@ -1457,6 +1469,7 @@ class StoreItem {
       itemId: itemId ?? this.itemId,
       images: images ?? this.images,
       price: price ?? this.price,
+      storeName: storeName ?? this.storeName,
       description: description ?? this.description,
       itemName: itemName ?? this.itemName,
       latlng: latlng ?? this.latlng,
@@ -1468,6 +1481,7 @@ class StoreItem {
       'itemId': itemId,
       'images': List<dynamic>.from(images.map((x) => x)),
       'price': price,
+      'storeName': storeName,
       'description': description,
       'itemName': itemName,
       'latlng': Utils.latLngToString(latlng),
@@ -1483,6 +1497,7 @@ class StoreItem {
       price: map['price'].runtimeType == int
           ? (map['price'] as int).toDouble()
           : map['price'],
+      storeName: map['storeName'],
       description: map['description'],
       itemName: map['itemName'],
       latlng: Utils.latLngFromString(map['latlng']),
@@ -1495,7 +1510,7 @@ class StoreItem {
 
   @override
   String toString() {
-    return 'StoreItem itemId: $itemId, images: $images, price: $price, description: $description, itemName: $itemName, location: $latlng';
+    return 'StoreItem itemId: $itemId, images: $images, price: $price, storeName: $storeName, description: $description, itemName: $itemName, location: $latlng';
   }
 
   @override
@@ -1506,6 +1521,7 @@ class StoreItem {
         o.itemId == itemId &&
         o.images == images &&
         o.price == price &&
+        o.storeName == storeName &&
         o.description == description &&
         o.itemName == itemName &&
         o.latlng == latlng;
@@ -1516,6 +1532,7 @@ class StoreItem {
     return itemId.hashCode ^
         images.hashCode ^
         price.hashCode ^
+        storeName.hashCode ^
         description.hashCode ^
         itemName.hashCode ^
         latlng.hashCode;

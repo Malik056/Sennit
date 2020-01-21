@@ -7,18 +7,19 @@ import 'package:place_picker/place_picker.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sqflite/sqlite_api.dart';
 
 class DriverSignUpRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-            onWillPop: () async {
+      onWillPop: () async {
         Navigator.pop(context);
         Navigator.pushNamed(context, MyApp.driverStartPage);
         return false;
       },
-          child: Scaffold(
+      child: Scaffold(
         appBar: AppBar(
           title: Text('Driver Sign Up'),
           centerTitle: true,
@@ -59,7 +60,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
   String dateText;
   bool tapped = false;
 
-  String address = "Not Available";
+  String address = "Not Selected";
   final _formKey = GlobalKey<FormState>();
 
   final passwordController = TextEditingController();
@@ -286,35 +287,77 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                       },
                       style: Theme.of(context).textTheme.body1,
                     ),
+                    // ListTile(
+                    //   leading: Icon(
+                    //     Icons.location_on,
+                    //     color:
+                    //         tapped ? Colors.red : Theme.of(context).accentColor,
+                    //   ),
+                    //   title: Text(
+                    //     'Pick A location',
+                    //     style: TextStyle(
+                    //       color: tapped ? Colors.red : Colors.black,
+                    //     ),
+                    //   ),
+                    //   onTap: () async {
+                    //     LocationResult result =
+                    //         await Utils.showPlacePicker(context);
+                    //     if (result == null) {
+                    //       if (user.homeLocationLatLng == null) {
+                    //         Utils.showSnackBarError(
+                    //           context,
+                    //           'Please select a location',
+                    //         );
+                    //       }
+                    //       return;
+                    //     }
+                    //     if (result != null) {
+                    //       setState(() {
+                    //         address = result.formattedAddress;
+                    //       });
+                    //     }
+                    //     user.homeLocationAddress = address;
+                    //     user.homeLocationLatLng = result.latLng;
+                    //   },
+                    // ),
                     ListTile(
                       leading: Icon(
                         Icons.location_on,
-                        color: Theme.of(context).accentColor,
+                        color: tapped && address == null
+                            ? Colors.red
+                            : Theme.of(context).accentColor,
                       ),
-                      title: Text('Pick A location'),
-                      onTap: () async {
-                        LocationResult result =
-                            await Utils.showPlacePicker(context);
-                        if (result != null) {
-                          setState(() {
-                            address = result.formattedAddress;
-                          });
-                        }
-                        driver.homeLocationAddress = address;
-                        driver.homeLocationLatLng = result.latLng;
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.my_location,
-                        color: Theme.of(context).accentColor,
+                      title: Text(
+                        'Selected Location',
+                        style: TextStyle(
+                          color: tapped && address == "Not Selected"
+                              ? Colors.red
+                              : Theme.of(context).accentColor,
+                        ),
                       ),
-                      title: Text('Selected Location',
-                          style:
-                              TextStyle(color: Theme.of(context).accentColor)),
                       subtitle: Text(
                         address,
                       ),
+                      onTap: () async {
+                        LocationResult result =
+                            await Utils.showPlacePicker(context);
+                        if (result == null) {
+                          if (driver.homeLocationLatLng == null) {
+                            Utils.showSnackBarError(
+                              context,
+                              'Please select a location',
+                            );
+                          }
+                          return;
+                        }
+                        if (result != null) {
+                          setState(() {
+                            address = result.formattedAddress;
+                            driver.homeLocationAddress = address;
+                            driver.homeLocationLatLng = result.latLng;
+                          });
+                        }
+                      },
                     ),
                     Padding(
                       padding: EdgeInsets.only(top: 10, bottom: 10),
@@ -374,21 +417,25 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                             tapped = true;
                             var form = _formKey.currentState;
                             if (form.validate() &&
-                                dateInitialText != dateText) {
+                                dateInitialText != dateText &&
+                                driver.homeLocationLatLng != null) {
                               driver.userCreatedOn = DateTime.now();
-                              driver.balance = 0;
-                              driver.rank = "Rookie";
-
                               // user.userId =
                               //     "user${DateTime.now().millisecondsSinceEpoch}";
                               try {
                                 FirebaseAuth.instance
                                     .createUserWithEmailAndPassword(
-                                      email: driver.email,
-                                      password: passwordController.text,
-                                    )
-                                    .catchError((Object object) {})
-                                    .then((value) {
+                                  email: driver.email,
+                                  password: passwordController.text,
+                                )
+                                    .catchError((error) async {
+                                  Utils.showSnackBarError(
+                                    context,
+                                    error.message,
+                                  );
+                                  pressed = false;
+                                  Navigator.pop(context);
+                                }).then((value) {
                                   FirebaseUser firebaseUser = value.user;
                                   if (firebaseUser == null) {
                                     SnackBar snackBar = SnackBar(
@@ -418,15 +465,25 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         Tables.DRIVER_TABLE,
                                         driver.toMap(),
                                       );
-                                      Session.data.update('driver', (ignored) {
+                                      Session.data.update('driver', (_) {
                                         return driver;
                                       }, ifAbsent: () {
                                         return driver;
                                       });
                                       Navigator.pop(context);
                                       Navigator.pop(context);
-                                      Navigator.of(context)
-                                          .pushNamed(MyApp.driverHome);
+                                      firebaseUser.sendEmailVerification();
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return VerifyEmailRoute(
+                                              context: context,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                      // Navigator.of(context)
+                                      //     .pushNamed(MyApp.userHome);
                                     }).catchError((error) {
                                       pressed = false;
                                       Navigator.pop(context);
@@ -446,12 +503,17 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                               } on dynamic catch (_) {
                                 onSignUpError();
                               }
-                            } else if (dateInitialText == dateText) {
+                            } else if (dateInitialText == dateText ||
+                                driver.homeLocationLatLng == null) {
                               setState(() {
                                 pressed = false;
                                 Navigator.pop(context);
-                                dateOfBirthHeadingColor = Colors.red;
-                                dateOfBirthTextColor = Colors.red;
+                                if (dateInitialText == dateText) {
+                                  dateOfBirthHeadingColor = Colors.red;
+                                  dateOfBirthTextColor = Colors.red;
+                                } else {
+                                  //TODO:// Show Location Pick Error
+                                }
                               });
                             } else {
                               setState(() {

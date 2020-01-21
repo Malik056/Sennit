@@ -1,6 +1,7 @@
 import 'package:argon_buttons_flutter/argon_buttons_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:sennit/start_page.dart';
 
 import '../main.dart';
 
@@ -26,6 +27,19 @@ class VerifyEmailRoute extends StatelessWidget {
       appBar: AppBar(
         title: Text('Verify Email'),
         centerTitle: true,
+        actions: <Widget>[
+          FlatButton(
+            child: Text('SignOut'),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacementNamed(context, MyApp.startPage);
+              }
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -67,7 +81,11 @@ class VerifyEmailRoute extends StatelessWidget {
 
                       if ((await FirebaseAuth.instance.currentUser())
                           .isEmailVerified) {
-                        Navigator.popAndPushNamed(context, MyApp.userHome);
+                        if (Session.data['user'] == null) {
+                          Navigator.popAndPushNamed(context, MyApp.driverHome);
+                        } else {
+                          Navigator.popAndPushNamed(context, MyApp.userHome);
+                        }
                         print('Email Verified');
                       } else {
                         Navigator.pop(context);

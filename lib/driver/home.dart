@@ -245,31 +245,53 @@ class SennitNotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      child: Container(
-        padding: EdgeInsets.all(10),
-        child: Card(
+      child: Card(
+        child: Container(
+          margin: EdgeInsets.all(10.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Text(
                 'Sennit',
-                style: Theme.of(context).textTheme.subhead,
+                style: Theme.of(context).textTheme.display1,
               ),
               SizedBox(
-                height: 4,
+                height: 14.0,
               ),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('OrderID'),
-                      SizedBox(
-                        height: 2,
-                      ),
-                      Text(data['orderId']),
-                    ],
+                  SizedBox(
+                    width: 4.0,
                   ),
-                  Spacer(),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Order ID',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 6.0,
+                        ),
+                        Text(
+                          data['orderId'],
+                          textAlign: TextAlign.start,
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 4.0,
+                  ),
                   Center(
                     child: Container(
                       height: 50,
@@ -278,22 +300,37 @@ class SennitNotificationTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    width: 10,
+                    width: 4.0,
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('Price'),
-                      SizedBox(
-                        height: 2,
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Price',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 6.0,
+                          ),
+                          Text(
+                            "${data['orderPrice']}R",
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
-                      Text("${data['orderPrice']}"),
-                    ],
+                    ),
                   ),
                   SizedBox(
-                    width: 4,
+                    width: 4.0,
                   ),
-                  Spacer(),
                   Center(
                     child: Container(
                       height: 50,
@@ -302,26 +339,41 @@ class SennitNotificationTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    width: 10,
+                    width: 4.0,
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('# of Boxes'),
-                      SizedBox(
-                        height: 2,
+                  Expanded(
+                    flex: 4,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '# of Boxes',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 6.0,
+                          ),
+                          Text(
+                            '${data['numberOfBoxes']} ${data['boxSize']} Boxes',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
-                      Text(
-                          '${data['numberOfBoxes']} (${Utils.getBoxSizeFromString(data['boxSize'])})'),
-                    ],
+                    ),
                   ),
                   SizedBox(
-                    width: 4,
+                    width: 4.0,
                   ),
                 ],
               ),
               SizedBox(
-                height: 10,
+                height: 14.0,
               ),
               Row(
                 children: <Widget>[
@@ -329,7 +381,15 @@ class SennitNotificationTile extends StatelessWidget {
                   SizedBox(
                     width: 2,
                   ),
-                  Text(data['pickUpAddress']),
+                  Expanded(
+                    child: Text(
+                      data['pickUpAddress'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               SizedBox(
@@ -337,8 +397,8 @@ class SennitNotificationTile extends StatelessWidget {
               ),
             ],
           ),
-          elevation: 10,
         ),
+        elevation: 10,
       ),
       onTap: () {
         Navigator.push(context, MaterialPageRoute(
@@ -361,31 +421,53 @@ class ReceiveItNotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      child: Container(
-        padding: EdgeInsets.all(10),
-        child: Card(
+      child: Card(
+        child: Container(
+          margin: EdgeInsets.all(10.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Text(
-                'Sennit',
-                style: Theme.of(context).textTheme.subhead,
+                'Recieve it',
+                style: Theme.of(context).textTheme.display1,
               ),
               SizedBox(
-                height: 4,
+                height: 14.0,
               ),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('OrderID'),
-                      SizedBox(
-                        height: 2,
-                      ),
-                      Text(data['orderId']),
-                    ],
+                  SizedBox(
+                    width: 4.0,
                   ),
-                  Spacer(),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Order ID',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 6.0,
+                        ),
+                        Text(
+                          data['orderId'],
+                          textAlign: TextAlign.start,
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 4.0,
+                  ),
                   Center(
                     child: Container(
                       height: 50,
@@ -394,22 +476,37 @@ class ReceiveItNotificationTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    width: 10,
+                    width: 4.0,
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('Price'),
-                      SizedBox(
-                        height: 2,
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Price',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 6.0,
+                          ),
+                          Text(
+                            "${data['price']}R",
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
-                      Text(data['price']),
-                    ],
+                    ),
                   ),
                   SizedBox(
-                    width: 4,
+                    width: 4.0,
                   ),
-                  Spacer(),
                   Center(
                     child: Container(
                       height: 50,
@@ -418,31 +515,105 @@ class ReceiveItNotificationTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(
-                    width: 10,
+                    width: 4.0,
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('# of items'),
-                      SizedBox(
-                        height: 2,
+                  Expanded(
+                    flex: 2,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Total',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 6.0,
+                          ),
+                          Text(
+                            '${data['pickups'].length} ${data['pickups'].length == 1 ? 'item' : 'items'}',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
-                      Text('${data['items'].length}'),
-                    ],
+                    ),
                   ),
                   SizedBox(
-                    width: 4,
+                    width: 4.0,
                   ),
                 ],
               ),
-              Text('Click to See Details'),
+              SizedBox(
+                height: 14.0,
+              ),
+              Row(
+                children: <Widget>[
+                  Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Icon(Icons.location_on),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6.0, bottom: 10.0),
+                        child: Icon(
+                          Icons.location_on,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12.0, top: 10),
+                        child: Icon(
+                          Icons.location_on,
+                        ),
+                      )
+                    ],
+                  ),
+                  SizedBox(
+                    width: 2,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List<Widget>.generate(
+                      data['stores'].length,
+                      (index) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: 5.0,
+                            ),
+                            Text(data['stores'][index]),
+                            SizedBox(
+                              height: 5.0,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      data['pickups'][0],
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               SizedBox(
                 height: 10,
               ),
             ],
           ),
-          elevation: 10,
         ),
+        elevation: 10,
       ),
       onTap: () {
         OrderItemRoute(

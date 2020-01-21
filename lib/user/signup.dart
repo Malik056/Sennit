@@ -428,7 +428,11 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                   email: user.email,
                                   password: passwordController.text,
                                 )
-                                    .catchError((Object object) {
+                                    .catchError((error) async {
+                                  Utils.showSnackBarError(
+                                    context,
+                                    error.message,
+                                  );
                                   pressed = false;
                                   Navigator.pop(context);
                                 }).then((value) {

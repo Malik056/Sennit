@@ -157,28 +157,6 @@ class _UserSignInState extends State<UserSignIn> {
                     Utils.showLoadingDialog(context);
                     if (_formKey.currentState.validate()) {
                       try {
-                        var documents = await Firestore.instance
-                            .collection("users")
-                            .getDocuments();
-
-                        bool founduser = false;
-
-                        for (DocumentSnapshot snapshot in documents.documents) {
-                          if (snapshot.data['email'] == email) {
-                            founduser = true;
-                          }
-                        }
-
-                        if (!founduser) {
-                          Navigator.pop(context);
-                          signInButtonEnabled = true;
-                          Utils.showSnackBarError(
-                            context,
-                            "This email account does not exists",
-                          );
-                          return;
-                        }
-
                         var auth = FirebaseAuth.instance;
                         auth
                             .signInWithEmailAndPassword(
@@ -194,6 +172,16 @@ class _UserSignInState extends State<UserSignIn> {
                                 .get()
                                 .then(
                               (userData) async {
+                                if (userData == null ||
+                                    !userData.exists ||
+                                    userData.data == null ||
+                                    userData.data.length <= 0) {
+                                  Utils.showSnackBarError(
+                                    context,
+                                    "User not found",
+                                  );
+                                  return;
+                                }
                                 User user = User.fromMap(userData.data);
                                 Session.data.update(
                                   'user',
