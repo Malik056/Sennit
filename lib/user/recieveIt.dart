@@ -496,9 +496,8 @@ class StoreItem extends StatelessWidget {
                           SizedBox(
                             width: 8,
                           ),
-                          ConstrainedBox(
-                            constraints:
-                                BoxConstraints(maxWidth: 100, minWidth: 100),
+                          Container(
+                            width: 100,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[

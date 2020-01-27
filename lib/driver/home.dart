@@ -2,10 +2,13 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/my_widgets/receive_it_order_navigation.dart';
+import 'package:sennit/my_widgets/sennit_order_navigation.dart';
 import 'package:sennit/user/recieveIt.dart' as receiveIt;
 
 class Delivery {
@@ -241,37 +244,78 @@ class _NotificationPageState extends State<_NotificationPage> {
 
 class SennitNotificationTile extends StatelessWidget {
   final Map<String, dynamic> data;
-  SennitNotificationTile({this.data});
+  SennitNotificationTile({this.data, this.isClickable = true});
+  final isClickable;
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      child: Card(
-        child: Container(
-          margin: EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                'Sennit',
-                style: Theme.of(context).textTheme.display1,
-              ),
-              SizedBox(
-                height: 14.0,
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    width: 4.0,
+    Widget card = Card(
+      child: Container(
+        margin: EdgeInsets.all(10.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              'Sennit',
+              style: Theme.of(context).textTheme.display1,
+            ),
+            SizedBox(
+              height: 14.0,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SizedBox(
+                  width: 4.0,
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Order ID',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      SizedBox(
+                        height: 6.0,
+                      ),
+                      Text(
+                        data['orderId'],
+                        textAlign: TextAlign.start,
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    flex: 4,
+                ),
+                SizedBox(
+                  width: 4.0,
+                ),
+                Center(
+                  child: Container(
+                    height: 50,
+                    width: 1,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(
+                  width: 4.0,
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          'Order ID',
+                          'Price',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -282,134 +326,156 @@ class SennitNotificationTile extends StatelessWidget {
                           height: 6.0,
                         ),
                         Text(
-                          data['orderId'],
-                          textAlign: TextAlign.start,
+                          "${data['orderPrice']}R",
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(
-                    width: 4.0,
+                ),
+                SizedBox(
+                  width: 4.0,
+                ),
+                Center(
+                  child: Container(
+                    height: 50,
+                    width: 1,
+                    color: Colors.black,
                   ),
-                  Center(
-                    child: Container(
-                      height: 50,
-                      width: 1,
-                      color: Colors.black,
+                ),
+                SizedBox(
+                  width: 4.0,
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          '# of Boxes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        SizedBox(
+                          height: 6.0,
+                        ),
+                        Text(
+                          '${data['numberOfBoxes']} ${data['boxSize']} Boxes',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(
-                    width: 4.0,
+                ),
+                SizedBox(
+                  width: 4.0,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 14.0,
+            ),
+            Row(
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(2),
+                  margin: EdgeInsets.only(left: 2, right: 4),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).primaryColor,
+                    shape: Border(
+                      right: BorderSide(
+                        color: Theme.of(context).primaryColor,
+                        width: 2,
+                      ),
+                    ),
                   ),
-                  Expanded(
-                    flex: 2,
+                  child: RotatedBox(
+                    quarterTurns: 3,
                     child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Price',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor,
-                            ),
-                          ),
-                          SizedBox(
-                            height: 6.0,
-                          ),
-                          Text(
-                            "${data['orderPrice']}R",
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                      child: Text(
+                        ' P i c k u p ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 4.0,
-                  ),
-                  Center(
-                    child: Container(
-                      height: 50,
-                      width: 1,
-                      color: Colors.black,
+                ),
+                Expanded(
+                  child: Text(
+                    data['pickUpAddress'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(
-                    width: 4.0,
+                ),
+                Container(
+                  padding: EdgeInsets.all(2),
+                  margin: EdgeInsets.only(left: 2, right: 4),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).primaryColor,
+                    shape: Border(
+                      right: BorderSide(
+                        color: Theme.of(context).primaryColor,
+                        width: 2,
+                      ),
+                    ),
                   ),
-                  Expanded(
-                    flex: 4,
+                  child: RotatedBox(
+                    quarterTurns: 3,
                     child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            '# of Boxes',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor,
-                            ),
-                          ),
-                          SizedBox(
-                            height: 6.0,
-                          ),
-                          Text(
-                            '${data['numberOfBoxes']} ${data['boxSize']} Boxes',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                      child: Text(
+                        ' D r o p Off ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 4.0,
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 14.0,
-              ),
-              Row(
-                children: <Widget>[
-                  Icon(Icons.location_on),
-                  SizedBox(
-                    width: 2,
-                  ),
-                  Expanded(
-                    child: Text(
-                      data['pickUpAddress'],
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                ),
+                Expanded(
+                  child: Text(
+                    data['dropOffAddress'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ],
-              ),
-              SizedBox(
-                height: 10,
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+          ],
         ),
-        elevation: 10,
       ),
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (context) {
-            return ActiveOrder(
-              orderData: data,
-            );
-          },
-        ));
-      },
+      elevation: 10,
     );
+    return isClickable
+        ? InkWell(
+            child: card,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) {
+                  return SennitOrderNavigationRoute(
+                    data: data,
+                  );
+                },
+              ));
+            },
+          )
+        : card;
   }
 }
 
@@ -497,7 +563,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
                             height: 6.0,
                           ),
                           Text(
-                            "${data['price']}R",
+                            "R${data['price']}",
                             style: TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ],
@@ -551,62 +617,133 @@ class ReceiveItNotificationTile extends StatelessWidget {
               SizedBox(
                 height: 14.0,
               ),
+              // Row(
+              //   children: <Widget>[
+              // Stack(
+              //   children: [
+              //     Padding(
+              //       padding: const EdgeInsets.only(top: 10.0),
+              //       child: Icon(Icons.location_on),
+              //     ),
+              //     Padding(
+              //       padding: const EdgeInsets.only(left: 6.0, bottom: 10.0),
+              //       child: Icon(
+              //         Icons.location_on,
+              //       ),
+              //     ),
+              //     Padding(
+              //       padding: const EdgeInsets.only(left: 12.0, top: 10),
+              //       child: Icon(
+              //         Icons.location_on,
+              //       ),
+              //     )
+              //   ],
+              // ),
+              // SizedBox(
+              //   width: 2,
+              // ),
               Row(
                 children: <Widget>[
-                  Stack(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10.0),
-                        child: Icon(Icons.location_on),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6.0, bottom: 10.0),
-                        child: Icon(
-                          Icons.location_on,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12.0, top: 10),
-                        child: Icon(
-                          Icons.location_on,
-                        ),
-                      )
-                    ],
-                  ),
-                  SizedBox(
-                    width: 2,
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List<Widget>.generate(
-                      data['stores'].length,
-                      (index) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              height: 5.0,
-                            ),
-                            Text(data['stores'][index]),
-                            SizedBox(
-                              height: 5.0,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
                   Expanded(
-                    child: Text(
-                      data['pickups'][0],
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: FutureBuilder<Map<String, String>>(
+                      future: getDifferentNumberOfStores(
+                          data['pickups'], data['destination']),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        } else {
+                          return Row(
+                            children: <Widget>[
+                              Container(
+                                padding: EdgeInsets.all(2),
+                                margin: EdgeInsets.only(left: 2, right: 4),
+                                decoration: ShapeDecoration(
+                                  color: Theme.of(context).primaryColor,
+                                  shape: Border(
+                                    right: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: RotatedBox(
+                                  quarterTurns: 3,
+                                  child: Center(
+                                    child: Text(
+                                      ' P i c k u p ',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  snapshot.data['pickup'],
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.all(2),
+                                margin: EdgeInsets.only(left: 2, right: 4),
+                                decoration: ShapeDecoration(
+                                  color: Theme.of(context).primaryColor,
+                                  shape: Border(
+                                    right: BorderSide(
+                                      color: Theme.of(context).primaryColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: RotatedBox(
+                                  quarterTurns: 3,
+                                  child: Center(
+                                    child: Text(
+                                      ' D r o p Off ',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  snapshot.data['destination'],
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                      },
                     ),
                   ),
                 ],
               ),
+              //     Expanded(
+              //       child: Text(
+              //         data['pickups'][0],
+              //         style: TextStyle(
+              //           fontSize: 14,
+              //           fontWeight: FontWeight.w500,
+              //         ),
+              //       ),
+              //     ),
+              //   ],
+              // ),
               SizedBox(
                 height: 10,
               ),
@@ -616,11 +753,57 @@ class ReceiveItNotificationTile extends StatelessWidget {
         elevation: 10,
       ),
       onTap: () {
-        OrderItemRoute(
-          items: data['items'],
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              return RecieveItOrderNavigationRoute(
+                data: data,
+              );
+            },
+          ),
         );
       },
     );
+  }
+
+  Future<Map<String, String>> getDifferentNumberOfStores(
+      List<dynamic> pickups, String destLatlng) async {
+    List<String> temp = List();
+    LatLng destLatLngFromString = Utils.latLngFromString(destLatlng);
+    final futureDestination = Geocoder.local.findAddressesFromCoordinates(
+      Coordinates(
+        destLatLngFromString.latitude,
+        destLatLngFromString.longitude,
+      ),
+    );
+    for (String store in pickups) {
+      if (!temp.contains(store)) {
+        temp.add(store);
+        // differentStores++;
+      }
+    }
+    final destination = (await futureDestination)[0].addressLine;
+    if (temp.length == 1) {
+      LatLng latLng = Utils.latLngFromString(temp[0]);
+      final locationInfo = await Geocoder.local.findAddressesFromCoordinates(
+          Coordinates(latLng.latitude, latLng.longitude));
+      return {
+        'pickup': locationInfo[0].addressLine,
+        'destination': destination
+      };
+    } else {
+      return {
+        'pickup': "There are ${temp.length} different stores.",
+        'destination': destination
+      };
+    }
+
+    // List<LatLng> done = List();
+    // List<LatLng> allPoints = List.generate(
+    //   pickups.length,
+    //   (index) => Utils.latLngFromString(pickups[index]),
+    // );
   }
 }
 
@@ -772,7 +955,8 @@ class _ProfilePage extends StatelessWidget {
       Widget review = ListTile(
         title: Text('Some User $i'),
         subtitle: Text(
-            'This is some Long lenght review. I want it to be long so I can see how it looks. Dont read thi completely as I am just filling up space. blah blah blah blah.........'),
+          'This is some Long lenght review. I want it to be long so I can see how it looks. Dont read thi completely as I am just filling up space. blah blah blah blah.........',
+        ),
         trailing: Column(
           children: <Widget>[
             Icon(

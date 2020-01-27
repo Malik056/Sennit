@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:geocoder/model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:place_picker/place_picker.dart';
@@ -29,14 +30,18 @@ import 'models/models.dart';
 import 'user/user_startpage.dart';
 
 Future<void> locationInitializer() async {
-  MyApp._location = Location();
-  bool locationPermission = await MyApp._location.requestPermission();
+  Location _location = Location();
+  bool locationPermission = await _location.requestPermission();
   if (locationPermission) {
-    // MyApp.locationData = await MyApp.location.getLocation();
-    MyApp._locationData = MyApp._location.onLocationChanged();
-    LocationData data = (await MyApp._locationData.last);
+    MyApp._lastKnowLocation = _location.getLocation().then((data) {
+      return LatLng(data.latitude, data.longitude);
+    });
+    final data = await MyApp._lastKnowLocation;
+    MyApp._initialLocation = data;
     MyApp._address = (await Geocoder.local.findAddressesFromCoordinates(
         Coordinates(data.latitude, data.longitude)))[0];
+  } else {
+    SystemNavigator.pop();
   }
 }
 
@@ -119,14 +124,17 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static final String activeOrderBody = 'activeOrderBody';
   static final String reviewWidget = 'reviewWidget';
   static final String notificationWidget = 'notificationWidget';
+  static final String sennitOrderRoute = 'sennitOrderRoute';
 
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
   static Color disabledPrimaryColor =
       Color.fromARGB(255, 87 + 40, 89 + 40, 152 + 40);
-  static Stream<LocationData> _locationData;
   static Address _address;
-  static Location _location;
+  // static Location _location;
+  static Future<LatLng> _lastKnowLocation;
+
+  static LatLng _initialLocation;
   MyApp() {
     WidgetsBinding.instance.addObserver(this);
   }
@@ -175,6 +183,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
           // activeOrderBody: (context) => ActiveOrder(),
           searchPage: (context) => SearchWidget(),
           notificationWidget: (context) => UserNotificationWidget(),
+          // sennitOrderRoute: (context) => SennitOrderRoute({}),
         },
         title: 'Sennit',
         theme: ThemeData(
@@ -287,6 +296,24 @@ class Utils {
     return _apiKey;
   }
 
+  static Future<Map<String, String>> getUserNameAndPassword(
+      {@required BuildContext context}) async {
+    var name;
+    var password;
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return CircularProgressIndicator();
+        });
+    var data = json.decode(await rootBundle.loadString('assets/secret.json'));
+    name = data['email'];
+    password = data['password'];
+
+    Navigator.pop(context);
+    return {'email': name, 'password': password};
+  }
+
   static showWidgetInDialoge(context, Widget widget) {
     showDialog(
         context: context,
@@ -316,12 +343,6 @@ class Utils {
         });
   }
 
-  static Stream<LatLng> getLocationStream() {
-    Stream<LatLng> stream = Stream.empty();
-    MyApp._locationData
-        .transform<LatLng>(StreamTransformer<LocationData, LatLng>((a, b) {}));
-  }
-
   static showSnackBarError(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.red.shade500,
@@ -334,19 +355,6 @@ class Utils {
 
     Scaffold.of(context).showSnackBar(snackBar);
   }
-
-  // static showSnackBarErrorUsingState(ScaffoldState state, String message) {
-  //   SnackBar snackBar = SnackBar(
-  //     backgroundColor: Colors.red.shade500,
-  //     content: Text(
-  //       message,
-  //       style: TextStyle(color: Colors.white),
-  //     ),
-  //     duration: Duration(seconds: 4),
-  //   );
-
-  //   state.showSnackBar(snackBar);
-  // }
 
   static showSnackBarWarning(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
@@ -361,19 +369,6 @@ class Utils {
     Scaffold.of(context).showSnackBar(snackBar);
   }
 
-  // static showSnackBarWarningUsingState(ScaffoldState state, String message) {
-  //   SnackBar snackBar = SnackBar(
-  //     backgroundColor: Colors.yellow.shade700,
-  //     content: Text(
-  //       message,
-  //       style: TextStyle(color: Colors.black),
-  //     ),
-  //     duration: Duration(seconds: 4),
-  //   );
-
-  //   state.showSnackBar(snackBar);
-  // }
-
   static showSnackBarSuccess(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.green.shade700,
@@ -386,19 +381,6 @@ class Utils {
 
     Scaffold.of(context).showSnackBar(snackBar);
   }
-
-  // static showSnackBarSuccessUsingState(ScaffoldState state, String message) {
-  //   SnackBar snackBar = SnackBar(
-  //     backgroundColor: Colors.green.shade700,
-  //     content: Text(
-  //       message,
-  //       style: TextStyle(color: Colors.white),
-  //     ),
-  //     duration: Duration(seconds: 2),
-  //   );
-
-  //   state.showSnackBar(snackBar);
-  // }
 
   static void showSuccessDialog(String message) {
     BotToast.showEnhancedWidget(toastBuilder: (a) {
@@ -463,9 +445,17 @@ class Utils {
     return result;
   }
 
-  static Future<LatLng> getMyLocation() async {
-    final data = await MyApp._location.getLocation();
-    return LatLng(data.latitude, data.longitude);
+  static Future<LatLng> getMyLocation(
+      {LocationAccuracy accuracy = LocationAccuracy.BALANCED}) async {
+    final _location = Location()..changeSettings(accuracy: accuracy);
+    MyApp._lastKnowLocation = _location.getLocation().then((data) {
+      return LatLng(data.latitude, data.longitude);
+    });
+    return MyApp._lastKnowLocation;
+  }
+
+  static LatLng getLastKnowLocation() {
+    return MyApp._initialLocation;
   }
 
   static LatLng latLngFromString(String latlng) {

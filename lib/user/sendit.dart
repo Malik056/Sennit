@@ -401,7 +401,7 @@ class SendItCartRoute extends StatelessWidget {
               sennitOrder.pickupFromDoor = SendItCartRouteState.pickFromDoor;
               sennitOrder.numberOfBoxes =
                   int.parse(SendItCartRouteState.numberOfBoxesController.text);
-              sennitOrder.orderPrice = 200; //TODO: NEED TO CALCULATE THIS
+              sennitOrder.orderPrice = 200;
               sennitOrder.sleevesRequired = SendItCartRouteState.sleeveNeeded;
               sennitOrder.serviceCharges = 0;
               sennitOrder.receiverEmail =
