@@ -176,7 +176,10 @@ class Driver {
   DateTime dateOfBirth;
   Gender gender;
   String rank;
+  double rating;
+  int totalReviews;
   double balance;
+
   Driver({
     this.driverId,
     this.firstName,
@@ -186,12 +189,16 @@ class Driver {
     this.userCreatedOn,
     this.email,
     this.phoneNumber,
+    this.profilePicture,
     this.dateOfBirth,
     this.gender,
     this.rank,
-    this.profilePicture,
+    this.rating,
+    this.totalReviews,
     this.balance,
   });
+
+  get fullname => '$firstName $lastName';
 
   Driver copyWith({
     String driverId,
@@ -202,11 +209,13 @@ class Driver {
     DateTime userCreatedOn,
     String email,
     String phoneNumber,
+    String profilePicture,
     DateTime dateOfBirth,
     Gender gender,
     String rank,
+    double rating,
+    int totalReviews,
     double balance,
-    String profilePicture,
   }) {
     return Driver(
       driverId: driverId ?? this.driverId,
@@ -217,10 +226,12 @@ class Driver {
       userCreatedOn: userCreatedOn ?? this.userCreatedOn,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      profilePicture: profilePicture ?? this.profilePicture,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
       rank: rank ?? this.rank,
-      profilePicture: profilePicture ?? this.profilePicture,
+      rating: rating ?? this.rating,
+      totalReviews: totalReviews ?? this.totalReviews,
       balance: balance ?? this.balance,
     );
   }
@@ -235,10 +246,12 @@ class Driver {
       'userCreatedOn': userCreatedOn.millisecondsSinceEpoch,
       'email': email,
       'phoneNumber': phoneNumber,
+      'profilePicture': profilePicture,
       'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
       'gender': Utils.genderToString(gender),
       'rank': rank,
-      'profilePicture': profilePicture,
+      'rating': rating,
+      'totalReviews': totalReviews,
       'balance': balance,
     };
   }
@@ -252,14 +265,16 @@ class Driver {
       lastName: map['lastName'],
       homeLocationAddress: map['homeLocationAddress'],
       homeLocationLatLng: Utils.latLngFromString(map['homeLocationLatLng']),
-      userCreatedOn: DateTime.fromMillisecondsSinceEpoch(map['userCreatedOn']),
+      userCreatedOn: DateTime(map['userCreatedOn']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],
+      profilePicture: map['profilePicture'],
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
       gender: Utils.getGenderFromString(map['gender']),
       rank: map['rank'],
-      profilePicture: map['profilePicture'],
-      balance: map['balance'],
+      rating: map['rating'] ?? 0,
+      totalReviews: map['totalReviews'] ?? 0,
+      balance: map['balance'] ?? 0,
     );
   }
 
@@ -269,15 +284,29 @@ class Driver {
 
   @override
   String toString() {
-    return 'Driver driverId: $driverId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, homeLocationLatLng: $homeLocationLatLng, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank, balance: $balance';
+    return 'Driver driverId: $driverId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, homeLocationLatLng: $homeLocationLatLng, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, profilePicture: $profilePicture, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank, rating: $rating, totalReviews: $totalReviews, balance: $balance';
   }
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return (o is Driver && o.driverId == driverId) ||
-        (o is String && o == driverId);
+    return o is Driver &&
+        o.driverId == driverId &&
+        o.firstName == firstName &&
+        o.lastName == lastName &&
+        o.homeLocationAddress == homeLocationAddress &&
+        o.homeLocationLatLng == homeLocationLatLng &&
+        o.userCreatedOn == userCreatedOn &&
+        o.email == email &&
+        o.phoneNumber == phoneNumber &&
+        o.profilePicture == profilePicture &&
+        o.dateOfBirth == dateOfBirth &&
+        o.gender == gender &&
+        o.rank == rank &&
+        o.rating == rating &&
+        o.totalReviews == totalReviews &&
+        o.balance == balance;
   }
 
   @override
@@ -290,9 +319,12 @@ class Driver {
         userCreatedOn.hashCode ^
         email.hashCode ^
         phoneNumber.hashCode ^
+        profilePicture.hashCode ^
         dateOfBirth.hashCode ^
         gender.hashCode ^
         rank.hashCode ^
+        rating.hashCode ^
+        totalReviews.hashCode ^
         balance.hashCode;
   }
 }

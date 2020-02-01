@@ -448,6 +448,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     Scaffold.of(context).showSnackBar(snackBar);
                                   } else {
                                     driver.driverId = firebaseUser.uid;
+                                    driver.balance = 0;
+                                    driver.rating = 0;
+                                    driver.totalReviews = 0;
                                     Map map = driver.toMap();
                                     Firestore.instance
                                         .collection("drivers")
@@ -525,7 +528,6 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                   dateOfBirthHeadingColor = Colors.red;
                                   dateOfBirthTextColor = Colors.red;
                                 } else {
-                                  //TODO:// Show Location Pick Error
                                 }
                               });
                             } else {
