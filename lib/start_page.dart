@@ -89,7 +89,6 @@ class StartPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
                   Navigator.of(context).pushNamed(MyApp.userStartPage);
                 },
               ),
@@ -115,7 +114,6 @@ class StartPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
                   Navigator.of(context).pushNamed(MyApp.driverStartPage);
                 },
               ),

@@ -7,9 +7,9 @@ class UserStartPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.of(context).pushNamed(MyApp.startPage);
-        return false;
+        // Navigator.pop(context);
+        // Navigator.of(context).popAndPushNamed(MyApp.startPage);
+        return true;
       },
         child: Scaffold(
         backgroundColor: Colors.white,
@@ -52,7 +52,6 @@ class UserStartPage extends StatelessWidget {
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
-                    Navigator.pop(context);
                     Navigator.of(context).pushNamed(MyApp.userSignup);
                   },
                 ),
@@ -80,7 +79,6 @@ class UserStartPage extends StatelessWidget {
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
-                    Navigator.pop(context);
                     Navigator.of(context).pushNamed(MyApp.userSignin);
                   },
                 ),

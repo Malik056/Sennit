@@ -1,21 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
-// class SennitOrderRoute extends StatefulWidget {
-//   static var popUpHeight = 200.0;
-//   static var popUpWidth = 300.0;
-
-//   @override
-//   State<StatefulWidget> createState() {
-//     // return _SennitOrderRouteState();
-//   }
-// }
-
 class SennitOrderNavigationRoute extends StatelessWidget {
+
   static var popUpHeight = 200.0;
   static var popUpWidth = 300.0;
   // bool isOrderConfirmed = false;
@@ -23,15 +15,21 @@ class SennitOrderNavigationRoute extends StatelessWidget {
   final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
 
+  final MySolidBottomSheet myboottomSheet;
+
   void onDonePressed() {
     body.showDeliveryCompleteDialogue();
   }
 
   SennitOrderNavigationRoute._(
-      {@required this.body, @required this.myAppbar, @required this.data});
+      {@required this.body,
+      @required this.myAppbar,
+      @required this.data,
+      @required this.myboottomSheet});
 
   factory SennitOrderNavigationRoute({@required Map<String, dynamic> data}) {
     _MyAppBar appBar;
+    MySolidBottomSheet sheet;
     _Body body = _Body(
       onOrderConfirmed: () {
         appBar.showButton();
@@ -43,6 +41,9 @@ class SennitOrderNavigationRoute extends StatelessWidget {
         appBar.enableButton();
       },
       data: data,
+      onMapTap: (latlng) {
+        sheet?.hide();
+      },
     );
     appBar = _MyAppBar(
       title: "Navigation",
@@ -51,13 +52,21 @@ class SennitOrderNavigationRoute extends StatelessWidget {
       },
     );
 
+    sheet = MySolidBottomSheet(
+      data: data,
+      onSelectItem: (latlng) {
+        body.animteToLatLng(latlng);
+      },
+    );
+
+
     return SennitOrderNavigationRoute._(
       body: body,
       myAppbar: appBar,
       data: data,
+      myboottomSheet: sheet,
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -95,29 +104,101 @@ class SennitOrderNavigationRoute extends StatelessWidget {
           },
           child: Icon(Icons.my_location),
         ),
-        bottomSheet: SolidBottomSheet(
-          // enableDrag: true,
-          // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
-          maxHeight: 250,
-          elevation: 8.0,
-          draggableBody: true,
-          headerBar: Container(
-            height: 40,
-            decoration: ShapeDecoration(
-              color: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20)),
-              ),
-            ),
-          ),
+        bottomSheet: myboottomSheet,
+      ),
+    );
+  }
+}
 
-          body: _OrderTile(
-            data: data,
-            // return Container(child: SizedBox(height: , child: Text("lskjfa"),),);
+class MySolidBottomSheet extends StatefulWidget {
+  final Function(LatLng) onSelectItem;
+  final data;
+  final state = MySolidBottomSheetState();
+
+  MySolidBottomSheet({Key key, this.onSelectItem, this.data}) : super(key: key);
+  @override
+  State<StatefulWidget> createState() {
+    return state;
+  }
+
+  show() {
+    state?._controller?.show();
+  }
+
+  hide() {
+    state?._controller?.hide();
+  }
+}
+
+class MySolidBottomSheetState extends State<MySolidBottomSheet> {
+  bool isShown = false;
+  final BottomBarIcon _icon = BottomBarIcon();
+
+  var _controller = SolidController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SolidBottomSheet(
+      controller: _controller,
+      onShow: () async {
+        _icon.setIconState(true);
+      },
+      onHide: () async {
+        _icon.setIconState(false);
+      },
+      // enableDrag: true,
+      // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
+      maxHeight: 250,
+      elevation: 8.0,
+      draggableBody: true,
+      headerBar: Container(
+        height: 40,
+        decoration: ShapeDecoration(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20), topRight: Radius.circular(20)),
           ),
         ),
+        child: _icon,
+      ),
+      body: _OrderTile(
+        onSelectItem: widget.onSelectItem,
+        data: widget.data,
+        // return Container(child: SizedBox(height: , child: Text("lskjfa"),),);
+      ),
+    );
+  }
+}
+
+class BottomBarIcon extends StatefulWidget {
+  BottomBarIcon({Key key}) : super(key: key);
+  final state = _BottomBarIconState();
+  @override
+  _BottomBarIconState createState() => state;
+
+  setIconState(bool isShown) {
+    state.isShown = isShown;
+    state.refresh();
+  }
+}
+
+class _BottomBarIconState extends State<BottomBarIcon> {
+  void refresh() {
+    setState(() {});
+  }
+
+  bool isShown = false;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Icon(
+        isShown ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
       ),
     );
   }
@@ -210,6 +291,7 @@ class _Body extends StatefulWidget {
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onVerifyPopupCancel;
+  final Function(LatLng) onMapTap;
 
   final Map<String, dynamic> data;
 
@@ -218,6 +300,7 @@ class _Body extends StatefulWidget {
     @required this.onOrderConfirmed,
     @required this.onCancelPopupCancel,
     @required this.onVerifyPopupCancel,
+    @required this.onMapTap,
   });
 
   @override
@@ -255,6 +338,10 @@ class _Body extends StatefulWidget {
 
   void centerCamera() {
     state?.mapWidget?.centerCamera();
+  }
+
+  void animteToLatLng(LatLng coordinates) {
+    state?.mapWidget?.animateTo(coordinates);
   }
 }
 
@@ -298,6 +385,10 @@ class _BodyState extends State<_Body> {
     return _MapWidget(
       dropOff: Utils.latLngFromString(widget.data['dropOffLatLng']),
       pickup: Utils.latLngFromString(widget.data['pickUpLatLng']),
+      onMapTap: (latlng) {
+        widget.onMapTap(latlng);
+        print('Map Tapped');
+      },
     );
   }
 
@@ -318,7 +409,6 @@ class _BodyState extends State<_Body> {
       children: [
         Expanded(
           child: Stack(
-            fit: StackFit.expand,
             children: <Widget>[
               mapWidget,
               _popups,
@@ -339,12 +429,26 @@ class _MapWidget extends StatefulWidget {
   final _MapState state = _MapState();
   final LatLng pickup;
   final LatLng dropOff;
+  final Function(LatLng) onMapTap;
 
-  _MapWidget({Key key, @required this.pickup, @required this.dropOff})
+  _MapWidget(
+      {Key key,
+      @required this.pickup,
+      @required this.dropOff,
+      @required this.onMapTap})
       : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return state;
+  }
+
+  void animateTo(LatLng position) async {
+    await state._controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: position, zoom: 15.0),
+      ),
+    );
+    onMapTap(position);
   }
 
   void centerCamera() async {
@@ -354,6 +458,7 @@ class _MapWidget extends StatefulWidget {
         CameraPosition(target: mylocation, zoom: 15.0),
       ),
     );
+    onMapTap(mylocation);
   }
 }
 
@@ -424,7 +529,10 @@ class _MapState extends State<_MapWidget> {
       onMapCreated: (controller) {
         _controller = controller;
       },
-      onTap: (latlng) async {},
+      onTap: (latlng) async {
+        widget.onMapTap(latlng);
+        print('Map Original Widget Tapped');
+      },
     );
   }
 
@@ -539,7 +647,11 @@ class _PopupsState extends State<_Popups> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      behavior: HitTestBehavior.translucent,
+      behavior: isOrderCompleteDialogeVisible ||
+              isCancelDialogVisible ||
+              isOrderConfirmationVisible
+          ? HitTestBehavior.translucent
+          : HitTestBehavior.deferToChild,
       onTap: () {
         if (!isOrderConfirmationVisible) {
           if (isCancelDialogVisible) {
@@ -562,9 +674,12 @@ class _PopupsState extends State<_Popups> {
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 500),
                 child: _cancelOrderPopUp,
-                width: isCancelDialogVisible ? SennitOrderNavigationRoute.popUpWidth : 0,
-                height:
-                    isCancelDialogVisible ? SennitOrderNavigationRoute.popUpHeight : 0,
+                width: isCancelDialogVisible
+                    ? SennitOrderNavigationRoute.popUpWidth
+                    : 0,
+                height: isCancelDialogVisible
+                    ? SennitOrderNavigationRoute.popUpHeight
+                    : 0,
               ),
             ),
             Center(
@@ -686,7 +801,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               ),
               onPressed: () {
                 widget.onConfirm();
-                Navigator.pop(context);
+                // Navigator.pop(context);
               },
             ),
           ],
@@ -791,7 +906,7 @@ class _CancelOrderPopUpStateRevised extends State<_CancelOrderPopUp> {
                     ),
                     onPressed: () {
                       widget.onConfirm();
-                      Navigator.pop(context);
+                      // Navigator.pop(context);
                       // widget.parent.setState(() {});
                     },
                   ),
@@ -842,7 +957,7 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
         margin: EdgeInsets.only(
           left: 30,
           right: 30,
-          bottom: 10,
+          bottom: 50,
         ),
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -922,8 +1037,10 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
 class _OrderTile extends StatelessWidget {
   final Map<String, dynamic> data;
   final Location location = Location();
+  final Function(LatLng) onSelectItem;
 
-  _OrderTile({Key key, this.data}) : super(key: key) {
+  _OrderTile({Key key, @required this.data, @required this.onSelectItem})
+      : super(key: key) {
     location.changeSettings(
       accuracy: LocationAccuracy.NAVIGATION,
     );
@@ -939,15 +1056,17 @@ class _OrderTile extends StatelessWidget {
         initialData: Utils.getLastKnowLocation(),
         stream: location.onLocationChanged(),
         builder: (context, snapshot) {
-          LatLng myLocation =
-              snapshot.connectionState == ConnectionState.waiting
-                  ? (snapshot.data is LatLng)
-                      ? snapshot.data
-                      : LatLng(snapshot.data.latitude, snapshot.data.longitude)
-                  : snapshot.connectionState == ConnectionState.active
-                      ? LatLng((snapshot.data as LocationData).latitude,
-                          (snapshot.data as LocationData).longitude)
-                      : null;
+          LatLng myLocation = snapshot.connectionState ==
+                  ConnectionState.waiting
+              ? (snapshot.data is LatLng)
+                  ? snapshot.data
+                  : snapshot.data is Coordinates
+                      ? LatLng(snapshot.data.latitude, snapshot.data.longitude)
+                      : snapshot.connectionState == ConnectionState.active
+                          ? LatLng((snapshot.data as LocationData).latitude,
+                              (snapshot.data as LocationData).longitude)
+                          : null
+              : null;
           LatLng pickup = Utils.latLngFromString(data['pickUpLatLng']);
           LatLng destination = Utils.latLngFromString(data['dropOffLatLng']);
 
@@ -973,10 +1092,10 @@ class _OrderTile extends StatelessWidget {
                             child: InkWell(
                               splashColor:
                                   Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () {},
+                              onTap: () async {
+                                onSelectItem(pickup);
+                              },
                               child: Container(
-                                padding: EdgeInsets.only(
-                                    left: 6, right: 6, bottom: 6, top: 6),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment:
@@ -986,15 +1105,17 @@ class _OrderTile extends StatelessWidget {
                                       decoration: ShapeDecoration(
                                         color: Theme.of(context).primaryColor,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(4),
+                                              topRight: Radius.circular(4)),
                                         ),
                                       ),
-                                      padding: EdgeInsets.all(2),
+                                      padding: EdgeInsets.all(4),
                                       child: Text(
                                         ' P i c k u p ',
                                         // textAlign: TextAlign.center,
                                         style: TextStyle(
+                                          fontSize: 16,
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -1003,7 +1124,10 @@ class _OrderTile extends StatelessWidget {
                                     SizedBox(
                                       height: 4,
                                     ),
-                                    Text('${data['pickUpAddress']}'),
+                                    Container(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('${data['pickUpAddress']}'),
+                                    ),
                                     SizedBox(
                                       height: 4,
                                     ),
@@ -1014,12 +1138,13 @@ class _OrderTile extends StatelessWidget {
                                                 text: 'Distance: ',
                                                 children: [
                                                   TextSpan(
-                                                      text:
-                                                          '${getDistanceFromYourLocation(myLocation, pickup).toStringAsFixed(1)} Km',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.normal,
-                                                      )),
+                                                    text:
+                                                        '${getDistanceFromYourLocation(myLocation, pickup).toStringAsFixed(1)} Km',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.normal,
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                               style: TextStyle(
@@ -1047,7 +1172,6 @@ class _OrderTile extends StatelessWidget {
                                 style: TextStyle(color: Colors.white),
                               ),
                               onPressed: () {},
-                              onLongPress: () {},
                             ),
                           ),
                         ],
@@ -1066,9 +1190,10 @@ class _OrderTile extends StatelessWidget {
                             child: InkWell(
                               splashColor:
                                   Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () {},
+                              onTap: () async {
+                                onSelectItem(destination);
+                              },
                               child: Container(
-                                padding: EdgeInsets.all(6),
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment:
@@ -1078,23 +1203,27 @@ class _OrderTile extends StatelessWidget {
                                       decoration: ShapeDecoration(
                                         color: Theme.of(context).primaryColor,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(4),
+                                              topRight: Radius.circular(4)),
                                         ),
                                       ),
-                                      padding: EdgeInsets.all(2),
+                                      padding: EdgeInsets.all(4),
                                       child: Text(
                                         ' D r o p O f f ',
                                         style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14),
                                       ),
                                     ),
                                     SizedBox(
                                       height: 4,
                                     ),
-                                    Text('${data['dropOffAddress']}'),
+                                    Container(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('${data['dropOffAddress']}'),
+                                    ),
                                     SizedBox(
                                       height: 4,
                                     ),

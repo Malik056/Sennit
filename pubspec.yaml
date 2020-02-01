@@ -45,13 +45,14 @@ dependencies:
   firebase_analytics: ^5.0.2
   cloud_firestore: ^0.13.0+1
   firebase_auth: ^0.15.3
+  firebase_messaging: ^5.0.2
   flappy_search_bar: ^1.4.1
   bot_toast: ^2.2.0
   argon_buttons_flutter: ^1.0.2
   flutter_email_sender: ^2.2.2
   solid_bottom_sheet: ^0.1.9
   mailer: ^3.0.4
-
+  flutter_speed_dial: ^1.2.5
 
 dev_dependencies:
   flutter_test:

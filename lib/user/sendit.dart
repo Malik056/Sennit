@@ -369,6 +369,7 @@ class AddressAddingState extends State<AddressAddingBody> {
 class SendItCartRoute extends StatelessWidget {
   static Address _fromAddress;
   static Address _toAddress;
+  final _key = GlobalKey<ScaffoldState>();
 
   SendItCartRoute(fromAddress, toAddress) {
     _fromAddress = fromAddress;
@@ -378,15 +379,30 @@ class SendItCartRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _key,
       appBar: AppBar(
         actions: <Widget>[
           FlatButton(
             onPressed: () async {
+              if (SendItCartRouteState.numberOfBoxesController.text == null ||
+                  SendItCartRouteState.numberOfBoxesController.text == '') {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Select number of Required Boxes',
+                );
+                return;
+              }
+
               Utils.showLoadingDialog(context);
               OrderFromSennit sennitOrder = OrderFromSennit();
+              sennitOrder.senderHouse =
+                  SendItCartRouteState.senderHouseController.text;
+              sennitOrder.receiverHouse =
+                  SendItCartRouteState.receiverHouseController.text;
               sennitOrder.boxSize = SendItCartRouteState.selectedBoxSize;
-              sennitOrder.dateOrdered = DateTime.now();
+              sennitOrder.date = DateTime.now();
               sennitOrder.userId = (Session.data['user'] as User).userId;
+              sennitOrder.status = 'Pending';
               sennitOrder.dropOffLatLng = LatLng(
                   SendItCartRoute._toAddress.coordinates.latitude,
                   SendItCartRoute._toAddress.coordinates.longitude);
@@ -401,7 +417,7 @@ class SendItCartRoute extends StatelessWidget {
               sennitOrder.pickupFromDoor = SendItCartRouteState.pickFromDoor;
               sennitOrder.numberOfBoxes =
                   int.parse(SendItCartRouteState.numberOfBoxesController.text);
-              sennitOrder.orderPrice = 200;
+              sennitOrder.price = 200;
               sennitOrder.sleevesRequired = SendItCartRouteState.sleeveNeeded;
               sennitOrder.serviceCharges = 0;
               sennitOrder.receiverEmail =
@@ -412,16 +428,31 @@ class SendItCartRoute extends StatelessWidget {
                   SendItCartRouteState.senderEmailController.text;
               sennitOrder.senderPhone =
                   SendItCartRouteState.senderPhoneNumberController.text;
-              await Firestore.instance
+
+              Firestore.instance
                   .collection("postedOrders")
-                  .add(sennitOrder.toMap());
+                  .add(sennitOrder.toMap())
+                  .then((_) async {
+                final orderId = _.documentID;
+                sennitOrder.orderId = orderId;
+                await Firestore.instance
+                    .collection("userOrders")
+                    .document(Session.data['user'].userId)
+                    .setData(
+                  {
+                    orderId: sennitOrder.toMap(),
+                  },
+                  merge: true,
+                );
+              });
+
               BotToast.showEnhancedWidget(toastBuilder: (a) {
                 return Center(
                   child: Container(
                     width: 300,
                     height: 230,
-                    padding:
-                        EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 10),
+                    padding: EdgeInsets.only(
+                        top: 10, left: 20, right: 20, bottom: 10),
                     child: Card(
                       elevation: 8,
                       shape: RoundedRectangleBorder(
@@ -497,6 +528,8 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
   static final receiverEmailController = TextEditingController();
   static final receiverPhoneNumberController = TextEditingController();
   static final numberOfBoxesController = TextEditingController();
+  static final receiverHouseController = TextEditingController();
+  static final senderHouseController = TextEditingController();
 
   SendItCartRouteState();
 
@@ -634,6 +667,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                     child: Column(
                       children: <Widget>[
                         TextField(
+                          controller: senderHouseController,
                           decoration: InputDecoration(
                               labelText: 'Apt/Suite/Floor/Building Name'),
                         ),
@@ -784,6 +818,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                     child: Column(
                       children: <Widget>[
                         TextField(
+                          controller: receiverHouseController,
                           decoration: InputDecoration(
                               labelText: 'Apt/Suite/Floor/Building Name'),
                         ),
@@ -952,69 +987,69 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
               ),
             ),
           ),
-          Card(
-            margin: EdgeInsets.only(
-              top: 10,
-            ), //, left: cardMargin, right: cardMargin),
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.only(top: cardPadding),
-              child: Column(
-                children: <Widget>[
-                  Align(alignment: Alignment.centerRight, child: Text('')),
-                  ListTile(
-                    leading: Icon(
-                      Icons.credit_card,
-                    ),
-                    title: Text(
-                      'Check Out',
-                    ),
-                    trailing: Icon(Icons.navigate_next),
-                    onTap: () {
-                      var pickupLatLng = LatLng(
-                        SendItCartRoute._fromAddress.coordinates.latitude,
-                        SendItCartRoute._fromAddress.coordinates.longitude,
-                      );
-                      var dropOffLatLng = LatLng(
-                        SendItCartRoute._toAddress.coordinates.latitude,
-                        SendItCartRoute._toAddress.coordinates.longitude,
-                      );
-                      var orderId =
-                          "order${Session.data['user'].userId}${DateTime.now().millisecondsSinceEpoch}";
-                      OrderFromSennit order = OrderFromSennit(
-                        orderId: orderId,
-                        boxSize: selectedBoxSize,
-                        dateOrdered: DateTime.now(),
-                        driverId: null,
-                        pickUpAddress: SendItCartRoute._fromAddress.addressLine,
-                        dropOffAddress: SendItCartRoute._toAddress.addressLine,
-                        pickUpLatLng: pickupLatLng,
-                        dropOffLatLng: dropOffLatLng,
-                      );
+          // Card(
+          //   margin: EdgeInsets.only(
+          //     top: 10,
+          //   ), //, left: cardMargin, right: cardMargin),
+          //   elevation: 5,
+          //   child: Container(
+          //     padding: EdgeInsets.only(top: cardPadding),
+          //     child: Column(
+          //       children: <Widget>[
+          //         Align(alignment: Alignment.centerRight, child: Text('')),
+          //         ListTile(
+          //           leading: Icon(
+          //             Icons.credit_card,
+          //           ),
+          //           title: Text(
+          //             'Check Out',
+          //           ),
+          //           trailing: Icon(Icons.navigate_next),
+          //           onTap: () {
+          //             var pickupLatLng = LatLng(
+          //               SendItCartRoute._fromAddress.coordinates.latitude,
+          //               SendItCartRoute._fromAddress.coordinates.longitude,
+          //             );
+          //             var dropOffLatLng = LatLng(
+          //               SendItCartRoute._toAddress.coordinates.latitude,
+          //               SendItCartRoute._toAddress.coordinates.longitude,
+          //             );
+          //             var orderId =
+          //                 "order${Session.data['user'].userId}${DateTime.now().millisecondsSinceEpoch}";
+          //             OrderFromSennit order = OrderFromSennit(
+          //               orderId: orderId,
+          //               boxSize: selectedBoxSize,
+          //               date: DateTime.now(),
+          //               driverId: null,
+          //               pickUpAddress: SendItCartRoute._fromAddress.addressLine,
+          //               dropOffAddress: SendItCartRoute._toAddress.addressLine,
+          //               pickUpLatLng: pickupLatLng,
+          //               dropOffLatLng: dropOffLatLng,
+          //             );
 
-                      dynamic distance =
-                          Utils.calculateDistance(pickupLatLng, dropOffLatLng)
-                              as dynamic;
+          //             dynamic distance =
+          //                 Utils.calculateDistance(pickupLatLng, dropOffLatLng)
+          //                     as dynamic;
 
-                      Firestore.instance
-                          .collection("orders")
-                          .firestore
-                          .collection("postedOrders")
-                          .document(orderId)
-                          .setData(order.toMap()
-                            ..update('distance', distance, ifAbsent: () {
-                              return distance;
-                            }))
-                          .then((_) {
-                        Utils.showSnackBarSuccess(
-                            context, 'Your Order has been Placed');
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+          //             Firestore.instance
+          //                 .collection("orders")
+          //                 .firestore
+          //                 .collection("postedOrders")
+          //                 .document(orderId)
+          //                 .setData(order.toMap()
+          //                   ..update('distance', distance, ifAbsent: () {
+          //                     return distance;
+          //                   }))
+          //                 .then((_) {
+          //               Utils.showSnackBarSuccess(
+          //                   context, 'Your Order has been Placed');
+          //             });
+          //           },
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

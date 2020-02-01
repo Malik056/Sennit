@@ -31,11 +31,14 @@ class VerifyEmailRoute extends StatelessWidget {
             child: Text('SignOut'),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                Navigator.pushReplacementNamed(context, MyApp.startPage);
-              }
+              Session.data..removeWhere((key, value) => true);
+              // if (Navigator.canPop(context)) {
+              //   Navigator.pop(context);
+              // } else {
+              //   Navigator.pushReplacementNamed(context, MyApp.startPage);
+              // }
+              Navigator.pushNamedAndRemoveUntil(
+                  context, MyApp.startPage, (route) => false);
             },
           ),
         ],

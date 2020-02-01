@@ -9,7 +9,6 @@ enum UserType {
   user,
 }
 
-
 class ForgotPasswordRoute extends StatelessWidget {
   static UserType userType;
   ForgotPasswordRoute({@required UserType userType}) {
@@ -18,13 +17,11 @@ class ForgotPasswordRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text('Password Reset'),
       ),
       body: _ForgotPasswordBody(),
-      
     );
   }
 }

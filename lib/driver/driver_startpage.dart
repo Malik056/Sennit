@@ -9,9 +9,8 @@ class DriverStartPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, MyApp.startPage);
-        return false;
+        // Navigator.popAndPushNamed(context, MyApp.startPage);
+        return true;
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -55,7 +54,8 @@ class DriverStartPage extends StatelessWidget {
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
-                    Navigator.pop(context);
+                    // Navigator.pop(context);
+
                     Navigator.pushNamed(context, MyApp.driverSignup);
                   },
                 ),
@@ -82,7 +82,6 @@ class DriverStartPage extends StatelessWidget {
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
-                    Navigator.pop(context);
                     Navigator.of(context).pushNamed(MyApp.driverSignin);
                   },
                 ),

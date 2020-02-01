@@ -1,14 +1,34 @@
 import 'package:bot_toast/bot_toast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
 import 'package:sennit/user/recieveIt.dart';
 
 class UserHomeRoute extends StatelessWidget {
   static bool _willExit = false;
+  final bool initilizeCart;
+
+  UserHomeRoute({Key key, this.initilizeCart = false}) : super(key: key) {
+    if (initilizeCart) {
+      FirebaseAuth.instance.currentUser().then((user) async {
+        String userId = user.uid;
+        final snapshot =
+            await Firestore.instance.collection('carts').document(userId).get();
+        final cart = UserCart.fromMap(snapshot.data);
+        Session.data.update('cart', (data) {
+          return cart;
+        }, ifAbsent: () {
+          return cart;
+        });
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -33,12 +53,17 @@ class UserHomeRoute extends StatelessWidget {
               child: Text('Signout'),
               onPressed: () async {
                 FirebaseAuth.instance.signOut();
+                Session.data..removeWhere((key, value) => true);
                 Navigator.pushReplacementNamed(context, MyApp.startPage);
               },
             ),
           ],
         ),
-        body: UserHomeBody(MediaQuery.of(context).size),
+        body: StreamBuilder<String>(
+            stream: null,
+            builder: (context, snapshot) {
+              return UserHomeBody(MediaQuery.of(context).size);
+            }),
         backgroundColor: Colors.white,
       ),
     );
@@ -195,10 +220,15 @@ class UserHomeState extends State<UserHomeBody> {
                   },
                   onTapUp: (tap) {
                     setState(() {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (context) {
-                        return ReceiveItRoute();
-                      }));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return ReceiveItRoute();
+                          },
+                          settings: RouteSettings(name: 'receiveIt'),
+                        ),
+                      );
                       currentSizeRecieveIt = defaultSize;
                     });
                   },

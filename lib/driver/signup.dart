@@ -15,9 +15,8 @@ class DriverSignUpRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, MyApp.driverStartPage);
-        return false;
+        // Navigator.popAndPushNamed(context, MyApp.driverStartPage);
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -470,10 +469,13 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                       }, ifAbsent: () {
                                         return driver;
                                       });
-                                      Navigator.pop(context);
-                                      Navigator.pop(context);
+                                      // Navigator.pop(context);
                                       firebaseUser.sendEmailVerification();
-                                      Navigator.of(context).push(
+                                      // Navigator.popUntil(
+                                      //     context, (route) => route.isFirst);
+
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
                                         MaterialPageRoute(
                                           builder: (context) {
                                             return VerifyEmailRoute(
@@ -481,7 +483,18 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                             );
                                           },
                                         ),
+                                        (route) => false,
                                       );
+
+                                      // Navigator.of(context).pushReplacement(
+                                      //   MaterialPageRoute(
+                                      //     builder: (context) {
+                                      //       return VerifyEmailRoute(
+                                      //         context: context,
+                                      //       );
+                                      //     },
+                                      //   ),
+                                      // );
                                       // Navigator.of(context)
                                       //     .pushNamed(MyApp.userHome);
                                     }).catchError((error) {

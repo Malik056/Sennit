@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -23,7 +24,7 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
   final _Body body;
   final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
-
+  final _solidController = SolidController();
   void onDonePressed() {
     body.showDeliveryCompleteDialogue();
   }
@@ -80,6 +81,9 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
     result.putIfAbsent('destination', () {
       return address;
     });
+    result.putIfAbsent('destinationLatLng', () {
+      return destination;
+    });
 
     result.putIfAbsent('itemDetails', () {
       return itemDetails;
@@ -121,10 +125,12 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
         floatingActionButton: FloatingActionButton(
           onPressed: () {
             body.centerCamera();
+            _solidController.hide();
           },
           child: Icon(Icons.my_location),
         ),
         bottomSheet: SolidBottomSheet(
+          controller: _solidController,
           // enableDrag: true,
           // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
           maxHeight: 550,
@@ -157,7 +163,7 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       SizedBox(
-                        height: 10,
+                        height: 40,
                       ),
                       Container(
                         color: Theme.of(context).primaryColor,
@@ -171,170 +177,242 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
                               fontWeight: FontWeight.bold),
                         ),
                       ),
+                      SizedBox(
+                        height: 10,
+                      ),
                       Container(
                         height: 200,
-                        child: ListView.builder(
-                          padding: EdgeInsets.only(right: 20),
-                          scrollDirection: Axis.horizontal,
-                          itemCount:
-                              (snapshot.data['itemDetails'] as List).length,
-                          itemBuilder: (context, index) {
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Card(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: InkWell(
-                                      onTap: () async {},
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: <Widget>[
-                                              Container(
-                                                color: Colors.black,
-                                                child: Image.network(
-                                                  '${snapshot.data['itemDetails'][index]['images'][0]}',
-                                                  height: 100,
-                                                  width: 100,
-                                                  fit: BoxFit.fitWidth,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 8,
-                                              ),
-                                              Container(
-                                                width: 150,
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: <Widget>[
-                                                    SizedBox(
-                                                      height: 4,
-                                                    ),
-                                                    Text(
-                                                      snapshot.data[
-                                                              'itemDetails']
-                                                          [index]['itemName'],
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .subhead,
-                                                    ),
-                                                    SizedBox(
-                                                      height: 4,
-                                                    ),
-                                                    Text(
-                                                        '${snapshot.data['itemDetails'][index]['storeName'] + ', ' + snapshot.data['itemDetails'][index]['address']}'),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerRight,
-                                                      child: Text(
-                                                        "Price: ${snapshot.data['itemDetails'][index]['price']}",
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        maxLines: 1,
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  ],
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 8,
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            width: 270.0,
-                                            color:
-                                                Theme.of(context).primaryColor,
-                                            child: Row(
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(8.0),
-                                                  child: Text(
-                                                    'Open in Map',
-                                                    style: TextStyle(
-                                                        color: Colors.white),
+                        child: Center(
+                          child: ListView.builder(
+                            padding: EdgeInsets.only(right: 20),
+                            scrollDirection: Axis.horizontal,
+                            dragStartBehavior: DragStartBehavior.start,
+                            physics: BouncingScrollPhysics(),
+                            itemCount:
+                                (snapshot.data['itemDetails'] as List).length,
+                            itemBuilder: (context, index) {
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Card(
+                                    elevation: 8,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: InkWell(
+                                        splashColor: Theme.of(context)
+                                            .primaryColor
+                                            .withAlpha(190),
+                                        onTap: () async {
+                                          body.animteToLatLng(
+                                            Utils.latLngFromString(
+                                              snapshot.data['itemDetails']
+                                                  [index]['latlng'],
+                                            ),
+                                          );
+                                          _solidController.hide();
+                                        },
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: <Widget>[
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: <Widget>[
+                                                Container(
+                                                  color: Colors.black,
+                                                  child: Image.network(
+                                                    '${snapshot.data['itemDetails'][index]['images'][0]}',
+                                                    height: 100,
+                                                    width: 100,
+                                                    fit: BoxFit.fitWidth,
                                                   ),
+                                                ),
+                                                SizedBox(
+                                                  width: 8,
+                                                ),
+                                                Container(
+                                                  width: 150,
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: <Widget>[
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                        snapshot.data[
+                                                                'itemDetails']
+                                                            [index]['itemName'],
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .subhead,
+                                                      ),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                          '${snapshot.data['itemDetails'][index]['storeName'] + ', ' + snapshot.data['itemDetails'][index]['address']}'),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerRight,
+                                                        child: Text(
+                                                          "Price: ${snapshot.data['itemDetails'][index]['price']}",
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          maxLines: 1,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: 8,
                                                 ),
                                               ],
                                             ),
-                                          )
-                                        ],
+                                            InkWell(
+                                              splashColor:
+                                  Theme.of(context).primaryColor.withAlpha(190),
+                                              onTap: () async {
+                                                print('Opened in maps');
+                                              },
+                                              child: Container(
+                                                width: 270.0,
+                                                color: Theme.of(context)
+                                                    .primaryColor,
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(8.0),
+                                                        child: Text(
+                                                          'Open in Map',
+                                                          style: TextStyle(
+                                                              color:
+                                                                  Colors.white),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                // RaisedButton(
-                                //   onPressed: () {},
-                                //   child: Text('Open in Map',
-                                //       style: TextStyle(color: Colors.white)),
-                                // ),
-                              ],
-                            );
-                          },
+                                  // RaisedButton(
+                                  //   onPressed: () {},
+                                  //   child: Text('Open in Map',
+                                  //       style: TextStyle(color: Colors.white)),
+                                  // ),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                       SizedBox(
                         height: 10,
                       ),
-                      Card(
-                        elevation: 4,
-                        child: InkWell(
-                          onTap: () {},
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Container(
-                                color: Theme.of(context).primaryColor,
-                                padding: EdgeInsets.all(6),
-                                child: Text(
-                                  ' D r o p o f f ',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 10,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: <Widget>[
-                                    Icon(Icons.location_on),
-                                    Expanded(
-                                      child: Text(
-                                        '${snapshot.data['destination'].addressLine}',
+                      Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: InkWell(
+                            splashColor:
+                                  Theme.of(context).primaryColor.withAlpha(190),
+                            onTap: () {
+                              LatLng latLng =
+                                  snapshot.data['destinationLatLng'];
+                              body.animteToLatLng(latLng);
+                              _solidController.hide();
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                Container(
+                                  decoration: ShapeDecoration(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(8.0),
+                                        topRight: Radius.circular(8.0),
                                       ),
                                     ),
-                                  ],
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                  padding: EdgeInsets.all(6),
+                                  child: Text(
+                                    ' D r o p o f f ',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(
-                                height: 10,
-                              ),
-                              RaisedButton(
-                                onPressed: () {},
-                                child: Text(
-                                  'Open in Map',
-                                  style: TextStyle(color: Colors.white),
+                                SizedBox(
+                                  height: 10,
                                 ),
-                              ),
-                            ],
+                                Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: <Widget>[
+                                      Icon(Icons.location_on),
+                                      Expanded(
+                                        child: Text(
+                                          '${(snapshot.data['destination'] as Address).addressLine}',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                                InkWell(
+                                  splashColor:
+                                  Theme.of(context).primaryColor.withAlpha(190),
+                                  onTap: () async {
+                                    print('Opened in maps');
+                                  },
+                                  child: Container(
+                                    decoration: ShapeDecoration(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(8.0),
+                                          bottomRight: Radius.circular(8.0),
+                                        ),
+                                      ),
+                                      color: Theme.of(context).primaryColor,
+                                    ),
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'Open in Map',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -481,6 +559,10 @@ class _Body extends StatefulWidget {
   void centerCamera() {
     state?.mapWidget?.centerCamera();
   }
+
+  void animteToLatLng(LatLng coordinates) {
+    state?.mapWidget?.animateTo(coordinates);
+  }
 }
 
 class _BodyState extends State<_Body> {
@@ -572,6 +654,14 @@ class _MapWidget extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return state;
+  }
+
+  void animateTo(LatLng position) {
+    state._controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: position, zoom: 15.0),
+      ),
+    );
   }
 
   void centerCamera() async {
@@ -817,7 +907,7 @@ class _PopupsState extends State<_Popups> {
               left: 0,
               right: 0,
               bottom: isOrderConfirmationVisible
-                  ? 0
+                  ? 60
                   : -1 * (RecieveItOrderNavigationRoute.popUpHeight),
             ),
           ],
@@ -918,7 +1008,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               ),
               onPressed: () {
                 widget.onConfirm();
-                Navigator.pop(context);
+                // Navigator.pop(context);
               },
             ),
           ],

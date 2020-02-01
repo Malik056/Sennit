@@ -187,6 +187,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
         },
         title: 'Sennit',
         theme: ThemeData(
+          backgroundColor: Colors.white,
           fontFamily: 'ArchivoNarrow',
           primaryColor: secondaryColor,
           accentColor: secondaryColor,
@@ -356,6 +357,20 @@ class Utils {
     Scaffold.of(context).showSnackBar(snackBar);
   }
 
+  static showSnackBarErrorUsingKey(
+      GlobalKey<ScaffoldState> key, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.red.shade500,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      duration: Duration(seconds: 4),
+    );
+
+    key.currentState.showSnackBar(snackBar);
+  }
+
   static showSnackBarWarning(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.yellow.shade700,
@@ -369,6 +384,20 @@ class Utils {
     Scaffold.of(context).showSnackBar(snackBar);
   }
 
+  static showSnackBarWarningUsingKey(
+      GlobalKey<ScaffoldState> key, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.yellow.shade700,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      duration: Duration(seconds: 4),
+    );
+
+    key.currentState.showSnackBar(snackBar);
+  }
+
   static showSnackBarSuccess(BuildContext context, String message) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.green.shade700,
@@ -380,6 +409,20 @@ class Utils {
     );
 
     Scaffold.of(context).showSnackBar(snackBar);
+  }
+
+  static showSnackBarSuccessUsingKey(
+      GlobalKey<ScaffoldState> key, String message) {
+    SnackBar snackBar = SnackBar(
+      backgroundColor: Colors.green.shade700,
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      duration: Duration(seconds: 4),
+    );
+
+    key.currentState.showSnackBar(snackBar);
   }
 
   static void showSuccessDialog(String message) {
@@ -458,6 +501,10 @@ class Utils {
     return MyApp._initialLocation;
   }
 
+  static Address getLastKnowAddress() {
+    return MyApp._address;
+  }
+
   static LatLng latLngFromString(String latlng) {
     List<String> splittedValues = latlng.split(',');
     double lattitude = double.parse(splittedValues[0]);
@@ -494,11 +541,11 @@ class Utils {
   static String boxSizeToString(BoxSize boxsSize) {
     switch (boxsSize) {
       case BoxSize.small:
-        return "SMALL";
+        return "Small";
       case BoxSize.medium:
-        return "MEDIUM";
+        return "Medium";
       default:
-        return "LARGE";
+        return "Large";
     }
   }
 
@@ -544,5 +591,15 @@ class Utils {
 
 class Session {
   static Map data = Map<String, dynamic>();
+  static getCart() {
+    if (data.containsKey('cart')) {
+      return data['cart'];
+    } else {
+      data.putIfAbsent('cart', () {
+        return UserCart(itemIds: [], quantities: []);
+      });
+      return data['cart'];
+    }
+  }
   // static get variables => _;
 }

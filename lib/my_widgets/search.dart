@@ -80,19 +80,20 @@ class SearchWidgetState extends State<SearchWidget> {
                     child: CircularProgressIndicator(),
                   ),
                   placeHolder: ListView(
+                    physics: BouncingScrollPhysics(),
                     children: List<Widget>.generate(items.length, (index) {
                       return GestureDetector(
                         child: MenuItem(
                           item: items[index],
                         ),
                         onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return ItemDetailsRoute(
-                            item: items[index],
-                          );
-                        }));
-                      },
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (context) {
+                            return ItemDetailsRoute(
+                              item: items[index],
+                            );
+                          }));
+                        },
                       );
                     }),
                   ),

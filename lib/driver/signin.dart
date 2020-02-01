@@ -13,9 +13,8 @@ class DriverSignInRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, MyApp.driverStartPage);
-        return false;
+        // Navigator.popAndPushNamed(context, MyApp.driverStartPage);
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -194,10 +193,12 @@ class _DriverSignInState extends State<DriverSignIn> {
                                   userData.data == null ||
                                   userData.data.length <= 0) {
                                 FirebaseAuth.instance.signOut();
+                                Session.data..removeWhere((key, value) => true);
                                 Navigator.pop(context);
                                 signInButtonEnabled = true;
                                 Utils.showSnackBarError(context,
                                     "This email address is not associated with a driver.");
+                                return;
                               }
                               Driver user = Driver.fromMap(userData.data);
                               Session.data.update('driver', (a) {
@@ -206,14 +207,30 @@ class _DriverSignInState extends State<DriverSignIn> {
                                 return user;
                               });
                               await DatabaseHelper.signInUser(userId);
-                              if (result.user.isEmailVerified) {
-                                Navigator.push(context,
-                                    MaterialPageRoute(builder: (c) {
-                                  return VerifyEmailRoute(context: context);
-                                }));
+                              if (!result.user.isEmailVerified) {
+                                // Navigator.popUntil(
+                                //     context, (route) => route.isFirst);
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (c) {
+                                    return VerifyEmailRoute(context: context);
+                                  }),
+                                  (route) => false,
+                                );
+                                // Navigator.pushReplacement(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (c) {
+                                //       return VerifyEmailRoute(context: context);
+                                //     },
+                                //   ),
+                                // );
                               } else {
-                                Navigator.of(context)
-                                    .popAndPushNamed(MyApp.driverHome);
+                                // Navigator.popUntil(
+                                //     context, (route) => route.isFirst);
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  MyApp.driverHome,
+                                  (route) => false,
+                                );
                               }
                             });
                           } else {

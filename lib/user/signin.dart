@@ -15,9 +15,9 @@ class UserSignInRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, MyApp.userStartPage);
-        return false;
+        // Navigator.pop(context);
+        // Navigator.popAndPushNamed(context, MyApp.userStartPage);
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -38,6 +38,10 @@ class UserSignIn extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return _UserSignInState();
+  }
+
+  static initializeCart(String userId) {
+    _UserSignInState.initializeCart(userId);
   }
 }
 
@@ -203,10 +207,14 @@ class _UserSignInState extends State<UserSignIn> {
                                   },
                                 );
                                 MyApp.futureCart = initializeCart(user.userId);
-                                Navigator.pop(context);
+                                // Navigator.pop(context);
                                 if (result.user.isEmailVerified) {
-                                  Navigator.of(context)
-                                      .popAndPushNamed(MyApp.userHome);
+                                  // Navigator.popUntil(
+                                  //     context, (route) => route.isFirst);
+                                  Navigator.of(context).pushNamedAndRemoveUntil(
+                                    MyApp.userHome,
+                                    (route) => false,
+                                  );
                                 } else {
                                   result.user.sendEmailVerification();
                                   Navigator.pushReplacement(
@@ -330,21 +338,22 @@ class _UserSignInState extends State<UserSignIn> {
     var value =
         await Firestore.instance.collection("carts").document(userId).get();
 
-    if (value == null || value.data == null) {
-      UserCart cart = UserCart();
+    if (value == null || value.data == null || value.data.isEmpty) {
+      UserCart cart = UserCart(itemIds: [], quantities: []);
       Session.data.update("cart", (value) {
         return cart;
       }, ifAbsent: () {
         return cart;
       });
-      return Firestore.instance
-          .collection('carts')
-          .document(userId)
-          .setData({});
+      return Firestore.instance.collection('carts').document(userId).setData(
+        {
+          'itemIds': <String>[],
+          'quantities': <double>[],
+        },
+      );
     }
     UserCart cart = UserCart.fromMap(value.data);
     List<StoreItem> storeItems = [];
-
     var allItems =
         (await Firestore.instance.collection("items").getDocuments()).documents;
 

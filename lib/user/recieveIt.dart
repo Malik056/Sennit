@@ -4,8 +4,10 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -13,8 +15,11 @@ import 'package:place_picker/place_picker.dart';
 import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/changePassword.dart';
+import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
+import 'package:sennit/user/past_orders.dart';
+import 'package:sennit/user/signin.dart';
 import '../main.dart';
 
 class ReceiveItRoute extends StatelessWidget {
@@ -22,6 +27,12 @@ class ReceiveItRoute extends StatelessWidget {
   static List<Widget> _tabs;
   ReceiveItRoute() {
     _tabs = [];
+
+    if (MyApp.futureCart == null) {
+      FirebaseAuth.instance.currentUser().then((user) {
+        UserSignIn.initializeCart(user.uid);
+      });
+    }
     drawerNameController.text = ((Session.data['user']) as User).fullname;
     _tabs
       ..add(
@@ -29,7 +40,9 @@ class ReceiveItRoute extends StatelessWidget {
           address: null,
         ),
       )
-      ..add(SearchWidget());
+      ..add(SearchWidget())
+      ..add(UserNotificationWidget())
+      ..add(PastOrdersRoute());
   }
   @override
   Widget build(BuildContext context) {
@@ -39,7 +52,7 @@ class ReceiveItRoute extends StatelessWidget {
         title: Text('Stores'),
         centerTitle: true,
       ),
-      drawer: Drawer(
+      endDrawer: Drawer(
         child: ListView(
           children: <Widget>[
             UserAccountsDrawerHeader(
@@ -83,8 +96,11 @@ class ReceiveItRoute extends StatelessWidget {
                 leading: Icon(Icons.exit_to_app),
                 title: Text('Logout'),
                 onTap: () {
+                  // Navigator.of(context).popUntil((route) => route.isFirst);
                   FirebaseAuth.instance.signOut();
-                  Navigator.of(context).popAndPushNamed(MyApp.startPage);
+                  Session.data..removeWhere((key, value) => true);
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                      MyApp.startPage, (route) => false);
                 },
               ),
             )
@@ -130,6 +146,7 @@ class _Body extends StatefulWidget {
 class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   static TabController _controller;
   _BodyState();
+
   dispose() {
     super.dispose();
     _controller.dispose();
@@ -139,7 +156,10 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     _controller = TabController(
-        length: ReceiveItRoute._tabs.length, vsync: this, initialIndex: 0);
+      length: ReceiveItRoute._tabs.length,
+      vsync: this,
+      initialIndex: 0,
+    );
     _controller.addListener(_handleTabChange);
 
     super.initState();
@@ -236,17 +256,6 @@ class _BottomNavigationState extends State<_StatefullBottomNavigation> {
           ),
         ),
         BottomNavigationBarItem(
-          title: Text('Past Order', style: TextStyle(color: Colors.black)),
-          icon: Icon(
-            Icons.bookmark,
-            color: Colors.black54,
-          ),
-          activeIcon: Icon(
-            Icons.bookmark,
-            color: Theme.of(context).accentColor,
-          ),
-        ),
-        BottomNavigationBarItem(
           title: Text('Notification', style: TextStyle(color: Colors.black)),
           icon: Stack(
             alignment: Alignment.center,
@@ -256,24 +265,36 @@ class _BottomNavigationState extends State<_StatefullBottomNavigation> {
                 color: Colors.black54,
               ),
               Positioned(
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.red,
-                      gradient: RadialGradient(radius: 0.5, colors: [
-                        Color.fromARGB(255, 0xff, 0x88, 0x88),
-                        Colors.redAccent
-                      ]),
-                    ),
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red,
+                    gradient: RadialGradient(radius: 0.5, colors: [
+                      Color.fromARGB(255, 0xff, 0x88, 0x88),
+                      Colors.redAccent
+                    ]),
                   ),
-                  top: 0,
-                  right: 1),
+                ),
+                top: 0,
+                right: 1,
+              ),
             ],
           ),
           activeIcon: Icon(
             Icons.notifications,
+            color: Theme.of(context).accentColor,
+          ),
+        ),
+        BottomNavigationBarItem(
+          title: Text('Past Order', style: TextStyle(color: Colors.black)),
+          icon: Icon(
+            Icons.bookmark,
+            color: Colors.black54,
+          ),
+          activeIcon: Icon(
+            Icons.bookmark,
             color: Theme.of(context).accentColor,
           ),
         ),
@@ -369,26 +390,47 @@ class StoresRouteState extends State<StoresRoute> {
   void getStroesWidget() async {
     await initialize();
     _body = SingleChildScrollView(
+      physics: BouncingScrollPhysics(),
       child: Column(
         children: List.generate(stores.length, (index) {
           return InkWell(
-            child: Container(
-              child: StoreItem(
-                store: stores[index],
-              ),
-              margin: EdgeInsets.only(bottom: 10),
-            ),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) {
-                    return StoreMainPage(
-                      store: stores[index],
-                    );
-                  },
+            child: Stack(
+              children: <Widget>[
+                Container(
+                  margin: EdgeInsets.only(bottom: 10),
+                  child: StoreItem(
+                    store: stores[index],
+                  ),
                 ),
-              );
-            },
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return StoreMainPage(
+                              store: stores[index],
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    child: Container(
+                        // color: Colors.pink,
+                        ),
+                    splashColor: Theme.of(context).primaryColor,
+                    highlightColor:
+                        Theme.of(context).primaryColor.withAlpha(150),
+                    // focusColor: Theme.of(context).primaryColor,
+                    // hoverColor: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
+            ),
           );
         }),
       ),
@@ -397,6 +439,7 @@ class StoresRouteState extends State<StoresRoute> {
       setState(() {});
     } on dynamic catch (_) {
       print(_);
+      stores.clear();
     }
   }
 }
@@ -569,7 +612,13 @@ class StoreMainPage extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         icon: Icon(Icons.shopping_cart),
         label: Text('Goto Cart'),
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ShoppingCartRoute(null),
+              ));
+        },
       ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrooled) {
@@ -621,8 +670,15 @@ class StoreMainPage extends StatelessWidget {
           ];
         },
         body: SingleChildScrollView(
-          child: StoreMenu(
-            store: store,
+          child: Column(
+            children: <Widget>[
+              StoreMenu(
+                store: store,
+              ),
+              SizedBox(
+                height: 20,
+              ),
+            ],
           ),
         ),
       ),
@@ -838,9 +894,13 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             Firestore.instance
                 .collection('carts')
                 .document(user.userId)
-                .setData({
-              ItemDetailsRoute._item.itemId: ItemDetailsRoute._item.itemId,
-            }, merge: true).catchError((error) {
+                .setData(
+              {
+                'itemIds': [ItemDetailsRoute._item.itemId],
+                'quantities': <double>[1.0],
+              },
+              merge: true,
+            ).catchError((error) {
               Utils.showSnackBarError(
                   context, "Network Problem Occured! Try Again");
               setState(() {
@@ -849,25 +909,35 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             }).then((_) {
               cart.itemIds.add(ItemDetailsRoute._item.itemId);
               cart.items.add(ItemDetailsRoute._item);
+              cart.quantities.add(1.0);
               setState(() {
                 addingToCart = false;
                 isInCart = true;
               });
             });
           } else {
+            var itemIds = List.from(cart.itemIds);
+            var quantities = List.from(cart.quantities);
+            int index = itemIds.indexOf(ItemDetailsRoute._item.itemId);
+            quantities.removeAt(index);
             Firestore.instance
                 .collection('carts')
                 .document(user.userId)
-                .updateData({
-              ItemDetailsRoute._item.itemId: FieldValue.delete(),
-            }).catchError((error) {
+                .updateData(
+              {
+                'itemIds': itemIds,
+                'quantities': quantities,
+              },
+            ).catchError((error) {
               Utils.showSnackBarError(context, error.toString());
               setState(() {
                 addingToCart = false;
               });
             }).then((_) {
-              cart.itemIds.remove(ItemDetailsRoute._item.itemId);
-              cart.items.remove(ItemDetailsRoute._item);
+              cart.itemIds.removeAt(index);
+              cart.items.removeAt(index);
+              cart.quantities.removeAt(index);
+
               setState(() {
                 addingToCart = false;
                 isInCart = false;
@@ -915,26 +985,84 @@ class ItemDetailsRoute extends StatelessWidget {
       //     ),
       //   ),
       // ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) {
-            return ReviewWidget(
-              user: Session.data['user'],
-              itemId: _item.itemId,
-            );
-          }));
-          (context as Element).markNeedsBuild();
-        },
-        backgroundColor: Theme.of(context).accentColor,
-        child: Icon(
-          Icons.rate_review,
-          color: Colors.white,
-        ),
-        tooltip: "Write a review",
+      floatingActionButton: FloatingMenu(
+        itemId: _item.itemId,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: itemDetailsBody,
+    );
+  }
+}
+
+class FloatingMenu extends StatefulWidget {
+  final itemId;
+
+  FloatingMenu({Key key, this.itemId}) : super(key: key);
+
+  @override
+  _FloatingMenuState createState() => _FloatingMenuState();
+}
+
+class _FloatingMenuState extends State<FloatingMenu> {
+  // bool opened = false;
+  @override
+  Widget build(BuildContext context) {
+    return SpeedDial(
+      // both default to 16
+      marginRight: 18,
+      marginBottom: 50,
+      animatedIcon: AnimatedIcons.menu_close,
+      animatedIconTheme: IconThemeData(size: 22.0),
+      // this is ignored if animatedIcon is non null
+      // child: Icon(Icons.add),
+      // If true user is forced to close dial manually
+      // by tapping main button and overlay is not rendered.
+      closeManually: false,
+      curve: Curves.bounceIn,
+      overlayColor: Colors.black,
+      overlayOpacity: 0.5,
+      onOpen: () => print('OPENING DIAL'),
+      onClose: () => print('DIAL CLOSED'),
+      tooltip: 'Speed Dial',
+      heroTag: 'speed-dial-hero-tag',
+      backgroundColor: Theme.of(context).primaryColor,
+      foregroundColor: Colors.white,
+      elevation: 8.0,
+      shape: CircleBorder(),
+      children: [
+        SpeedDialChild(
+          child: Icon(Icons.rate_review),
+          backgroundColor: Colors.white,
+          foregroundColor: Theme.of(context).primaryColor,
+          label: 'Review',
+          labelStyle: TextStyle(fontSize: 18.0),
+          onTap: () async {
+            await Navigator.of(context)
+                .push(MaterialPageRoute(builder: (context) {
+              return ReviewWidget(
+                user: Session.data['user'],
+                itemId: widget.itemId,
+              );
+            }));
+            // setState(() {
+            // });
+          },
+        ),
+        SpeedDialChild(
+          child: Icon(Icons.shopping_cart),
+          backgroundColor: Colors.white,
+          foregroundColor: Theme.of(context).primaryColor,
+          label: 'Goto Cart',
+          labelStyle: TextStyle(fontSize: 18.0),
+          onTap: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShoppingCartRoute(null),
+                ));
+          },
+        ),
+      ],
     );
   }
 }
@@ -1757,10 +1885,15 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
 class ShoppingCartRoute extends StatelessWidget {
   // static Address _fromAddress;
   static Address _toAddress;
-
+  final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
   ShoppingCartRoute(toAddress) {
     // _fromAddress = fromAddress;
-    _toAddress = toAddress;
+
+    if (toAddress != null) {
+      _toAddress = toAddress;
+    } else if (_toAddress == null) {
+      _toAddress = Utils.getLastKnowAddress();
+    }
   }
 
   final ShoppingCartRouteBody body = ShoppingCartRouteBody();
@@ -1768,23 +1901,26 @@ class ShoppingCartRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _key,
       appBar: AppBar(
         actions: <Widget>[
           FlatButton(
-            onPressed: () {
+            onPressed: () async {
               Utils.showLoadingDialog(context);
               UserCart cart = Session.data['cart'];
               if (ShoppingCartRouteState._emailController.text == "" ||
                   ShoppingCartRouteState._emailController.text == null) {
-                Utils.showSnackBarError(
-                    context, 'Please Provide your email Address');
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Provide your email Address',
+                );
                 Navigator.pop(context);
                 return;
               } else if (ShoppingCartRouteState._phoneNumberController.text ==
                       "" ||
                   ShoppingCartRouteState._phoneNumberController.text == null) {
-                Utils.showSnackBarError(
-                  context,
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
                   'Please Provide your phone Number',
                 );
                 Navigator.pop(context);
@@ -1824,23 +1960,22 @@ class ShoppingCartRoute extends StatelessWidget {
 
               User user = Session.data['user'];
               model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
-              List<TextEditingController> controllers =
-                  ShoppingCartRouteState._controllers;
               List<model.StoreItem> items = cart.items;
-
               double price = 0.0;
               List<LatLng> pickups = [];
               order.pickups = pickups;
               List<String> stores = [];
+              List<double> quantities = cart.quantities;
               order.stores = stores;
               int i = 0;
               for (model.StoreItem item in items) {
-                price += item.price * int.parse(controllers[i++].text);
+                price += item.price * quantities[i++];
                 pickups.add(item.latlng);
                 stores.add(item.storeName);
               }
               List<String> itemIds = cart.itemIds;
-              order.orderDate = DateTime.now();
+              order.quantities = quantities;
+              order.date = DateTime.now();
               order.userId = user.userId;
               order.email = ShoppingCartRouteState._emailController.text;
               order.phoneNumber =
@@ -1848,6 +1983,7 @@ class ShoppingCartRoute extends StatelessWidget {
               order.house = ShoppingCartRouteState._houseController.text;
               order.items = itemIds;
               order.price = price;
+              order.status = 'Pending';
               order.destination = LatLng(
                 ShoppingCartRoute._toAddress.coordinates.latitude,
                 ShoppingCartRoute._toAddress.coordinates.longitude,
@@ -1856,46 +1992,45 @@ class ShoppingCartRoute extends StatelessWidget {
                   .collection('postedOrders')
                   .add(order.toMap())
                   .catchError((error) {})
-                  .then((_) {
-                Firestore.instance
-                    .collection("notifications")
-                    .document(user.userId)
-                    .setData({
-                  "${DateTime.now().millisecondsSinceEpoch}": {
-                    "price": order.price,
-                    "destination": Utils.latLngToString(order.destination),
-                    "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
-                    "items": items.map((x) => x.itemName),
-                    "sleevesRequried": null,
-                  }
-                });
-                Firestore.instance
+                  .then((data) async {
+                // Firestore.instance
+                //     .collection("notifications")
+                //     .document(user.userId)
+                //     .setData({
+                //   "${DateTime.now().millisecondsSinceEpoch}": {
+                //     "price": order.price,
+                //     "destination": Utils.latLngToString(order.destination),
+                //     "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
+                //     "items": items.map((x) => x.itemName),
+                //     "sleevesRequried": null,
+                //   }
+                // });
+                order.orderId = data.documentID;
+                await Firestore.instance
                     .collection("userOrders")
                     .document(user.userId)
-                    .setData({
-                  _.documentID: {
-                    "price": order.price,
-                    "destination": Utils.latLngToString(order.destination),
-                    "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
-                    "items": items.map((x) => x.itemName),
-                    "status": "posted",
-                  }
-                });
+                    .setData(
+                  {
+                    data.documentID: order.toMap(),
+                  },
+                  merge: true,
+                );
 
-                Firestore.instance
+                await Firestore.instance
                     .collection('carts')
                     .document(user.userId)
                     .delete()
                     .catchError((error) {})
                     .then(
-                  (_) {
-                    Firestore.instance
+                  (_) async {
+                    await Firestore.instance
                         .collection('carts')
                         .document(user.userId)
                         .setData({});
                     // Utils.showSnackBarSuccess(context, 'Order Submitted');
                     Navigator.pop(context);
-                    Session.data['cart'] = UserCart();
+                    Session.data['cart'] =
+                        UserCart(itemIds: [], quantities: []);
                     Utils.showSuccessDialog('Your Order is on its way!');
                     Future.delayed(Duration(seconds: 2)).then((_) {
                       BotToast.cleanAll();
@@ -1965,19 +2100,22 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   @override
   void initState() {
     super.initState();
-    UserCart cart = Session.data['cart'];
+    UserCart cart = Session.getCart();
+    int index = 0;
     for (var _ in cart.itemIds) {
       final TextEditingController controller = TextEditingController();
       _controllers.add(controller);
+      controller.text = cart.quantities[index++].toInt().toString();
     }
   }
 
   @override
   void dispose() {
     super.dispose();
-    _emailController.dispose();
-    _houseController.dispose();
-    _phoneNumberController.dispose();
+    // _emailController.dispose();
+    // _houseController.dispose();
+    // _phoneNumberController.dispose();
+    // _controllers.forEach((c) => c.dispose());
     _controllers = null;
   }
 
@@ -2214,13 +2352,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   List<model.StoreItem> items;
   List<String> itemIds;
+  List<double> quantities;
 
   var count = [0, 0, 0, 0];
   // Widget cartItems;
 
   Widget _getCartItems() {
+    double totalPrice = 0;
     UserCart cart = Session.data['cart'];
     itemIds = cart.itemIds;
+    quantities = cart.quantities;
     items = cart.items;
     if (items.length == 0) {
       return Card(
@@ -2261,8 +2402,35 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List<Widget>.generate(items.length, (index) {
                 model.StoreItem item = items[index];
-                return CartItem(item, _controllers[index]);
+                totalPrice += item.price * quantities[index];
+                return CartItem(
+                  onQuantityChange: (value) {
+                    if (value != null) {
+                      totalPrice += item.price * value;
+                      setState(() {});
+                    }
+                  },
+                  item: item,
+                  controller: _controllers[index],
+                  itemIndex: index,
+                );
               }),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Container(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Total: R${totalPrice.toStringAsFixed(1)}  ',
+                style: Theme.of(context).textTheme.title.copyWith(
+                      inherit: true,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            SizedBox(
+              height: 100,
             ),
           ],
         ),
@@ -2274,19 +2442,51 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 class CartItem extends StatefulWidget {
   final controller;
   final model.StoreItem item;
-  CartItem(this.item, this.controller);
+  final int itemIndex;
+  final Function(int) onQuantityChange;
+  CartItem(
+      {this.item,
+      this.controller,
+      this.itemIndex,
+      @required this.onQuantityChange});
 
   @override
   State<StatefulWidget> createState() {
-    return CartItemState(item: item, controller: controller);
+    return CartItemState(
+      item: item,
+      controller: controller,
+      itemIndex: itemIndex,
+      onQuantityChange: onQuantityChange,
+    );
   }
 }
 
 class CartItemState extends State<CartItem> {
   model.StoreItem item;
   TextEditingController controller;
-  CartItemState({@required this.item, this.controller}) {
-    controller.text = '1';
+  Function(int) onQuantityChange;
+  CartItemState(
+      {@required this.item,
+      this.controller,
+      @required itemIndex,
+      @required this.onQuantityChange}) {
+    controller.addListener(() {
+      if (controller.text == null || controller.text.isEmpty) {
+        return;
+      }
+      int value = int.parse(controller.text);
+      UserCart cart = Session.data['cart'];
+      if (value <= 0) {
+        cart.quantities[widget.itemIndex] = 1;
+        onQuantityChange(1);
+      } else if (value > 99) {
+        cart.quantities[widget.itemIndex] = 99;
+        onQuantityChange(99);
+      } else {
+        cart.quantities[widget.itemIndex] = value.toDouble();
+        onQuantityChange(value);
+      }
+    });
   }
 
   @override
@@ -2362,12 +2562,15 @@ class CartItemState extends State<CartItem> {
                                 });
                               },
                             ),
-                            Expanded(
-                              flex: 2,
+                            Container(
+                              width: 30,
                               child: TextField(
                                 controller: controller,
                                 textAlign: TextAlign.center,
                                 keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                ),
                                 inputFormatters: <TextInputFormatter>[
                                   LengthLimitingTextInputFormatter(2),
                                   WhitelistingTextInputFormatter.digitsOnly,
@@ -2405,7 +2608,7 @@ class CartItemState extends State<CartItem> {
                   ),
                   Align(
                     child: Text(
-                      'Price: R${item.price.round()}',
+                      'Price: R${item.price.toStringAsFixed(1)} per Item',
                       style: Theme.of(context).textTheme.subhead,
                     ),
                     alignment: Alignment.bottomRight,

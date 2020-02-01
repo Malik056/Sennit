@@ -15,9 +15,9 @@ class UserSignUpRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pop(context);
-        Navigator.pushNamed(context, MyApp.userStartPage);
-        return false;
+        // Navigator.pop(context);
+        // Navigator.popAndPushNamed(context, MyApp.userStartPage);
+        return true;
       },
       child: Scaffold(
         appBar: AppBar(
@@ -350,6 +350,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                           }
                           return;
                         }
+
                         if (result != null) {
                           setState(() {
                             address = result.formattedAddress;
@@ -433,6 +434,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                     context,
                                     error.message,
                                   );
+
                                   pressed = false;
                                   Navigator.pop(context);
                                 }).then((value) {
@@ -470,10 +472,10 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       }, ifAbsent: () {
                                         return user;
                                       });
-                                      Navigator.pop(context);
-                                      Navigator.pop(context);
+                                      // Navigator.pop(context);
                                       firebaseUser.sendEmailVerification();
-                                      Navigator.of(context).push(
+                                      // Navigator.popUntil(context, (route) => route.isFirst);
+                                      Navigator.of(context).pushAndRemoveUntil(
                                         MaterialPageRoute(
                                           builder: (context) {
                                             return VerifyEmailRoute(
@@ -481,7 +483,17 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                             );
                                           },
                                         ),
+                                        (route) => false,
                                       );
+                                      // Navigator.of(context).pushReplacement(
+                                      //   MaterialPageRoute(
+                                      //     builder: (context) {
+                                      //       return VerifyEmailRoute(
+                                      //         context: context,
+                                      //       );
+                                      //     },
+                                      //   ),
+                                      // );
                                       // Navigator.of(context)
                                       //     .pushNamed(MyApp.userHome);
                                     }).catchError((error) {

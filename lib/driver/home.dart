@@ -1,5 +1,6 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
@@ -72,6 +73,17 @@ class _HomeScreenState extends State<HomeScreenDriver>
         child: Scaffold(
           appBar: AppBar(
             centerTitle: true,
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Signout'),
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  Session.data..removeWhere((key, value) => true);
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, MyApp.startPage, (route) => false);
+                },
+              ),
+            ],
             title: Text(
               controller.index == 0
                   ? 'Notifications'
