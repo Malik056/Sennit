@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/driver/active_order.dart';
+import 'package:sennit/driver/order_history.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/receive_it_order_navigation.dart';
@@ -151,28 +152,12 @@ class _HomeScreenState extends State<HomeScreenDriver>
             controller: controller,
             children: <Widget>[
               _NotificationPage(),
-              _HistoryPage(),
+              OrderHistory(),
               _ProfilePage(),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _HistoryPage extends StatefulWidget {
-  @override
-  State<StatefulWidget> createState() {
-    return _HistoryPageState();
-  }
-}
-
-class _HistoryPageState extends State<_HistoryPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text("I'm History Page"),
     );
   }
 }
@@ -235,6 +220,7 @@ class _NotificationPageState extends State<_NotificationPage> {
         var documents = snapshot.data.documents;
 
         return SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
           child: Column(
               children: List.generate(documents.length, (index) {
             documents[index].data.update("orderId", (value) {
@@ -883,26 +869,33 @@ class OrderItemRoute extends StatelessWidget {
 class _ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    Driver driver = Session.data['driver'];
+
     return SingleChildScrollView(
+      physics: BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           SizedBox(
             height: 10,
           ),
-          CircleAvatar(
-            radius: 80,
-            backgroundColor: Theme.of(context).primaryColor,
-            backgroundImage: NetworkImage(
-              'https://picsum.photos/1200',
-              // fit: BoxFit.fitWidth,
+          Container(
+            decoration: ShapeDecoration(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(80),
+              ),
+            ),
+            child: Icon(
+              Icons.account_circle,
+              color: Theme.of(context).primaryColor,
+              size: 160,
             ),
           ),
           SizedBox(
             height: 10,
           ),
           Text(
-            'My Name',
+            '${driver.fullname}',
             style: Theme.of(context).textTheme.subhead,
           ),
           SizedBox(
@@ -919,7 +912,7 @@ class _ProfilePage extends StatelessWidget {
                 ),
                 message: "rating",
               ),
-              Text(' 4.5'),
+              Text(' ${driver.rating == 0 ? 'N/A' : driver.rating}'),
               SizedBox(
                 width: 10,
               ),
@@ -938,7 +931,7 @@ class _ProfilePage extends StatelessWidget {
                 ),
                 message: "rated by users",
               ),
-              Text(' 200'),
+              Text(' ${driver.totalReviews}'),
             ],
           ),
           SizedBox(
@@ -953,21 +946,52 @@ class _ProfilePage extends StatelessWidget {
           SizedBox(
             height: 20,
           ),
-          Column(
-            children: getReviews(),
-          ),
+          FutureBuilder<DocumentSnapshot>(
+              future: Firestore.instance
+                  .collection("driverReviews")
+                  .document(driver.driverId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+                return Column(
+                  children: snapshot.data.exists
+                      ? getReviews(snapshot.data.data)
+                      : [
+                          Center(
+                            child: Text(
+                              'No Reviews Yet',
+                            ),
+                          ),
+                        ],
+                );
+              }),
         ],
       ),
     );
   }
 
-  List<Widget> getReviews() {
+  List<Widget> getReviews(Map<String, dynamic> data) {
     List<Widget> reviews = List();
-    for (var i = 0; i < 10; i++) {
+    List<String> keys = data.keys;
+    if (keys.length <= 0) {
+      return <Widget>[
+        Center(
+          child: Text('No Reviews Yet'),
+        ),
+      ];
+    }
+    for (var i = 0; i < data.length; i++) {
+      ReviewForDriver reviewForDriver = ReviewForDriver.fromMap(
+        data[keys[i]],
+      );
       Widget review = ListTile(
-        title: Text('Some User $i'),
+        title: Text('${reviewForDriver.reviewedBy}'),
         subtitle: Text(
-          'This is some Long lenght review. I want it to be long so I can see how it looks. Dont read thi completely as I am just filling up space. blah blah blah blah.........',
+          '${reviewForDriver.reviewDescription}',
         ),
         trailing: Column(
           children: <Widget>[
@@ -978,40 +1002,7 @@ class _ProfilePage extends StatelessWidget {
             SizedBox(
               height: 2,
             ),
-            Text('4.2'),
-          ],
-        ),
-      );
-      Widget review1 = ListTile(
-        title: Text('Some User $i'),
-        subtitle: Text('This is a very short lenght review.'),
-        trailing: Column(
-          children: <Widget>[
-            Icon(
-              Icons.star,
-              color: Colors.yellow,
-            ),
-            SizedBox(
-              height: 2,
-            ),
-            Text('4.2'),
-          ],
-        ),
-      );
-      Widget review2 = ListTile(
-        title: Text('Some User $i'),
-        subtitle: Text(
-            'This is some medium lenght review. I want it to check how app looks.'),
-        trailing: Column(
-          children: <Widget>[
-            Icon(
-              Icons.star,
-              color: Colors.yellow,
-            ),
-            SizedBox(
-              height: 2,
-            ),
-            Text('4.2'),
+            Text('${reviewForDriver.rating.toStringAsFixed(1)}'),
           ],
         ),
       );
@@ -1021,14 +1012,7 @@ class _ProfilePage extends StatelessWidget {
           SizedBox(
             height: 10,
           ),
-        )
-        ..add(review2)
-        ..add(
-          SizedBox(
-            height: 10,
-          ),
-        )
-        ..add(review1);
+        );
     }
     return reviews;
   }

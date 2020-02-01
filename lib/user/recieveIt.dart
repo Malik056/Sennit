@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:bot_toast/bot_toast.dart';
-import 'package:carousel_slider/carousel_slider.dart';
+import 'package:carousel_pro/carousel_pro.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -394,42 +394,22 @@ class StoresRouteState extends State<StoresRoute> {
       child: Column(
         children: List.generate(stores.length, (index) {
           return InkWell(
-            child: Stack(
-              children: <Widget>[
-                Container(
-                  margin: EdgeInsets.only(bottom: 10),
-                  child: StoreItem(
-                    store: stores[index],
-                  ),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) {
+                    return StoreMainPage(
+                      store: stores[index],
+                    );
+                  },
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return StoreMainPage(
-                              store: stores[index],
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    child: Container(
-                        // color: Colors.pink,
-                        ),
-                    splashColor: Theme.of(context).primaryColor,
-                    highlightColor:
-                        Theme.of(context).primaryColor.withAlpha(150),
-                    // focusColor: Theme.of(context).primaryColor,
-                    // hoverColor: Theme.of(context).primaryColor,
-                  ),
-                ),
-              ],
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: 10),
+              child: StoreItem(
+                store: stores[index],
+              ),
             ),
           );
         }),
@@ -1135,68 +1115,78 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
               pinned: true,
               expandedHeight: 250,
               flexibleSpace: FlexibleSpaceBar(
-                background: GestureDetector(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CarouselSlider(
-                        autoPlay: autoplay,
-                        initialPage: 0,
-                        scrollDirection: Axis.horizontal,
-                        // viewportFraction: 1.0,
-                        enlargeCenterPage: true,
-                        height: 250.0,
-                        items:
-                            List.generate(widget.item.images.length, (index) {
-                          return Container(
-                            width: MediaQuery.of(context).size.width,
-                            margin: EdgeInsets.symmetric(horizontal: 5.0),
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: NetworkImage(widget.item.images[index]),
-                                fit: BoxFit.fitHeight,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      GestureDetector(
-                        child: Container(
-                          decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                  stops: [0, 0.6, 1],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.white10,
-                                    Colors.white,
-                                  ])),
+                background: Carousel(
+                  autoplay: true,
+                  images: List.generate(
+                    widget.item.images.length,
+                    (index) {
+                      return Container(
+                        width: MediaQuery.of(context).size.width,
+                        margin: EdgeInsets.symmetric(horizontal: 5.0),
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: NetworkImage(widget.item.images[index]),
+                            fit: BoxFit.fitHeight,
+                          ),
                         ),
-                        onTapDown: (details) {
-                          autoplay = false;
-                          setState(() {});
-                          print('overlay Clicked');
-                        },
-                        onTapUp: (details) {
-                          autoplay = true;
-                          // setState(() {});
-                        },
-                        onTapCancel: () {
-                          autoplay = true;
-                          // setState(() {});
-                        },
-                        onHorizontalDragStart: (details) {},
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                  onTap: () {
-                    print('tap detected');
-                  },
-                  onVerticalDragStart: (aa) {
-                    print('Vertical Drag started');
-                  },
+                  dotSize: 4.0,
+                  dotSpacing: 15.0,
+                  dotColor: Theme.of(context).primaryColor,
+                  indicatorBgPadding: 5.0,
+                  dotBgColor: Colors.white54,
+                  borderRadius: true,
+                  dotIncreasedColor: Theme.of(context).primaryColor,
+                  // moveIndicatorFromBottom: 180.0,
+                  // noRadiusForIndicator: false,
+                  // overlayShadow: true,
+                  // overlayShadowColors: Colors.pink,
+                  // overlayShadowSize: 1,
                 ),
+                //Stack(
+                //   fit: StackFit.expand,
+                //   children: [
+                //     CarouselSlider(
+                //       autoPlay: autoplay,
+                //       initialPage: 0,
+                //       scrollDirection: Axis.horizontal,
+                //       // viewportFraction: 1.0,
+                //       enlargeCenterPage: true,
+                //       height: 250.0,
+                //       scrollPhysics: BouncingScrollPhysics(),
+                //       enableInfiniteScroll: true,
+                //       pauseAutoPlayOnTouch: Duration(seconds: 4),
+                //       autoPlayInterval: Duration(seconds: 2),
+                //       items:
+                //           List.generate(widget.item.images.length, (index) {
+                //         return Container(
+                //           width: MediaQuery.of(context).size.width,
+                //           margin: EdgeInsets.symmetric(horizontal: 5.0),
+                //           decoration: BoxDecoration(
+                //             image: DecorationImage(
+                //               image: NetworkImage(widget.item.images[index]),
+                //               fit: BoxFit.fitHeight,
+                //             ),
+                //           ),
+                //         );
+                //       }),
+                //     ),
+                //     Container(
+                //       decoration: BoxDecoration(
+                //           gradient: LinearGradient(
+                //               stops: [0, 0.6, 1],
+                //               begin: Alignment.topCenter,
+                //               end: Alignment.bottomCenter,
+                //               colors: [
+                //                 Colors.transparent,
+                //                 Colors.white10,
+                //                 Colors.white,
+                //               ])),
+                //     ),
+                //   ],
+                // ),
                 title: Text(
                   widget.item.itemName,
                   style: Theme.of(context).textTheme.title,

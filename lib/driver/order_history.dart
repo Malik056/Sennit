@@ -4,13 +4,13 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/orderdetails.dart';
 
-class PastOrdersRoute extends StatelessWidget {
+class OrderHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot>(
       future: Firestore.instance
-          .collection("userOrders")
-          .document((Session.data['user'] as User).userId)
+          .collection("driverOrders")
+          .document((Session.data['driver'] as Driver).driverId)
           .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
