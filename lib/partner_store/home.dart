@@ -12,6 +12,10 @@ class OrderedItemsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future<DocumentSnapshot> futureStoreData = Firestore.instance
+        .collection('stores')
+        .document(Session.data['partnerStore']['storeId'])
+        .get();
     return WillPopScope(
       onWillPop: () async {
         if (!buttonPressed) {
@@ -28,7 +32,29 @@ class OrderedItemsList extends StatelessWidget {
         }
       },
       child: Scaffold(
-        drawer: Drawer(),
+        drawer: Drawer(
+          child: Column(
+            children: <Widget>[
+              UserAccountsDrawerHeader(
+                accountName: FutureBuilder<DocumentSnapshot>(
+                  future: futureStoreData,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      );
+                    } else {
+                      return Text(snapshot.data.data['storeName']); 
+                    }
+                  },
+                ),
+                accountEmail: null,
+              )
+            ],
+          ),
+        ),
         key: _key,
         appBar: AppBar(
           title: Text('Orders'),
