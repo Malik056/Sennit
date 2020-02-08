@@ -206,7 +206,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                               }, ifAbsent: () {
                                 return user;
                               });
-                              await DatabaseHelper.signInUser(userId);
+                              // await DatabaseHelper.signInUser(userId);
                               if (!result.user.isEmailVerified) {
                                 // Navigator.popUntil(
                                 //     context, (route) => route.isFirst);

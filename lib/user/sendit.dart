@@ -1,10 +1,14 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart';
 import 'package:place_picker/place_picker.dart';
+import 'package:random_string/random_string.dart';
+import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 
@@ -151,50 +155,68 @@ class AddressAddingState extends State<AddressAddingBody> {
               padding: EdgeInsets.all(cardPadding),
               child: Column(
                 children: <Widget>[
+                  // ListTile(
+                  //   leading: Icon(
+                  //     Icons.location_on,
+                  //     color: Theme.of(context).accentColor,
+                  //   ),
+                  //   title: Text('Pick A location'),
+                  //   onTap: () async {
+                  //     LocationResult result =
+                  //         await Utils.showPlacePicker(context);
+                  //     if (result != null) {
+                  //       Coordinates coordinates = Coordinates(
+                  //           result.latLng.latitude, result.latLng.longitude);
+                  //       if (widget.sourcePage ==
+                  //           SourcePage.addressSelectionDestination) {
+                  //         AddressAddingRoute._toAddress = (await Geocoder.local
+                  //             .findAddressesFromCoordinates(coordinates))[0];
+                  //       } else {
+                  //         AddressAddingRoute._fromAddress = (await Geocoder
+                  //             .local
+                  //             .findAddressesFromCoordinates(coordinates))[0];
+                  //       }
+                  //       setState(() {});
+                  //     }
+                  //   },
+                  // ),
                   ListTile(
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text('Pick A location'),
-                    onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
-                      if (result != null) {
-                        Coordinates coordinates = Coordinates(
-                            result.latLng.latitude, result.latLng.longitude);
-                        if (widget.sourcePage ==
-                            SourcePage.addressSelectionDestination) {
-                          AddressAddingRoute._toAddress = (await Geocoder.local
-                              .findAddressesFromCoordinates(coordinates))[0];
-                        } else {
-                          AddressAddingRoute._fromAddress = (await Geocoder
-                              .local
-                              .findAddressesFromCoordinates(coordinates))[0];
+                      leading: Icon(
+                        Icons.my_location,
+                        color: Theme.of(context).accentColor,
+                      ),
+                      title: Text('Selected Location',
+                          style:
+                              TextStyle(color: Theme.of(context).accentColor)),
+                      subtitle: Text(
+                        widget.sourcePage ==
+                                SourcePage.addressSelectionDestination
+                            ? (AddressAddingRoute._toAddress != null
+                                ? AddressAddingRoute._toAddress.addressLine
+                                : 'Please select a Destination')
+                            : AddressAddingRoute._fromAddress != null
+                                ? AddressAddingRoute._fromAddress.addressLine
+                                : 'Select an Address',
+                      ),
+                      onTap: () async {
+                        LocationResult result =
+                            await Utils.showPlacePicker(context);
+                        if (result != null) {
+                          Coordinates coordinates = Coordinates(
+                              result.latLng.latitude, result.latLng.longitude);
+                          if (widget.sourcePage ==
+                              SourcePage.addressSelectionDestination) {
+                            AddressAddingRoute._toAddress = (await Geocoder
+                                .local
+                                .findAddressesFromCoordinates(coordinates))[0];
+                          } else {
+                            AddressAddingRoute._fromAddress = (await Geocoder
+                                .local
+                                .findAddressesFromCoordinates(coordinates))[0];
+                          }
+                          setState(() {});
                         }
-                        setState(() {});
-                      }
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.my_location,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text('Selected Location',
-                        style: TextStyle(color: Theme.of(context).accentColor)),
-                    subtitle: Text(
-                      widget.sourcePage ==
-                              SourcePage.addressSelectionDestination
-                          ? (AddressAddingRoute._toAddress != null
-                              ? AddressAddingRoute._toAddress.addressLine
-                              : 'Please select a Destination')
-                          : AddressAddingRoute._fromAddress != null
-                              ? AddressAddingRoute._fromAddress.addressLine
-                              : 'Select an Address',
-                    ),
-                    onTap: () {},
-                  ),
+                      }),
                 ],
               ),
             ),
@@ -384,13 +406,67 @@ class SendItCartRoute extends StatelessWidget {
         actions: <Widget>[
           FlatButton(
             onPressed: () async {
-              if (SendItCartRouteState.numberOfBoxesController.text == null ||
-                  SendItCartRouteState.numberOfBoxesController.text == '') {
+              if (double.parse(
+                          SendItCartRouteState.numberOfBoxesController.text) ==
+                      0 &&
+                  double.parse(SendItCartRouteState
+                          .numberOfSleevesNeededController.text) <=
+                      0) {
                 Utils.showSnackBarErrorUsingKey(
                   _key,
-                  'Please Select number of Required Boxes',
+                  'Please Select at least 1 Sleeve or Box',
                 );
                 return;
+              } else if (SendItCartRouteState
+                          .receiverPhoneNumberController.text.length !=
+                      10 &&
+                  !SendItCartRouteState.receiverPhoneNumberController.text
+                      .startsWith('0')) {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Enter Valid Receiver Phone Number',
+                );
+                return;
+              } else if (SendItCartRouteState
+                          .senderPhoneNumberController.text.length !=
+                      10 &&
+                  !SendItCartRouteState.senderPhoneNumberController.text
+                      .startsWith('0')) {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Enter Valid Sender Phone Number',
+                );
+                return;
+              } else if (!Utils.isEmailCorrect(
+                  SendItCartRouteState.senderEmailController.text)) {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Enter Valid Sender Email Address',
+                );
+                return;
+              } else if (!Utils.isEmailCorrect(
+                  SendItCartRouteState.receiverEmailController.text)) {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  'Please Enter Valid Receiver Email Address',
+                );
+                return;
+              }
+
+              // RaveStatus status = await performTransaction(
+              //   context,
+              //   SendItCartRouteState.totalCharges,
+              // );
+              final status = RaveStatus.success;
+
+              if (status == RaveStatus.cancelled) {
+                Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
+                return;
+              } else if (status == RaveStatus.error) {
+                Utils.showSnackBarErrorUsingKey(_key, 'An Error Occurred');
+                return;
+              } else {
+                Utils.showSnackBarErrorUsingKey(_key, 'Payment Succesfull');
               }
 
               Utils.showLoadingDialog(context);
@@ -417,8 +493,10 @@ class SendItCartRoute extends StatelessWidget {
               sennitOrder.pickupFromDoor = SendItCartRouteState.pickFromDoor;
               sennitOrder.numberOfBoxes =
                   int.parse(SendItCartRouteState.numberOfBoxesController.text);
-              sennitOrder.price = 200;
-              sennitOrder.sleevesRequired = SendItCartRouteState.sleeveNeeded;
+              sennitOrder.price = SendItCartRouteState.totalCharges;
+              sennitOrder.numberOfSleevesNeeded = int.parse(
+                SendItCartRouteState.numberOfSleevesNeededController.text,
+              );
               sennitOrder.serviceCharges = 0;
               sennitOrder.receiverEmail =
                   SendItCartRouteState.receiverEmailController.text;
@@ -429,59 +507,94 @@ class SendItCartRoute extends StatelessWidget {
               sennitOrder.senderPhone =
                   SendItCartRouteState.senderPhoneNumberController.text;
 
-              Firestore.instance
-                  .collection("postedOrders")
-                  .add(sennitOrder.toMap())
-                  .then((_) async {
-                final orderId = _.documentID;
-                sennitOrder.orderId = orderId;
-                await Firestore.instance
-                    .collection("userOrders")
-                    .document(Session.data['user'].userId)
-                    .setData(
-                  {
-                    orderId: sennitOrder.toMap(),
-                  },
-                  merge: true,
-                );
-              });
+              String otp = randomAlphaNumeric(6).toUpperCase();
+              var url =
+                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.senderPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              var response = await post(
+                url,
+              );
+              var url2 =
+                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.receiverPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              var response2 = await post(
+                url2,
+              );
+              if ((response.statusCode == 200 ||
+                      response.statusCode == 201 ||
+                      response.statusCode == 202) &&
+                  (response2.statusCode == 200 ||
+                      response2.statusCode == 201 ||
+                      response2.statusCode == 202)) {
+                // if (true) {
+                Firestore.instance
+                    .collection("postedOrders")
+                    .add(sennitOrder.toMap())
+                    .then((_) async {
+                  final orderId = _.documentID;
+                  sennitOrder.orderId = orderId;
+                  await Firestore.instance
+                      .collection("userOrders")
+                      .document(Session.data['user'].userId)
+                      .setData(
+                    {
+                      orderId: sennitOrder.toMap(),
+                    },
+                    merge: true,
+                  );
+                  await Firestore.instance
+                      .collection("verificationCodes")
+                      .document(orderId)
+                      .setData(
+                    {
+                      "key": otp,
+                    },
+                  );
+                });
 
-              BotToast.showEnhancedWidget(toastBuilder: (a) {
-                return Center(
-                  child: Container(
-                    width: 300,
-                    height: 230,
-                    padding: EdgeInsets.only(
-                        top: 10, left: 20, right: 20, bottom: 10),
-                    child: Card(
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Spacer(),
-                          Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 32,
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                          Text('Your Order is on its way!'),
-                          Spacer(),
-                        ],
+                BotToast.showEnhancedWidget(toastBuilder: (a) {
+                  return Center(
+                    child: Container(
+                      width: 300,
+                      height: 230,
+                      padding: EdgeInsets.only(
+                          top: 10, left: 20, right: 20, bottom: 10),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Spacer(),
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 32,
+                            ),
+                            SizedBox(
+                              height: 10,
+                            ),
+                            Text('Your Order is on its way!'),
+                            Spacer(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              });
-              Future.delayed(Duration(seconds: 2)).then((value) {
-                BotToast.cleanAll();
-              });
-              Navigator.popUntil(context, ModalRoute.withName(MyApp.userHome));
+                  );
+                });
+                Future.delayed(Duration(seconds: 2)).then((value) {
+                  BotToast.cleanAll();
+                });
+                Navigator.popUntil(
+                    context, ModalRoute.withName(MyApp.userHome));
+              } else {
+                Utils.showSnackBarErrorUsingKey(
+                    _key, 'Unable to send OTP please Try Again!');
+                // print('Response status: ${response.statusCode}');
+                // print('Response body: ${response.body}');
+                // print('Response reason: ${response.reasonPhrase}');
+                Navigator.pop(context);
+              }
             },
             child: Text(
               'Done',
@@ -503,6 +616,44 @@ class SendItCartRoute extends StatelessWidget {
       // backgroundColor: Theme.of(context).accentColor,
     );
   }
+
+  performTransaction(context, amount) async {
+    User user = Session.data['user'];
+    DateTime time = DateTime.now();
+    var initializer = RavePayInitializer(
+        amount: amount,
+        publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+        encryptionKey: 'eded539f04b38a2af712eb7d')
+      ..country = "ZA"
+      ..currency = "ZAR"
+      ..displayEmail = false
+      ..displayAmount = false
+      ..email = "${user.email}"
+      ..fName = "${user.firstName}"
+      ..lName = "${user.lastName}"
+      ..subAccounts = []
+      ..narration = ''
+      ..txRef = user.userId + time.millisecondsSinceEpoch.toString()
+      ..companyLogo = Image.asset(
+        'assets/images/logo.png',
+      )
+      ..acceptMpesaPayments = false
+      ..acceptAccountPayments = false
+      ..acceptCardPayments = true
+      ..acceptAchPayments = false
+      ..acceptGHMobileMoneyPayments = false
+      ..acceptUgMobileMoneyPayments = false
+      ..staging = true
+      ..isPreAuth = true
+      ..displayFee = true;
+
+    // Initialize and get the transaction result
+    RaveResult response = await RavePayManager()
+        .initialize(context: context, initializer: initializer);
+    print(response.message);
+
+    return response.status;
+  }
 }
 
 class SendItCartRouteBody extends StatefulWidget {
@@ -519,8 +670,9 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
   double cardPadding = 20;
   double groupMargin = 30;
   double itemMargin = 10;
+  static double totalCharges = 0;
+  // static int sleeveNeeded = 0;
 
-  static bool sleeveNeeded = false;
   static BoxSize selectedBoxSize = BoxSize.small;
 
   static final senderEmailController = TextEditingController();
@@ -528,16 +680,56 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
   static final receiverEmailController = TextEditingController();
   static final receiverPhoneNumberController = TextEditingController();
   static final numberOfBoxesController = TextEditingController();
+  final FocusNode numberOfBoxesFocusNode = FocusNode();
+  static final numberOfSleevesNeededController = TextEditingController();
+  final FocusNode numberOfSleevesFocusNode = FocusNode();
   static final receiverHouseController = TextEditingController();
   static final senderHouseController = TextEditingController();
 
   SendItCartRouteState();
-
   @override
   void initState() {
     User user = Session.data['user'];
+    numberOfSleevesNeededController.text = '0';
+    numberOfBoxesController.text = '0';
+    numberOfBoxesFocusNode.addListener(() {
+      // if(numberOfBoxesFocusNode.hasFocus) {
+      if (numberOfBoxesController.text == "") {
+        numberOfBoxesController.text = '0';
+        if (mounted) {
+          setState(() {});
+        }
+      }
+      // }
+    });
+    numberOfSleevesFocusNode.addListener(() {
+      // if(numberOfBoxesFocusNode.hasFocus) {
+      if (numberOfSleevesNeededController.text == "") {
+        numberOfSleevesNeededController.text = '0';
+        if (mounted) {
+          setState(() {});
+        }
+      }
+      // }
+    });
     senderEmailController.text = user.email;
     senderPhoneNumberController.text = user.phoneNumber;
+    // senderPhoneNumberController.addListener(() {
+    //   if (!mounted) return;
+    //   if (senderPhoneNumberController.text == null ||
+    //       senderPhoneNumberController.text == "") {
+    //     // senderPhoneNumberController.text = '27';
+    //     setState(() {});
+    //   }
+    // });
+    // receiverPhoneNumberController.addListener(() {
+    //   if (!mounted) return;
+    //   if (receiverPhoneNumberController.text == null ||
+    //       receiverPhoneNumberController.text == "") {
+    //     receiverPhoneNumberController.text = '27';
+    //     setState(() {});
+    //   }
+    // });
     super.initState();
   }
 
@@ -677,8 +869,11 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                           controller: senderEmailController,
                         ),
                         TextField(
-                          decoration:
-                              InputDecoration(labelText: 'Phone Number'),
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            helperText: 'e.g. 0812345678',
+                          ),
+                          maxLength: 10,
                           keyboardType: TextInputType.phone,
                           controller: senderPhoneNumberController,
                         ),
@@ -823,10 +1018,13 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                               labelText: 'Apt/Suite/Floor/Building Name'),
                         ),
                         TextField(
-                          decoration:
-                              InputDecoration(labelText: 'Phone Number'),
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            helperText: 'e.g. 0812345678',
+                          ),
                           keyboardType: TextInputType.phone,
                           controller: receiverPhoneNumberController,
+                          maxLength: 10,
                         ),
                         TextField(
                           decoration: InputDecoration(labelText: 'Email'),
@@ -871,6 +1069,12 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                         maxLines: 1,
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
+                        inputFormatters: [
+                          WhitelistingTextInputFormatter.digitsOnly,
+                        ],
+                        onChanged: (value) {
+                          setState(() {});
+                        },
                         validator: (text) {
                           RegExp exp = RegExp(r'^[1-9]+$');
                           if (exp.hasMatch(text)) {
@@ -967,92 +1171,84 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       height: itemMargin,
                     ),
                   ),
-                  GestureDetector(
-                    child: ListTile(
-                      trailing: Icon(
-                        sleeveNeeded
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank,
-                        color: Theme.of(context).accentColor,
+                  ListTile(
+                    title: Text('Number of Sleeves'),
+                    trailing: SizedBox(
+                      width: 50,
+                      child: TextFormField(
+                        controller: numberOfSleevesNeededController,
+                        maxLength: 2,
+                        maxLines: 1,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                        validator: (text) {
+                          RegExp exp = RegExp(r'^[1-9]+$');
+                          if (exp.hasMatch(text)) {
+                            return null;
+                          } else
+                            return 'Error';
+                        },
                       ),
-                      title: Text('Sleeves Required'),
                     ),
-                    onTap: () {
-                      setState(() {
-                        sleeveNeeded = !sleeveNeeded;
-                      });
-                    },
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Container(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          'Delivery Charges: R${getCharges()}',
+                          style: Theme.of(context).textTheme.subhead,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          // Card(
-          //   margin: EdgeInsets.only(
-          //     top: 10,
-          //   ), //, left: cardMargin, right: cardMargin),
-          //   elevation: 5,
-          //   child: Container(
-          //     padding: EdgeInsets.only(top: cardPadding),
-          //     child: Column(
-          //       children: <Widget>[
-          //         Align(alignment: Alignment.centerRight, child: Text('')),
-          //         ListTile(
-          //           leading: Icon(
-          //             Icons.credit_card,
-          //           ),
-          //           title: Text(
-          //             'Check Out',
-          //           ),
-          //           trailing: Icon(Icons.navigate_next),
-          //           onTap: () {
-          //             var pickupLatLng = LatLng(
-          //               SendItCartRoute._fromAddress.coordinates.latitude,
-          //               SendItCartRoute._fromAddress.coordinates.longitude,
-          //             );
-          //             var dropOffLatLng = LatLng(
-          //               SendItCartRoute._toAddress.coordinates.latitude,
-          //               SendItCartRoute._toAddress.coordinates.longitude,
-          //             );
-          //             var orderId =
-          //                 "order${Session.data['user'].userId}${DateTime.now().millisecondsSinceEpoch}";
-          //             OrderFromSennit order = OrderFromSennit(
-          //               orderId: orderId,
-          //               boxSize: selectedBoxSize,
-          //               date: DateTime.now(),
-          //               driverId: null,
-          //               pickUpAddress: SendItCartRoute._fromAddress.addressLine,
-          //               dropOffAddress: SendItCartRoute._toAddress.addressLine,
-          //               pickUpLatLng: pickupLatLng,
-          //               dropOffLatLng: dropOffLatLng,
-          //             );
-
-          //             dynamic distance =
-          //                 Utils.calculateDistance(pickupLatLng, dropOffLatLng)
-          //                     as dynamic;
-
-          //             Firestore.instance
-          //                 .collection("orders")
-          //                 .firestore
-          //                 .collection("postedOrders")
-          //                 .document(orderId)
-          //                 .setData(order.toMap()
-          //                   ..update('distance', distance, ifAbsent: () {
-          //                     return distance;
-          //                   }))
-          //                 .then((_) {
-          //               Utils.showSnackBarSuccess(
-          //                   context, 'Your Order has been Placed');
-          //             });
-          //           },
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );
+  }
+
+  getCharges() {
+    if (numberOfBoxesController.text == "" ||
+        numberOfSleevesNeededController.text == "") {
+      return 'N/A';
+    }
+    final fromCoordinates = SendItCartRoute._fromAddress.coordinates;
+    final toCoordinates = SendItCartRoute._toAddress.coordinates;
+
+    double distance = Utils.calculateDistance(
+      LatLng(fromCoordinates.latitude, fromCoordinates.longitude),
+      LatLng(toCoordinates.latitude, toCoordinates.longitude),
+    );
+    int numberOfSleeves = int.parse(numberOfSleevesNeededController.text);
+    int numberOfBoxes = int.parse(numberOfBoxesController.text);
+
+    int totalItems = numberOfBoxes + numberOfSleeves;
+    if (totalItems == 0) {
+      return 'N/A';
+    }
+    double perItemCost = 0;
+    // if (distance <= 5) {
+    perItemCost = 30;
+    // }
+    distance -= 5;
+    double absoluteValue = distance.ceilToDouble();
+    if (absoluteValue < 0) {
+      absoluteValue = 0;
+    }
+    perItemCost += (absoluteValue * 4.50);
+    totalCharges = perItemCost * totalItems;
+    return totalCharges;
   }
 }
 

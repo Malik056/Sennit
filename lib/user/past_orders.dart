@@ -26,12 +26,15 @@ class PastOrdersRoute extends StatelessWidget {
           );
         } else {
           final keys = snapshot.data.data.keys.toList();
-          return Column(
-            children: List.generate(
-              keys.length,
-              (index) {
-                return OrderTile(data: snapshot.data.data[keys[index]]);
-              },
+          return SingleChildScrollView(
+            physics: BouncingScrollPhysics(),
+            child: Column(
+              children: List.generate(
+                keys.length,
+                (index) {
+                  return OrderTile(data: snapshot.data.data[keys[index]]);
+                },
+              ),
             ),
           );
         }

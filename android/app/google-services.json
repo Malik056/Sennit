@@ -1,42 +1,35 @@
 {
   "project_info": {
-    "project_number": "203282049129",
-    "firebase_url": "https://sennit-70d71.firebaseio.com",
-    "project_id": "sennit-70d71",
-    "storage_bucket": "sennit-70d71.appspot.com"
+    "project_number": "239420684021",
+    "firebase_url": "https://sennit-1571945357978.firebaseio.com",
+    "project_id": "sennit-1571945357978",
+    "storage_bucket": "sennit-1571945357978.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:203282049129:android:f3c8e6d83ad9620e735af8",
+        "mobilesdk_app_id": "1:239420684021:android:2def49c88d4320825377bc",
         "android_client_info": {
           "package_name": "za.co.sennit"
         }
       },
       "oauth_client": [
         {
-          "client_id": "203282049129-j1ipv5e1pulkt3rviv4bdc335pva59c3.apps.googleusercontent.com",
+          "client_id": "239420684021-bsjhjo39jo2s4fk8nh9gp62uv40jta3u.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyD5z7UFWUac-yCXprFa1DOlA7agLBZU42g"
+          "current_key": "AIzaSyABSHXMy8Xdy8YEPjsTK9kHNrg7VcEEZaM"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "203282049129-j1ipv5e1pulkt3rviv4bdc335pva59c3.apps.googleusercontent.com",
+              "client_id": "239420684021-bsjhjo39jo2s4fk8nh9gp62uv40jta3u.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "203282049129-2b5clid843q1ghj53ltq6v5v59oeskqh.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "za.co.sennit"
-              }
             }
           ]
         }

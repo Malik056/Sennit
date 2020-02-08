@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/partner_store/login.dart';
 
 class StartPage extends StatelessWidget {
   StartPage();
@@ -54,13 +55,23 @@ class StartPage extends StatelessWidget {
                   text: 'About Us\n',
                   style: MediaQuery.of(context).size.height <
                           800 / MediaQuery.of(context).devicePixelRatio
-                      ? Theme.of(context).textTheme.subhead
+                      ? Theme.of(context)
+                          .textTheme
+                          .subhead
+                          .copyWith(fontSize: 14)
                       : Theme.of(context).textTheme.headline,
                   children: [
                     TextSpan(
-                        text:
-                            '\nSennit is a unique business platform whereby both drivers and clients are able to deliver or have goods delivered respectively, with no signup costs. Sign Up now to have your goods delivered immediately!.',
-                        style: Theme.of(context).textTheme.body1),
+                      text:
+                          '\nSennit is a unique business platform whereby both drivers and clients are able to deliver or have goods delivered respectively, with no signup costs. Sign Up now to have your goods delivered immediately!.',
+                      style: MediaQuery.of(context).size.height <
+                              800 / MediaQuery.of(context).devicePixelRatio
+                          ? Theme.of(context)
+                              .textTheme
+                              .body1
+                              .copyWith(fontSize: 12)
+                          : Theme.of(context).textTheme.body1,
+                    ),
                   ],
                 ),
                 textAlign: TextAlign.center,
@@ -69,6 +80,37 @@ class StartPage extends StatelessWidget {
             // ),
             Spacer(
               flex: 1,
+            ),
+            Container(
+              width: MediaQuery.of(context).size.width,
+              child: RaisedButton(
+                color: Colors.white,
+                child: ListTile(
+                  leading: Icon(
+                    FontAwesomeIcons.storeAlt,
+                    color: Theme.of(context).accentColor,
+                  ),
+                  title: Text(
+                    'I am a Partner Store',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                  trailing: Icon(
+                    Icons.navigate_next,
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PartnerStoreSignInRoute(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Spacer(),
+            SizedBox(
+              height: 10,
             ),
             Container(
               width: MediaQuery.of(context).size.width,

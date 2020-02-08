@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:location/location.dart';
 import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
@@ -18,6 +19,7 @@ import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/recieveIt.dart';
@@ -50,6 +52,7 @@ main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   locationInitializer();
   await databaseInitializer();
+  // await initializeDateFormatting('en_ZA');
   final user = await FirebaseAuth.instance.currentUser();
   if (user != null) {
     final result =
@@ -87,6 +90,23 @@ main() async {
         } else {
           MyApp.initialRoute = MyApp.verifyEmailRoute;
         }
+      } else {
+        final partnerStoreResult = await Firestore.instance
+            .collection('partnerStores')
+            .document(user.uid)
+            .get();
+
+        if (partnerStoreResult != null &&
+            partnerStoreResult.data != null &&
+            partnerStoreResult.data.length > 0 &&
+            partnerStoreResult.exists) {
+          Session.data.update('partnerStore', (a) {
+            return partnerStoreResult.data;
+          }, ifAbsent: () {
+            return partnerStoreResult.data;
+          });
+          MyApp.initialRoute = MyApp.partnerStoreHome;
+        }
       }
     }
   }
@@ -98,33 +118,34 @@ databaseInitializer() async {
 }
 
 class MyApp extends StatelessWidget with WidgetsBindingObserver {
-  static final String startPage = 'startPage';
+  static const String startPage = 'startPage';
   static String initialRoute = startPage;
-  static final String searchPage = 'searchPage';
+  static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
-  static final String userSignup = '$userStartPage/userSignup';
-  static final String userSignin = '$userStartPage/userSignin';
-  static final String driverSignup = '$driverStartPage/driverSignup';
-  static final String userStartPage = '$startPage/userStartPage';
-  static final String driverStartPage = '$startPage/driverStartPage';
-  static final String driverSignin = '$driverStartPage/driverSignin';
-  static final String verifyEmailRoute = 'verifyEmailRoute';
-  static final String userHome = 'userHome';
-  static final String selectFromAddress = 'sendItSourceRoute';
-  static final String deliverToAddresses = 'sendItDestinationRoute';
-  static final String addAddressFrom = 'addAddressFrom';
-  static final String addAddressToForSennit = 'addAddressToSennit';
-  static final String addAddressToRecieveIt = 'addAddressToRecieveIt';
-  static final String senditCartPage = 'sendItCartPage';
-  static final String recieveItRoute = 'recieveItRoute';
-  static final String storeMainPage = 'storeMainPage';
-  static final String driverHome = 'driverHome';
-  static final String driverNavigationRoute = 'driverNavigationRoute';
-  static final String activeOrderBody = 'activeOrderBody';
-  static final String reviewWidget = 'reviewWidget';
-  static final String notificationWidget = 'notificationWidget';
-  static final String sennitOrderRoute = 'sennitOrderRoute';
+  static const String userSignup = '$userStartPage/userSignup';
+  static const String userSignin = '$userStartPage/userSignin';
+  static const String driverSignup = '$driverStartPage/driverSignup';
+  static const String userStartPage = '$startPage/userStartPage';
+  static const String driverStartPage = '$startPage/driverStartPage';
+  static const String driverSignin = '$driverStartPage/driverSignin';
+  static const String verifyEmailRoute = 'verifyEmailRoute';
+  static const String userHome = 'userHome';
+  static const String selectFromAddress = 'sendItSourceRoute';
+  static const String deliverToAddresses = 'sendItDestinationRoute';
+  static const String addAddressFrom = 'addAddressFrom';
+  static const String addAddressToForSennit = 'addAddressToSennit';
+  static const String addAddressToRecieveIt = 'addAddressToRecieveIt';
+  static const String senditCartPage = 'sendItCartPage';
+  static const String recieveItRoute = 'recieveItRoute';
+  static const String storeMainPage = 'storeMainPage';
+  static const String partnerStoreHome = 'partnerStoreHome';
+  static const String driverHome = 'driverHome';
+  static const String driverNavigationRoute = 'driverNavigationRoute';
+  static const String activeOrderBody = 'activeOrderBody';
+  static const String reviewWidget = 'reviewWidget';
+  static const String notificationWidget = 'notificationWidget';
+  static const String sennitOrderRoute = 'sennitOrderRoute';
 
   final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
   final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
@@ -135,6 +156,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static Future<LatLng> _lastKnowLocation;
 
   static LatLng _initialLocation;
+
   MyApp() {
     WidgetsBinding.instance.addObserver(this);
   }
@@ -180,6 +202,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
                 address: _address,
               ),
           storeMainPage: (context) => StoreMainPage(),
+          partnerStoreHome: (context) => OrderedItemsList(),
           // activeOrderBody: (context) => ActiveOrder(),
           searchPage: (context) => SearchWidget(),
           notificationWidget: (context) => UserNotificationWidget(),
@@ -385,14 +408,14 @@ class Utils {
   }
 
   static showSnackBarWarningUsingKey(
-      GlobalKey<ScaffoldState> key, String message) {
+      GlobalKey<ScaffoldState> key, String message, {Duration duration}) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.yellow.shade700,
       content: Text(
         message,
         style: TextStyle(color: Colors.white),
       ),
-      duration: Duration(seconds: 4),
+      duration: duration ?? Duration(seconds: 4),
     );
 
     key.currentState.showSnackBar(snackBar);
@@ -590,13 +613,13 @@ class Utils {
 }
 
 class Session {
-  static Map data = Map<String, dynamic>();
+  static Map<String, dynamic> data = Map<String, dynamic>();
   static getCart() {
     if (data.containsKey('cart')) {
       return data['cart'];
     } else {
       data.putIfAbsent('cart', () {
-        return UserCart(itemIds: [], quantities: []);
+        return UserCart(itemsData: {});
       });
       return data['cart'];
     }

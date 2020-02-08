@@ -276,8 +276,18 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                     TextFormField(
                       keyboardType: TextInputType.phone,
                       maxLines: 1,
-                      decoration: InputDecoration(labelText: 'Phone Number'),
+                      maxLength: 10,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        helperText: 'e.g. 0812345678',
+                      ),
                       validator: (cellNum) {
+                        if (!cellNum.startsWith('0')) {
+                          return "Number should start with 0. e.g. 0812345678";
+                        }
+                        if (cellNum.length == 0) {
+                          return "Invalid Phone Number. Must contain 10 digits.";
+                        }
                         if (cellNum.isEmpty) {
                           return "Please Enter your phone number";
                         }
@@ -527,8 +537,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 if (dateInitialText == dateText) {
                                   dateOfBirthHeadingColor = Colors.red;
                                   dateOfBirthTextColor = Colors.red;
-                                } else {
-                                }
+                                } else {}
                               });
                             } else {
                               setState(() {

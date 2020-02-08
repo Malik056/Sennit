@@ -1,38 +1,119 @@
+import 'package:bot_toast/bot_toast.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:maps_launcher/maps_launcher.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
 class SennitOrderNavigationRoute extends StatelessWidget {
-
   static var popUpHeight = 200.0;
   static var popUpWidth = 300.0;
   // bool isOrderConfirmed = false;
   final _Body body;
   final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
-
   final MySolidBottomSheet myboottomSheet;
+
+  final Future<String> verificationCode;
 
   void onDonePressed() {
     body.showDeliveryCompleteDialogue();
   }
 
-  SennitOrderNavigationRoute._(
-      {@required this.body,
-      @required this.myAppbar,
-      @required this.data,
-      @required this.myboottomSheet});
+  SennitOrderNavigationRoute._({
+    @required this.body,
+    @required this.myAppbar,
+    @required this.data,
+    @required this.myboottomSheet,
+    @required this.verificationCode,
+  });
 
   factory SennitOrderNavigationRoute({@required Map<String, dynamic> data}) {
     _MyAppBar appBar;
     MySolidBottomSheet sheet;
+    var snapshot = Firestore.instance
+        .collection("verificationCodes")
+        .document(data['orderId'])
+        .get();
+    var result = snapshot.then<String>((value) {
+      return value.data['key'];
+    });
+
+    var verificationCode = result;
     _Body body = _Body(
-      onOrderConfirmed: () {
+      verificationCode: verificationCode,
+      onCancelPopupConfiremd: () async {
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .setData(
+          {
+            'status': 'Pending',
+          },
+          merge: true,
+        );
+      },
+      onOrderConfirmed: () async {
         appBar.showButton();
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .setData(
+          {
+            'status': 'Accepted',
+          },
+          merge: true,
+        );
+      },
+      onOrderComplete: () async {
+        String driverId =
+            await FirebaseAuth.instance.currentUser().then((user) => user.uid);
+        DateTime now = DateTime.now();
+
+        Firestore.instance
+            .collection("verificationCodes")
+            .document(data['orderId'])
+            .delete();
+
+        await Firestore.instance
+            .collection('userOrders')
+            .document(data['userId'])
+            .setData(
+          {
+            data['orderId']: {
+              'status': 'Delivered',
+              'deliveryDate': '${now.millisecondsSinceEpoch}',
+            }
+          },
+          merge: true,
+        );
+
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .delete();
+
+        await Firestore.instance
+            .collection('driverOrders')
+            .document(driverId)
+            .setData({
+          data['orderId']: data
+            ..update(
+              'status',
+              (old) => 'Delivered',
+              ifAbsent: () => 'Delivered',
+            )
+            ..update(
+              'deliveryDate',
+              (old) => '${now.millisecondsSinceEpoch}',
+              ifAbsent: () => '${now.millisecondsSinceEpoch}',
+            ),
+        });
       },
       onVerifyPopupCancel: () {
         appBar.enableButton();
@@ -59,12 +140,12 @@ class SennitOrderNavigationRoute extends StatelessWidget {
       },
     );
 
-
     return SennitOrderNavigationRoute._(
       body: body,
       myAppbar: appBar,
       data: data,
       myboottomSheet: sheet,
+      verificationCode: verificationCode,
     );
   }
 
@@ -291,16 +372,21 @@ class _Body extends StatefulWidget {
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onVerifyPopupCancel;
+  final Function onCancelPopupConfiremd;
   final Function(LatLng) onMapTap;
-
   final Map<String, dynamic> data;
+  final verificationCode;
+  final onOrderComplete;
 
   _Body({
+    @required this.verificationCode,
     @required this.data,
     @required this.onOrderConfirmed,
     @required this.onCancelPopupCancel,
     @required this.onVerifyPopupCancel,
     @required this.onMapTap,
+    @required this.onOrderComplete,
+    @required this.onCancelPopupConfiremd,
   });
 
   @override
@@ -396,9 +482,12 @@ class _BodyState extends State<_Body> {
   void initState() {
     super.initState();
     _popups = _Popups(
+      verificationCode: widget.verificationCode,
+      onOrderComplete: widget.onOrderComplete,
       onOrderConfirmed: widget.onOrderConfirmed,
       onCancelPopupCancel: widget.onCancelPopupCancel,
       onOrderCompletePopupCancel: widget.onVerifyPopupCancel,
+      onCancelPopupConfirmed: widget.onCancelPopupConfiremd,
     );
   }
 
@@ -559,10 +648,18 @@ class _Popups extends StatefulWidget {
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onOrderCompletePopupCancel;
-  _Popups(
-      {@required this.onOrderConfirmed,
-      @required this.onCancelPopupCancel,
-      @required this.onOrderCompletePopupCancel});
+  final Function onCancelPopupConfirmed;
+  final verificationCode;
+  final onOrderComplete;
+
+  _Popups({
+    @required this.onOrderConfirmed,
+    @required this.onCancelPopupCancel,
+    @required this.onOrderCompletePopupCancel,
+    @required this.verificationCode,
+    @required this.onOrderComplete,
+    @required this.onCancelPopupConfirmed,
+  });
 
   @override
   State<StatefulWidget> createState() {
@@ -607,9 +704,9 @@ class _PopupsState extends State<_Popups> {
   void initState() {
     super.initState();
     _orderConfirmationPopup = _OrderConfirmation(
-      onConfirm: () {
+      onConfirm: () async {
         isOrderConfirmationVisible = false;
-        widget.onOrderConfirmed();
+        await widget.onOrderConfirmed();
         setState(() {});
       },
       onExit: () {
@@ -625,21 +722,26 @@ class _PopupsState extends State<_Popups> {
         widget.onCancelPopupCancel();
         setState(() {});
       },
-      onConfirm: () {
+      onConfirm: () async {
         print('on Confirm Called');
         isCancelDialogVisible = false;
-        Navigator.pop(context);
+        widget.onCancelPopupConfirmed();
+        // Navigator.pop(context);
       },
     );
     _deliveryDonePopUp = _DeliveryDonePopUp(
+      verificationCode: widget.verificationCode,
       onCancel: () {
         isOrderCompleteDialogeVisible = false;
         widget.onOrderCompletePopupCancel();
         setState(() {});
       },
-      onConfirm: () {
+      onConfirm: () async {
         isOrderCompleteDialogeVisible = false;
-        Navigator.pop(context);
+        Utils.showLoadingDialog(context);
+        await widget.onOrderComplete();
+        int count = 0;
+        Navigator.popUntil(context, (route) => count++ > 1);
       },
     );
   }
@@ -715,8 +817,10 @@ class _DeliveryDonePopUp extends StatefulWidget {
   // final height;
   final Function onCancel;
   final Function onConfirm;
+  final Future<String> verificationCode;
 
   _DeliveryDonePopUp({
+    @required this.verificationCode,
     @required this.onCancel,
     @required this.onConfirm,
   }); //@required this.width, @required this.height})
@@ -747,6 +851,10 @@ class _DeliveryDonePopUp extends StatefulWidget {
 }
 
 class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
+  String confirmationKey = '';
+
+  var _verificationCodeController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -780,6 +888,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
             PinCodeTextField(
               length: 6,
               obsecureText: false,
+              controller: _verificationCodeController,
               animationType: AnimationType.fade,
               shape: PinCodeFieldShape.box,
               animationDuration: Duration(milliseconds: 300),
@@ -788,6 +897,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               fieldHeight: 40,
               fieldWidth: 35,
               onChanged: (value) {
+                confirmationKey = value;
                 setState(() {});
               },
             ),
@@ -799,8 +909,18 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
                 'Verify',
                 style: Theme.of(context).textTheme.button,
               ),
-              onPressed: () {
-                widget.onConfirm();
+              onPressed: () async {
+                final key = await widget.verificationCode;
+                if (confirmationKey == key) {
+                  Utils.showSuccessDialog('Success');
+                  Future.delayed(Duration(seconds: 2)).then((a) {
+                    BotToast.removeAll();
+                  });
+                  widget.onConfirm();
+                } else {
+                  Utils.showSnackBarError(context, 'Invalid Verification Code');
+                  _verificationCodeController.clear();
+                }
                 // Navigator.pop(context);
               },
             ),
@@ -904,9 +1024,11 @@ class _CancelOrderPopUpStateRevised extends State<_CancelOrderPopUp> {
                       'Confirm',
                       textAlign: TextAlign.center,
                     ),
-                    onPressed: () {
-                      widget.onConfirm();
-                      // Navigator.pop(context);
+                    onPressed: () async {
+                      Utils.showLoadingDialog(context);
+                      await widget.onConfirm();
+                      int count = 0;
+                      Navigator.popUntil(context, (route) => count++ > 1);
                       // widget.parent.setState(() {});
                     },
                   ),
@@ -1010,9 +1132,11 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
                     //     Radius.circular(4),
                     //   ),
                     // ),
-                    onPressed: () {
+                    onPressed: () async {
+                      Utils.showLoadingDialog(context);
                       // orderConfirmed = true;
-                      widget.onConfirm();
+                      await widget.onConfirm();
+                      Navigator.pop(context);
                     },
                     color: Theme.of(context).primaryColor,
                     child: Text(
@@ -1171,7 +1295,10 @@ class _OrderTile extends StatelessWidget {
                                 'Open in Maps',
                                 style: TextStyle(color: Colors.white),
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                MapsLauncher.launchCoordinates(
+                                    pickup.latitude, pickup.longitude);
+                              },
                             ),
                           ),
                         ],
@@ -1266,7 +1393,11 @@ class _OrderTile extends StatelessWidget {
                                 'Open in Maps',
                                 style: TextStyle(color: Colors.white),
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                MapsLauncher.launchCoordinates(
+                                    destination.latitude,
+                                    destination.longitude);
+                              },
                               onLongPress: () {},
                             ),
                           ),

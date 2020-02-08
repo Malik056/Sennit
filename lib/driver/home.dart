@@ -30,6 +30,8 @@ class Delivery {
 }
 
 class HomeScreenDriver extends StatefulWidget {
+  HomeScreenDriver();
+
   @override
   State<StatefulWidget> createState() {
     return _HomeScreenState();
@@ -76,7 +78,13 @@ class _HomeScreenState extends State<HomeScreenDriver>
             centerTitle: true,
             actions: <Widget>[
               FlatButton(
-                child: Text('Signout'),
+                child: Text(
+                  'Signout',
+                  style: Theme.of(context)
+                      .textTheme
+                      .subhead
+                      .copyWith(color: Theme.of(context).primaryColor),
+                ),
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
                   Session.data..removeWhere((key, value) => true);
@@ -167,73 +175,108 @@ class _NotificationPage extends StatefulWidget {
   State<StatefulWidget> createState() {
     return _NotificationPageState();
   }
+
+  initializeDriver() async {
+    if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
+      FirebaseAuth.instance.currentUser().then((user) {
+        String driverId = user.uid;
+        Firestore.instance
+            .collection('drivers')
+            .document(driverId)
+            .get()
+            .then((dataSnapshot) {
+          Driver driver = Driver.fromMap(dataSnapshot.data);
+          Session.data.update('driver', (d) => driver, ifAbsent: () => driver);
+        });
+      });
+      // Firestore.instance.collection('drivers').
+    }
+  }
 }
 
 class _NotificationPageState extends State<_NotificationPage> {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: Firestore.instance.collection("postedOrders").snapshots(),
+    return FutureBuilder(
+      future: widget.initializeDriver(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: CircularProgressIndicator(),
           );
         }
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(Icons.replay),
-                Text('An Error Occurred'),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.done &&
-            snapshot.data == null) {
-          return Center(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(Icons.replay),
-                Text('Unable To Load'),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.done &&
-            snapshot.data.documents.isEmpty) {
-          return Center(
-            child: Text(
-              'No Notifications',
-              style: Theme.of(context).textTheme.title,
-            ),
-          );
-        }
-
-        var documents = snapshot.data.documents;
-
-        return SingleChildScrollView(
-          physics: BouncingScrollPhysics(),
-          child: Column(
-              children: List.generate(documents.length, (index) {
-            documents[index].data.update("orderId", (value) {
-              return documents[index].documentID;
-            }, ifAbsent: () {
-              return documents[index].documentID;
-            });
-            if (documents[index].data.containsKey("numberOfBoxes")) {
-              return SennitNotificationTile(data: documents[index].data);
-            } else {
-              return ReceiveItNotificationTile(documents[index].data);
+        return StreamBuilder<QuerySnapshot>(
+          stream: Firestore.instance.collection("postedOrders").snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
             }
-          })),
+            if (snapshot.hasError) {
+              return Center(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(Icons.replay),
+                    Text('An Error Occurred'),
+                  ],
+                ),
+              );
+            }
+
+            if ((snapshot.connectionState == ConnectionState.active ||
+                    snapshot.connectionState == ConnectionState.done) &&
+                snapshot.data == null) {
+              return Center(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(Icons.replay),
+                    Text('Unable To Load'),
+                  ],
+                ),
+              );
+            }
+
+            if ((snapshot.connectionState == ConnectionState.active ||
+                    snapshot.connectionState == ConnectionState.done) &&
+                snapshot.data.documents.isEmpty) {
+              return Center(
+                child: Text(
+                  'No Notifications',
+                  style: Theme.of(context).textTheme.title,
+                ),
+              );
+            }
+
+            var documents = snapshot.data.documents;
+
+            return SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              child: Column(
+                  children: List.generate(documents.length, (index) {
+                documents[index].data.update("orderId", (value) {
+                  return documents[index].documentID;
+                }, ifAbsent: () {
+                  return documents[index].documentID;
+                });
+                if ((documents[index].data['status'] as String).toUpperCase() !=
+                    'PENDING') {
+                  return Opacity(
+                    opacity: 0,
+                  );
+                }
+                if (documents[index].data.containsKey("numberOfBoxes")) {
+                  return SennitNotificationTile(data: documents[index].data);
+                } else {
+                  return ReceiveItNotificationTile(documents[index].data);
+                }
+              })),
+            );
+          },
         );
       },
     );

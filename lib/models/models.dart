@@ -332,13 +332,13 @@ class Driver {
 class OrderFromReceiveIt {
   String orderId;
   String status;
-  List<String> items;
+  Map<String, double> itemsData;
   String driverName;
   String email;
   String phoneNumber;
   String house;
   List<LatLng> pickups = [];
-  List<double> quantities = [];
+  // List<double> quantities = [];
   List<String> stores = [];
   LatLng destination;
   String userId;
@@ -349,8 +349,8 @@ class OrderFromReceiveIt {
   OrderFromReceiveIt({
     this.orderId,
     this.status,
-    this.quantities,
-    this.items,
+    // this.quantities,
+    this.itemsData,
     this.email,
     this.phoneNumber,
     this.house,
@@ -373,7 +373,7 @@ class OrderFromReceiveIt {
     String phoneNumber,
     String house,
     List<LatLng> pickups,
-    List<LatLng> quantities,
+    // List<LatLng> quantities,
     List<String> stores,
     LatLng destination,
     String userId,
@@ -386,13 +386,13 @@ class OrderFromReceiveIt {
     return OrderFromReceiveIt(
       orderId: orderId ?? this.orderId,
       status: status ?? this.status,
-      items: items ?? this.items,
+      itemsData: items ?? this.itemsData,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       house: house ?? this.house,
       driverName: driverName,
       pickups: pickups ?? this.pickups,
-      quantities: quantities ?? this.quantities,
+      // quantities: quantities ?? this.quantities,
       stores: stores ?? this.stores,
       destination: destination ?? this.destination,
       userId: userId ?? this.userId,
@@ -408,14 +408,14 @@ class OrderFromReceiveIt {
       'orderId': orderId,
       'status': status,
       'driverName': driverName,
-      'items': List<dynamic>.from(items.map((x) => x)),
+      'itemsData': itemsData,
       'email': email,
       'phoneNumber': phoneNumber,
       'house': house,
       'pickups': List<dynamic>.from(
         pickups.map((x) => Utils.latLngToString(x)),
       ),
-      'quantities': List<dynamic>.from(quantities.map((x) => x)),
+      // 'quantities': List<dynamic>.from(quantities.map((x) => x)),
       'stores': List<dynamic>.from(stores.map((x) => x)),
       'destination': Utils.latLngToString(destination),
       'userId': userId,
@@ -432,7 +432,7 @@ class OrderFromReceiveIt {
     return OrderFromReceiveIt(
       orderId: map['orderId'],
       status: map['status'],
-      items: List<String>.from(map['items']),
+      itemsData: Map<String, double>.from(map['itemsData']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],
       house: map['house'],
@@ -442,9 +442,9 @@ class OrderFromReceiveIt {
           (x) => Utils.latLngFromString(x),
         ),
       ),
-      quantities: List<double>.from(
-        map['quantities']?.map((x) => x),
-      ),
+      // quantities: List<double>.from(
+      //   map['quantities']?.map((x) => x),
+      // ),
       stores: List<String>.from(map['stores']),
       destination: Utils.latLngFromString(map['destination']),
       userId: map['userId'],
@@ -462,7 +462,7 @@ class OrderFromReceiveIt {
 
   @override
   String toString() {
-    return 'OrderFromReceiveIt orderId: $orderId, status: $status, items: $items, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, stores: $stores, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $date, deliveryTime: $deliveryTime';
+    return 'OrderFromReceiveIt orderId: $orderId, status: $status, itemsData: $itemsData, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, stores: $stores, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $date, deliveryTime: $deliveryTime';
   }
 
   @override
@@ -472,7 +472,7 @@ class OrderFromReceiveIt {
     return o is OrderFromReceiveIt &&
         o.orderId == orderId &&
         o.status == status &&
-        o.items == items &&
+        o.itemsData == itemsData &&
         o.email == email &&
         o.phoneNumber == phoneNumber &&
         o.house == house &&
@@ -490,7 +490,7 @@ class OrderFromReceiveIt {
   int get hashCode {
     return orderId.hashCode ^
         status.hashCode ^
-        items.hashCode ^
+        itemsData.hashCode ^
         email.hashCode ^
         phoneNumber.hashCode ^
         house.hashCode ^
@@ -526,7 +526,7 @@ class OrderFromSennit {
   bool pickupFromDoor;
   bool dropToDoor;
   int numberOfBoxes;
-  bool sleevesRequired;
+  int numberOfSleevesNeeded;
   String status;
   String senderHouse;
   String receiverHouse;
@@ -551,7 +551,7 @@ class OrderFromSennit {
     this.pickupFromDoor,
     this.dropToDoor,
     this.numberOfBoxes,
-    this.sleevesRequired,
+    this.numberOfSleevesNeeded,
     this.status,
     this.senderHouse,
     this.receiverHouse,
@@ -578,7 +578,7 @@ class OrderFromSennit {
     bool pickupFromDoor,
     bool dropToDoor,
     int numberOfBoxes,
-    bool sleevesRequired,
+    bool numberOfSleevesNeeded,
     String status,
     String senderHouse,
     String receiverHouse,
@@ -604,7 +604,8 @@ class OrderFromSennit {
       pickupFromDoor: pickupFromDoor ?? this.pickupFromDoor,
       dropToDoor: dropToDoor ?? this.dropToDoor,
       numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
-      sleevesRequired: sleevesRequired ?? this.sleevesRequired,
+      numberOfSleevesNeeded:
+          numberOfSleevesNeeded ?? this.numberOfSleevesNeeded,
       status: status ?? this.status,
       senderHouse: senderHouse ?? this.senderHouse,
       receiverHouse: receiverHouse ?? this.receiverHouse,
@@ -633,7 +634,7 @@ class OrderFromSennit {
       'pickupFromDoor': pickupFromDoor,
       'dropToDoor': dropToDoor,
       'numberOfBoxes': numberOfBoxes,
-      'sleevesRequired': sleevesRequired,
+      'numberOfSleevesNeeded': numberOfSleevesNeeded,
       'status': status,
       'senderHouse': senderHouse,
       'receiverHouse': receiverHouse,
@@ -664,7 +665,7 @@ class OrderFromSennit {
       pickupFromDoor: map['pickupFromDoor'],
       dropToDoor: map['dropToDoor'],
       numberOfBoxes: map['numberOfBoxes'],
-      sleevesRequired: map['sleevesRequired'],
+      numberOfSleevesNeeded: map['numberOfSleevesNeeded'],
       status: map['status'],
       senderHouse: map['senderHouse'],
       receiverHouse: map['receiverHouse'],
@@ -678,7 +679,7 @@ class OrderFromSennit {
 
   @override
   String toString() {
-    return 'OrderFromSennit orderId: $orderId, date: $date, price: $price, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, senderEmail: $senderEmail, senderPhone: $senderPhone, driverId: $driverId, driverName: $driverName, boxSize: $boxSize, pickupFromDoor: $pickupFromDoor, dropToDoor: $dropToDoor, numberOfBoxes: $numberOfBoxes, sleevesRequired: $sleevesRequired, status: $status, senderHouse: $senderHouse, receiverHouse: $receiverHouse';
+    return 'OrderFromSennit orderId: $orderId, date: $date, price: $price, pickUpLatLng: $pickUpLatLng, pickUpAddress: $pickUpAddress, dropOffAddress: $dropOffAddress, dropOffLatLng: $dropOffLatLng, serviceCharges: $serviceCharges, userId: $userId, receiverName: $receiverName, receiverPhone: $receiverPhone, receiverEmail: $receiverEmail, senderEmail: $senderEmail, senderPhone: $senderPhone, driverId: $driverId, driverName: $driverName, boxSize: $boxSize, pickupFromDoor: $pickupFromDoor, dropToDoor: $dropToDoor, numberOfBoxes: $numberOfBoxes, numberOfSleevesNeeded: $numberOfSleevesNeeded, status: $status, senderHouse: $senderHouse, receiverHouse: $receiverHouse';
   }
 
   @override
@@ -706,7 +707,7 @@ class OrderFromSennit {
         o.pickupFromDoor == pickupFromDoor &&
         o.dropToDoor == dropToDoor &&
         o.numberOfBoxes == numberOfBoxes &&
-        o.sleevesRequired == sleevesRequired &&
+        o.numberOfSleevesNeeded == numberOfSleevesNeeded &&
         o.status == status &&
         o.senderHouse == senderHouse &&
         o.receiverHouse == receiverHouse;
@@ -734,7 +735,7 @@ class OrderFromSennit {
         pickupFromDoor.hashCode ^
         dropToDoor.hashCode ^
         numberOfBoxes.hashCode ^
-        sleevesRequired.hashCode ^
+        numberOfSleevesNeeded.hashCode ^
         status.hashCode ^
         senderHouse.hashCode ^
         receiverHouse.hashCode;
@@ -1154,34 +1155,22 @@ class OrderOtherCharges {
 
 class UserCart {
   List<StoreItem> items = List();
-  List<String> itemIds;
-  List<double> quantities;
+  Map<String, double> itemsData;
   UserCart({
-    this.itemIds,
-    this.quantities,
-  }) {
-    if (itemIds == null) {
-      itemIds = [];
-    }
-    if (quantities == null) {
-      quantities = [];
-    }
-  }
+    this.itemsData,
+  });
 
   UserCart copyWith({
-    List<String> itemIds,
-    List<double> quantities,
+    List<Map<String, double>> itemsData,
   }) {
     return UserCart(
-      itemIds: itemIds ?? this.itemIds,
-      quantities: quantities ?? this.quantities,
+      itemsData: itemsData ?? this.itemsData,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'itemIds': List<dynamic>.from(itemIds.map((x) => x)),
-      'quantities': List<dynamic>.from(quantities.map((x) => x)),
+      'itemsData': itemsData,
     };
   }
 
@@ -1189,8 +1178,9 @@ class UserCart {
     if (map == null) return null;
 
     return UserCart(
-      itemIds: List<String>.from(map['itemIds']),
-      quantities: List<double>.from(map['quantities']),
+      itemsData: Map<String, double>.from(
+        map['itemsData'],
+      ),
     );
   }
 
@@ -1199,17 +1189,17 @@ class UserCart {
   static UserCart fromJson(String source) => fromMap(json.decode(source));
 
   @override
-  String toString() => 'UserCart itemIds: $itemIds, quantities: $quantities';
+  String toString() => 'UserCart itemsData: $itemsData';
 
   @override
   bool operator ==(Object o) {
     if (identical(this, o)) return true;
 
-    return o is UserCart && o.itemIds == itemIds && o.quantities == quantities;
+    return o is UserCart && o.itemsData == itemsData;
   }
 
   @override
-  int get hashCode => itemIds.hashCode ^ quantities.hashCode;
+  int get hashCode => itemsData.hashCode;
 }
 
 class UserLocationHistory {
@@ -1655,12 +1645,17 @@ class Store {
   List<StoreItem> storeItems = [];
   String storeImage;
   String storeMoto;
+  LatLng storeLatLng;
+  String storeAddress;
+
   Store({
     this.storeId,
     this.storeName,
     this.items,
     this.storeImage,
     this.storeMoto,
+    this.storeLatLng,
+    this.storeAddress,
   });
 
   Store copyWith({
@@ -1669,6 +1664,8 @@ class Store {
     List<String> items,
     String storeImage,
     String storeMoto,
+    LatLng storeLatLng,
+    String storeAddress,
   }) {
     return Store(
       storeId: storeId ?? this.storeId,
@@ -1676,6 +1673,8 @@ class Store {
       items: items ?? this.items,
       storeImage: storeImage ?? this.storeImage,
       storeMoto: storeMoto ?? this.storeMoto,
+      storeAddress: storeAddress ?? this.storeAddress,
+      storeLatLng: storeLatLng ?? this.storeLatLng,
     );
   }
 
@@ -1686,6 +1685,8 @@ class Store {
       'items': List<dynamic>.from(items.map((x) => x)),
       'storeImage': storeImage,
       'storeMoto': storeMoto,
+      'storeAddress': storeAddress,
+      'storeLatLng': storeLatLng,
     };
   }
 
@@ -1698,6 +1699,8 @@ class Store {
       items: List<String>.from(map['items']),
       storeImage: map['storeImage'],
       storeMoto: map['storeMoto'],
+      storeAddress: map['storeAddress'],
+      storeLatLng: map['storeLatLng'],
     );
   }
 
@@ -1707,7 +1710,7 @@ class Store {
 
   @override
   String toString() {
-    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMoto: $storeMoto';
+    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMoto: $storeMoto, storeAddress: $storeAddress, storeLatLng: $storeLatLng';
   }
 
   @override

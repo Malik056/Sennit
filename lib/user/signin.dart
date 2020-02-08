@@ -339,7 +339,7 @@ class _UserSignInState extends State<UserSignIn> {
         await Firestore.instance.collection("carts").document(userId).get();
 
     if (value == null || value.data == null || value.data.isEmpty) {
-      UserCart cart = UserCart(itemIds: [], quantities: []);
+      UserCart cart = UserCart(itemsData: {});
       Session.data.update("cart", (value) {
         return cart;
       }, ifAbsent: () {
@@ -347,8 +347,7 @@ class _UserSignInState extends State<UserSignIn> {
       });
       return Firestore.instance.collection('carts').document(userId).setData(
         {
-          'itemIds': <String>[],
-          'quantities': <double>[],
+          'itemsData': {},
         },
       );
     }
@@ -356,11 +355,13 @@ class _UserSignInState extends State<UserSignIn> {
     List<StoreItem> storeItems = [];
     var allItems =
         (await Firestore.instance.collection("items").getDocuments()).documents;
-
+    
+    // int i = 0;
+    
     for (DocumentSnapshot snapshot in allItems) {
-      if (cart.itemIds.contains(snapshot.documentID)) {
-        storeItems.add(StoreItem.fromMap(snapshot.data));
-      }
+        if (cart.itemsData.containsKey(snapshot.documentID)) {
+          storeItems.add(StoreItem.fromMap(snapshot.data));
+        }
     }
 
     cart.items = storeItems;

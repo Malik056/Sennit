@@ -1,8 +1,10 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/gestures.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:maps_launcher/maps_launcher.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
@@ -18,56 +20,30 @@ import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 // }
 
 class RecieveItOrderNavigationRoute extends StatelessWidget {
-  static var popUpHeight = 200.0;
+  static var popUpHeight = 220.0;
   static var popUpWidth = 300.0;
   // bool isOrderConfirmed = false;
   final _Body body;
   final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
+  final Future<String> verificationCode;
+
   final _solidController = SolidController();
   void onDonePressed() {
     body.showDeliveryCompleteDialogue();
   }
 
-  RecieveItOrderNavigationRoute._(
-      {@required this.body, @required this.myAppbar, @required this.data});
+  static Future<Map<String, dynamic>> items;
 
-  factory RecieveItOrderNavigationRoute({@required Map<String, dynamic> data}) {
-    _MyAppBar appBar;
-    _Body body = _Body(
-      onOrderConfirmed: () {
-        appBar.showButton();
-      },
-      onVerifyPopupCancel: () {
-        appBar.enableButton();
-      },
-      onCancelPopupCancel: () {
-        appBar.enableButton();
-      },
-      data: data,
-    );
-    appBar = _MyAppBar(
-      title: "Navigation",
-      onDonePressed: () {
-        body.showDeliveryCompleteDialogue();
-      },
-    );
-
-    return RecieveItOrderNavigationRoute._(
-      body: body,
-      myAppbar: appBar,
-      data: data,
-    );
-  }
-
-  Future<Map<String, dynamic>> getItems() async {
+  Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    List<String> items = (data['items'] as List).cast<String>();
+    Map<String, double> itemsData = Map<String, double>.from(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> result = {};
-    for (String item in items) {
+    final keys = itemsData.keys;
+    for (String itemKey in keys) {
       final result =
-          await Firestore.instance.collection('items').document(item).get();
+          await Firestore.instance.collection('items').document(itemKey).get();
       LatLng latlng = Utils.latLngFromString(result.data['latlng']);
       Address address = (await Geocoder.local.findAddressesFromCoordinates(
           Coordinates(latlng.latitude, latlng.longitude)))[0];
@@ -90,6 +66,152 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
     });
 
     return result;
+  }
+
+  RecieveItOrderNavigationRoute._({
+    @required this.body,
+    @required this.myAppbar,
+    @required this.data,
+    @required this.verificationCode,
+  }) {
+    items = getItems(data);
+  }
+
+  factory RecieveItOrderNavigationRoute({@required Map<String, dynamic> data}) {
+    _MyAppBar appBar;
+    var snapshot = Firestore.instance
+        .collection("verificationCodes")
+        .document(data['orderId'])
+        .get();
+    var result = snapshot.then<String>((value) {
+      return value.data['key'];
+    });
+    Future<String> verificationCode = result;
+    _Body body = _Body(
+      onCancelPopupConfirm: () async {
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .setData(
+          {
+            'status': 'Pending',
+          },
+          merge: true,
+        );
+      },
+      onOrderComplete: () async {
+        String driverId =
+            await FirebaseAuth.instance.currentUser().then((user) => user.uid);
+        DateTime now = DateTime.now();
+        Firestore.instance
+            .collection("verificationCodes")
+            .document(data['orderId'])
+            .delete();
+        await Firestore.instance
+            .collection('userOrders')
+            .document(data['userId'])
+            .setData(
+          {
+            data['orderId']: {
+              'status': 'Delivered',
+              'deliveryDate': '${now.millisecondsSinceEpoch}',
+            }
+          },
+          merge: true,
+        );
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .delete();
+
+        await Firestore.instance
+            .collection('driverOrders')
+            .document(driverId)
+            .setData({
+          data['orderId']: data
+            ..update(
+              'status',
+              (old) => 'Delivered',
+              ifAbsent: () => 'Delivered',
+            )
+            ..update(
+              'deliveryDate',
+              (old) => '${now.millisecondsSinceEpoch}',
+              ifAbsent: () => '${now.millisecondsSinceEpoch}',
+            ),
+        });
+        List<Map<String, dynamic>> itemDetails = (await items)['itemDetails'];
+        Map<String, double> itemsData =
+            Map<String, double>.from(data['itemsData']);
+        int index = 0;
+        final keys = itemsData.keys;
+        for (String itemKey in keys) {
+          Map<String, dynamic> item = (await Firestore.instance
+                  .collection('items')
+                  .document(itemKey)
+                  .get())
+              .data;
+          LatLng latLng = Utils.latLngFromString(data['destination']);
+          String address = (await Geocoder.local.findAddressesFromCoordinates(
+                  Coordinates(latLng.latitude, latLng.longitude)))[0]
+              .addressLine;
+          await Firestore.instance
+              .collection('stores')
+              .document(item['storeId'])
+              .collection('orderedItems')
+              .document(item['itemId'])
+              .setData(
+            {
+              data['orderId']: {
+                'orderedBy': data['userId'],
+                'dateOrdered': data['date'],
+                'dateDelivered': now.millisecondsSinceEpoch,
+                'deliveredTo': (data['house'] == null || data['house'] == ''
+                        ? ''
+                        : data['house'] + ', ') +
+                    address,
+                'quantity': itemsData[itemKey],
+                'userEmail': data['email'],
+                'price': itemDetails[index++]['price'],
+              },
+            },
+          );
+        }
+      },
+      verificationCode: verificationCode,
+      onOrderConfirmed: () async {
+        appBar.showButton();
+        await Firestore.instance
+            .collection('postedOrders')
+            .document(data['orderId'])
+            .setData(
+          {
+            'status': 'Accepted',
+          },
+          merge: true,
+        );
+      },
+      onVerifyPopupCancel: () {
+        appBar.enableButton();
+      },
+      onCancelPopupCancel: () {
+        appBar.enableButton();
+      },
+      data: data,
+    );
+    appBar = _MyAppBar(
+      title: "Navigation",
+      onDonePressed: () {
+        body.showDeliveryCompleteDialogue();
+      },
+    );
+
+    return RecieveItOrderNavigationRoute._(
+      verificationCode: verificationCode,
+      body: body,
+      myAppbar: appBar,
+      data: data,
+    );
   }
 
   @override
@@ -149,7 +271,7 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
           ),
 
           body: FutureBuilder<Map<String, dynamic>>(
-              future: getItems(),
+              future: items,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting ||
                     snapshot.data == null) {
@@ -181,143 +303,150 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
                         height: 10,
                       ),
                       Container(
+                        // color: Colors.black,
+                        // width: MediaQuery.of(context).size.width,
                         height: 200,
-                        child: Center(
-                          child: ListView.builder(
-                            padding: EdgeInsets.only(right: 20),
-                            scrollDirection: Axis.horizontal,
-                            dragStartBehavior: DragStartBehavior.start,
-                            physics: BouncingScrollPhysics(),
-                            itemCount:
-                                (snapshot.data['itemDetails'] as List).length,
-                            itemBuilder: (context, index) {
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Card(
-                                    elevation: 8,
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: InkWell(
-                                        splashColor: Theme.of(context)
-                                            .primaryColor
-                                            .withAlpha(190),
-                                        onTap: () async {
-                                          body.animteToLatLng(
-                                            Utils.latLngFromString(
-                                              snapshot.data['itemDetails']
-                                                  [index]['latlng'],
-                                            ),
-                                          );
-                                          _solidController.hide();
-                                        },
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: <Widget>[
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: <Widget>[
-                                                Container(
-                                                  color: Colors.black,
-                                                  child: Image.network(
-                                                    '${snapshot.data['itemDetails'][index]['images'][0]}',
-                                                    height: 100,
-                                                    width: 100,
-                                                    fit: BoxFit.fitWidth,
-                                                  ),
+                        child: ListView.builder(
+                          // padding: EdgeInsets.only(right: 20),
+                          scrollDirection: Axis.horizontal,
+                          // dragStartBehavior: DragStartBehavior.start,
+                          physics: BouncingScrollPhysics(),
+                          itemCount: snapshot.data['itemDetails'].length,
+                          itemBuilder: (context, index) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Card(
+                                  elevation: 8,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: InkWell(
+                                      splashColor: Theme.of(context)
+                                          .primaryColor
+                                          .withAlpha(190),
+                                      onTap: () async {
+                                        body.animteToLatLng(
+                                          Utils.latLngFromString(
+                                            snapshot.data['itemDetails'][index]
+                                                ['latlng'],
+                                          ),
+                                        );
+                                        _solidController.hide();
+                                      },
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: <Widget>[
+                                              Container(
+                                                color: Colors.black,
+                                                child: Image.network(
+                                                  '${snapshot.data['itemDetails'][index]['images'][0]}',
+                                                  height: 100,
+                                                  width: 100,
+                                                  fit: BoxFit.fitWidth,
                                                 ),
-                                                SizedBox(
-                                                  width: 8,
-                                                ),
-                                                Container(
-                                                  width: 150,
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: <Widget>[
-                                                      SizedBox(
-                                                        height: 4,
-                                                      ),
-                                                      Text(
-                                                        snapshot.data[
-                                                                'itemDetails']
-                                                            [index]['itemName'],
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .subhead,
-                                                      ),
-                                                      SizedBox(
-                                                        height: 4,
-                                                      ),
-                                                      Text(
-                                                          '${snapshot.data['itemDetails'][index]['storeName'] + ', ' + snapshot.data['itemDetails'][index]['address']}'),
-                                                      Align(
-                                                        alignment: Alignment
-                                                            .centerRight,
-                                                        child: Text(
-                                                          "Price: ${snapshot.data['itemDetails'][index]['price']}",
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          maxLines: 1,
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      )
-                                                    ],
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  width: 8,
-                                                ),
-                                              ],
-                                            ),
-                                            InkWell(
-                                              splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
-                                              onTap: () async {
-                                                print('Opened in maps');
-                                              },
-                                              child: Container(
-                                                width: 270.0,
-                                                color: Theme.of(context)
-                                                    .primaryColor,
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8.0),
-                                                        child: Text(
-                                                          'Open in Map',
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.white),
-                                                        ),
-                                                      ),
+                                              ),
+                                              SizedBox(
+                                                width: 8,
+                                              ),
+                                              Container(
+                                                width: 150,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: <Widget>[
+                                                    SizedBox(
+                                                      height: 4,
                                                     ),
+                                                    Text(
+                                                      snapshot.data[
+                                                              'itemDetails']
+                                                          [index]['itemName'],
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .subhead,
+                                                    ),
+                                                    SizedBox(
+                                                      height: 4,
+                                                    ),
+                                                    Text(
+                                                        '${snapshot.data['itemDetails'][index]['storeName'] + ', ' + snapshot.data['itemDetails'][index]['address']}'),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                      child: Text(
+                                                        "Price: R${snapshot.data['itemDetails'][index]['price']} x ${data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        maxLines: 1,
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    )
                                                   ],
                                                 ),
                                               ),
-                                            )
-                                          ],
-                                        ),
+                                              SizedBox(
+                                                width: 8,
+                                              ),
+                                            ],
+                                          ),
+                                          InkWell(
+                                            splashColor: Theme.of(context)
+                                                .primaryColor
+                                                .withAlpha(190),
+                                            onTap: () async {
+                                              print('Opened in maps');
+                                              LatLng latlng =
+                                                  Utils.latLngFromString(
+                                                snapshot.data['itemDetails']
+                                                    [index]['latlng'],
+                                              );
+                                              MapsLauncher.launchCoordinates(
+                                                  latlng.latitude,
+                                                  latlng.longitude);
+                                            },
+                                            child: Container(
+                                              width: 270.0,
+                                              color: Theme.of(context)
+                                                  .primaryColor,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              8.0),
+                                                      child: Text(
+                                                        'Open in Map',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          )
+                                        ],
                                       ),
                                     ),
                                   ),
-                                  // RaisedButton(
-                                  //   onPressed: () {},
-                                  //   child: Text('Open in Map',
-                                  //       style: TextStyle(color: Colors.white)),
-                                  // ),
-                                ],
-                              );
-                            },
-                          ),
+                                ),
+                                // RaisedButton(
+                                //   onPressed: () {},
+                                //   child: Text('Open in Map',
+                                //       style: TextStyle(color: Colors.white)),
+                                // ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                       SizedBox(
@@ -332,7 +461,7 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
                           ),
                           child: InkWell(
                             splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
+                                Theme.of(context).primaryColor.withAlpha(190),
                             onTap: () {
                               LatLng latLng =
                                   snapshot.data['destinationLatLng'];
@@ -386,10 +515,17 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
                                   height: 10,
                                 ),
                                 InkWell(
-                                  splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
+                                  splashColor: Theme.of(context)
+                                      .primaryColor
+                                      .withAlpha(190),
                                   onTap: () async {
                                     print('Opened in maps');
+                                    LatLng latLng =
+                                        snapshot.data['destinationLatLng'];
+                                    MapsLauncher.launchCoordinates(
+                                      latLng.latitude,
+                                      latLng.longitude,
+                                    );
                                   },
                                   child: Container(
                                     decoration: ShapeDecoration(
@@ -513,14 +649,19 @@ class _Body extends StatefulWidget {
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onVerifyPopupCancel;
-
   final Map<String, dynamic> data;
+  final verificationCode;
+  final Function onOrderComplete;
+  final Function onCancelPopupConfirm;
 
   _Body({
+    @required this.onOrderComplete,
     @required this.data,
     @required this.onOrderConfirmed,
     @required this.onCancelPopupCancel,
     @required this.onVerifyPopupCancel,
+    @required this.verificationCode,
+    @required this.onCancelPopupConfirm,
   });
 
   @override
@@ -614,9 +755,12 @@ class _BodyState extends State<_Body> {
   void initState() {
     super.initState();
     _popups = _Popups(
+      onOrderComplete: widget.onOrderComplete,
+      verificationCode: widget.verificationCode,
       onOrderConfirmed: widget.onOrderConfirmed,
       onCancelPopupCancel: widget.onCancelPopupCancel,
       onOrderCompletePopupCancel: widget.onVerifyPopupCancel,
+      onCancelPopupConfirm: widget.onCancelPopupConfirm,
     );
   }
 
@@ -770,10 +914,16 @@ class _Popups extends StatefulWidget {
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onOrderCompletePopupCancel;
+  final verificationCode;
+  final Function onOrderComplete;
+  final Function onCancelPopupConfirm;
   _Popups(
-      {@required this.onOrderConfirmed,
+      {@required this.onOrderComplete,
+      @required this.onOrderConfirmed,
       @required this.onCancelPopupCancel,
-      @required this.onOrderCompletePopupCancel});
+      @required this.onCancelPopupConfirm,
+      @required this.onOrderCompletePopupCancel,
+      @required this.verificationCode});
 
   @override
   State<StatefulWidget> createState() {
@@ -818,9 +968,9 @@ class _PopupsState extends State<_Popups> {
   void initState() {
     super.initState();
     _orderConfirmationPopup = _OrderConfirmation(
-      onConfirm: () {
+      onConfirm: () async {
         isOrderConfirmationVisible = false;
-        widget.onOrderConfirmed();
+        await widget.onOrderConfirmed();
         setState(() {});
       },
       onExit: () {
@@ -836,21 +986,25 @@ class _PopupsState extends State<_Popups> {
         widget.onCancelPopupCancel();
         setState(() {});
       },
-      onConfirm: () {
+      onConfirm: () async {
         print('on Confirm Called');
+        await widget.onCancelPopupConfirm();
         isCancelDialogVisible = false;
-        Navigator.pop(context);
       },
     );
     _deliveryDonePopUp = _DeliveryDonePopUp(
+      verificationCode: widget.verificationCode,
       onCancel: () {
         isOrderCompleteDialogeVisible = false;
         widget.onOrderCompletePopupCancel();
         setState(() {});
       },
-      onConfirm: () {
+      onConfirm: () async {
         isOrderCompleteDialogeVisible = false;
-        Navigator.pop(context);
+        Utils.showLoadingDialog(context);
+        await widget.onOrderComplete();
+        int count = 0;
+        Navigator.popUntil(context, (route) => count++ > 1);
       },
     );
   }
@@ -922,10 +1076,11 @@ class _DeliveryDonePopUp extends StatefulWidget {
   // final height;
   final Function onCancel;
   final Function onConfirm;
-
+  final verificationCode;
   _DeliveryDonePopUp({
     @required this.onCancel,
     @required this.onConfirm,
+    @required this.verificationCode,
   }); //@required this.width, @required this.height})
 
   final _DeliveryDonePopUpStateRevised state = _DeliveryDonePopUpStateRevised();
@@ -954,6 +1109,12 @@ class _DeliveryDonePopUp extends StatefulWidget {
 }
 
 class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
+  String confirmationKey = '';
+
+  var _verificationCodeController = TextEditingController();
+
+  var hasError = false;
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -992,22 +1153,48 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               animationDuration: Duration(milliseconds: 300),
               borderRadius: BorderRadius.circular(5),
               selectedColor: Theme.of(context).primaryColor,
+              controller: _verificationCodeController,
               fieldHeight: 40,
               fieldWidth: 35,
               onChanged: (value) {
+                confirmationKey = value;
                 setState(() {});
               },
             ),
             SizedBox(
-              height: 8,
+              height: 4,
             ),
+            hasError
+                ? Text(
+                    'Invalid Code! Try Again',
+                    style: Theme.of(context)
+                        .textTheme
+                        .body1
+                        .copyWith(color: Colors.red),
+                  )
+                : Opacity(
+                    opacity: 0,
+                  ),
             RaisedButton(
               child: Text(
                 'Verify',
                 style: Theme.of(context).textTheme.button,
               ),
-              onPressed: () {
-                widget.onConfirm();
+              onPressed: () async {
+                String key = await widget.verificationCode;
+                if (confirmationKey == key) {
+                  Utils.showSuccessDialog('Success');
+                  Future.delayed(Duration(seconds: 2)).then((a) {
+                    BotToast.removeAll();
+                  });
+                  widget.onConfirm();
+                } else {
+                  hasError = true;
+                  setState(() {
+                    _verificationCodeController.clear();
+                  });
+                  // Utils.showSnackBarError(context, 'Invalid Verification Code');
+                }
                 // Navigator.pop(context);
               },
             ),
@@ -1111,9 +1298,11 @@ class _CancelOrderPopUpStateRevised extends State<_CancelOrderPopUp> {
                       'Confirm',
                       textAlign: TextAlign.center,
                     ),
-                    onPressed: () {
-                      widget.onConfirm();
-                      // Navigator.pop(context);
+                    onPressed: () async {
+                      Utils.showLoadingDialog(context);
+                      await widget.onConfirm();
+                      int count = 0;
+                      Navigator.pop(context, () => count++ > 1);
                       // widget.parent.setState(() {});
                     },
                   ),
@@ -1217,9 +1406,8 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
                     //     Radius.circular(4),
                     //   ),
                     // ),
-                    onPressed: () {
-                      // orderConfirmed = true;
-                      widget.onConfirm();
+                    onPressed: () async {
+                      await widget.onConfirm();
                     },
                     color: Theme.of(context).primaryColor,
                     child: Text(

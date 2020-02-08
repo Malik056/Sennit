@@ -18,7 +18,7 @@ class OrderTile extends StatelessWidget {
         dense: true,
         isThreeLine: true,
         onTap: () {
-          if (data['sleevesRequired'] == null) {
+          if (!data.containsKey('numberOfSleevesNeeded') || data['numberOfSleevesNeeded'] == null) {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -43,7 +43,7 @@ class OrderTile extends StatelessWidget {
           color: Theme.of(context).primaryColor,
         ),
         title: Text(
-          '${data['sleevesRequired'] == null ? 'Recieve it' : 'Sennit'}',
+          '${data['numberOfSleevesNeeded'] == null ? 'Recieve it' : 'Sennit'}',
           style: Theme.of(context).textTheme.title,
         ),
         subtitle: Text.rich(
@@ -423,7 +423,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: List<Widget>.generate(
-                              (data['items'] as List).length, (index) {
+                              data['itemsData'].length, (index) {
                             final item = snapshot.data[index];
                             return Column(
                               children: <Widget>[
@@ -468,7 +468,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                           Align(
                                             alignment: Alignment.bottomRight,
                                             child: Text(
-                                              'Price: R${item['price']} x ${(data['quantities'][index] as double).toInt()}',
+                                              'Price: R${item['price']} x ${(data['itemsData'][item['itemId']] as double).toInt()}',
                                               style: textTheme.subhead,
                                             ),
                                           ),
@@ -507,10 +507,10 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
   }
 
   Future<List<Map<String, dynamic>>> getItemDetails(data) async {
-    List items = data['items'];
+    Map<String, double> items = Map<String, double>.from(data['itemsData']);
     Firestore firestore = Firestore.instance;
     List<Map<String, dynamic>> result = [];
-    for (String item in items) {
+    for (var item in items.keys) {
       final snapshot = await firestore.collection('items').document(item).get();
       result.add(snapshot.data);
     }

@@ -149,7 +149,12 @@ class _TimerButtonState extends State<TimerButton> {
       roundLoadingShape: false,
       onTap: (startTimer, btnState) async {
         if (btnState == ButtonState.Idle) {
-          (await FirebaseAuth.instance.currentUser()).sendEmailVerification();
+          (await FirebaseAuth.instance.currentUser())
+              .sendEmailVerification()
+              .catchError((error) {
+            debugPrintStack();
+            print(error?.toString());
+          });
           startTimer(30);
         }
       },
