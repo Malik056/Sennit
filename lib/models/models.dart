@@ -1686,7 +1686,7 @@ class Store {
       'storeImage': storeImage,
       'storeMoto': storeMoto,
       'storeAddress': storeAddress,
-      'storeLatLng': storeLatLng,
+      'storeLatLng': Utils.latLngToString(storeLatLng),
     };
   }
 
@@ -1700,7 +1700,7 @@ class Store {
       storeImage: map['storeImage'],
       storeMoto: map['storeMoto'],
       storeAddress: map['storeAddress'],
-      storeLatLng: map['storeLatLng'],
+      storeLatLng: Utils.latLngFromString(map['storeLatLng']),
     );
   }
 

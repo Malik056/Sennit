@@ -10,10 +10,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
 import 'package:location/location.dart';
-import 'package:place_picker/place_picker.dart';
+// import 'package:place_picker/place_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/models/models.dart' as model;
@@ -363,10 +364,12 @@ class StoresRouteState extends State<StoresRoute> {
       });
       store = Store.fromMap(storeAsMap);
       LatLng latlng =
-          await Utils.getMyLocation(accuracy: LocationAccuracy.BALANCED);
+          await Utils.getMyLocation(accuracy: LocationAccuracy.POWERSAVE);
+
       if (Utils.calculateDistance(store.storeLatLng, latlng) > 2008 * 1.6) {
         return;
       }
+
       var itemIds = storeAsMap['items'];
 
       for (String itemId in itemIds) {
@@ -2031,11 +2034,11 @@ class ShoppingCartRoute extends StatelessWidget {
                 return;
               }
 
-              // RaveStatus status = await performTransaction(
-              //     context,
-              //     ShoppingCartRouteState.totalPrice +
-              //         ShoppingCartRouteState.totalDeliveryCharges);
-              final status = RaveStatus.success;
+              RaveStatus status = await performTransaction(
+                  context,
+                  ShoppingCartRouteState.totalPrice +
+                      ShoppingCartRouteState.totalDeliveryCharges);
+              // final status = RaveStatus.success;
               if (status == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
                 Navigator.pop(context);
@@ -2593,6 +2596,12 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
                         ShoppingCartRoute._toAddress.coordinates.longitude),
                     item.latlng,
+                  );
+
+                  print(
+                      'To Coordinates: ${ShoppingCartRoute._toAddress.coordinates}');
+                  print(
+                    'Item: ${item.latlng}',
                   );
 
                   if (distance <= 10) {

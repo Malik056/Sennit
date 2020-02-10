@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
-import 'package:place_picker/place_picker.dart';
+// import 'package:place_picker/place_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
@@ -453,11 +454,11 @@ class SendItCartRoute extends StatelessWidget {
                 return;
               }
 
-              // RaveStatus status = await performTransaction(
-              //   context,
-              //   SendItCartRouteState.totalCharges,
-              // );
-              final status = RaveStatus.success;
+              RaveStatus status = await performTransaction(
+                context,
+                SendItCartRouteState.totalCharges,
+              );
+              // final status = RaveStatus.success;
 
               if (status == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');

@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:place_picker/place_picker.dart';
+// import 'package:place_picker/place_picker.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
@@ -361,7 +362,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         }
                         if (result != null) {
                           setState(() {
-                            address = result.formattedAddress;
+                            address = result.address;
                             driver.homeLocationAddress = address;
                             driver.homeLocationLatLng = result.latLng;
                           });

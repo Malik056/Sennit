@@ -10,8 +10,10 @@ import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_map_location_picker/generated/i18n.dart' as location_picker;
 import 'package:location/location.dart';
-import 'package:place_picker/place_picker.dart';
+// import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
@@ -174,6 +176,16 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return BotToastInit(
       child: MaterialApp(
+        localizationsDelegates: const [
+          location_picker.S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const <Locale>[
+          Locale('en', ''),
+          Locale('ar', ''),
+        ],
         navigatorObservers: [BotToastNavigatorObserver()],
         initialRoute: initialRoute,
         routes: {
@@ -408,7 +420,8 @@ class Utils {
   }
 
   static showSnackBarWarningUsingKey(
-      GlobalKey<ScaffoldState> key, String message, {Duration duration}) {
+      GlobalKey<ScaffoldState> key, String message,
+      {Duration duration}) {
     SnackBar snackBar = SnackBar(
       backgroundColor: Colors.yellow.shade700,
       content: Text(
@@ -503,12 +516,12 @@ class Utils {
 
   static showPlacePicker(BuildContext context) async {
     String apiKey = await getAPIkey(context: context);
-    LocationResult result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PlacePicker(apiKey),
-      ),
-    );
-    return result;
+    // LocationResult result = await Navigator.of(context).push(
+    //   MaterialPageRoute(
+    //     builder: (context) => PlacePicker(apiKey),
+    //   ),
+    // );
+    // return result;
   }
 
   static Future<LatLng> getMyLocation(
