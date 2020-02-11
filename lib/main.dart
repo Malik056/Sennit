@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
+import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_map_location_picker/generated/i18n.dart' as location_picker;
+import 'package:google_map_location_picker/generated/i18n.dart'
+    as location_picker;
 import 'package:location/location.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
@@ -516,12 +518,23 @@ class Utils {
 
   static showPlacePicker(BuildContext context) async {
     String apiKey = await getAPIkey(context: context);
-    // LocationResult result = await Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (context) => PlacePicker(apiKey),
-    //   ),
-    // );
-    // return result;
+    // LocationPicker(apiKey);
+    Map<String, LocationResult> map = Map<String, LocationResult>.from(
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => LocationPicker(
+            apiKey,
+            automaticallyAnimateToCurrentLocation: true,
+            initialCenter: Utils.getLastKnowLocation(),
+            requiredGPS: true,
+            myLocationButtonEnabled: true,
+            layersButtonEnabled: true,
+          ),
+        ),
+      ),
+    );
+    var keys = map.keys.toList();
+    return map[keys[0]];
   }
 
   static Future<LatLng> getMyLocation(
@@ -530,7 +543,11 @@ class Utils {
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);
     });
-    return MyApp._lastKnowLocation;
+
+    return MyApp._lastKnowLocation
+      ..then((a) {
+        MyApp._initialLocation = a;
+      });
   }
 
   static LatLng getLastKnowLocation() {

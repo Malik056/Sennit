@@ -11,11 +11,11 @@ import Firebase
   ) -> Bool {
     var keys: NSDictionary?
 
-    if let path = Bundle.main.path(forResource: "Keys", ofType: "plist") {
+    if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
         keys = NSDictionary(contentsOfFile: path)
     }
     if let dict = keys {
-        let apiKey = dict["Maps"] as? String
+        let apiKey = dict["APIKey"] as? String
         // Initialize Parse.
         GMSServices.provideAPIKey(apiKey!)
     }

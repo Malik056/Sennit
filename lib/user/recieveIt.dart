@@ -363,8 +363,7 @@ class StoresRouteState extends State<StoresRoute> {
         return storeId;
       });
       store = Store.fromMap(storeAsMap);
-      LatLng latlng =
-          await Utils.getMyLocation(accuracy: LocationAccuracy.POWERSAVE);
+      LatLng latlng = await Utils.getMyLocation();
 
       if (Utils.calculateDistance(store.storeLatLng, latlng) > 2008 * 1.6) {
         return;
@@ -912,7 +911,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               });
             });
           } else {
-            var itemsData = cart.itemsData;
+            var itemsData = Map<String, double>.from(cart.itemsData);
             // var quantities = List.from(cart.quantities);
             // itemsData.removeWhere(
             //   (Map<String, double> e) {
@@ -920,7 +919,10 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             //   },
             // );
 
-            itemsData.remove(ItemDetailsRoute._item);
+            // itemsData.remove(ItemDetailsRoute._item);
+            itemsData.removeWhere(
+              (key, value) => key == ItemDetailsRoute._item.itemId,
+            );
             // quantities.removeAt(index);
             Firestore.instance
                 .collection('carts')
@@ -936,9 +938,9 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 addingToCart = false;
               });
             }).then((_) {
-              cart.itemsData.remove(ItemDetailsRoute._item.itemId);
-              cart.items.removeWhere((item) {
-                if (item.itemId == ItemDetailsRoute._item.itemId) {
+              cart.items.remove(ItemDetailsRoute._item.itemId);
+              cart.itemsData.removeWhere((key, value) {
+                if (key == ItemDetailsRoute._item.itemId) {
                   return true;
                 }
                 return false;
@@ -2251,6 +2253,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   bool boxSizeLarge = false;
   bool sleeveNeeded = false;
 
+  List<bool> isAnimationVisibleList = [];
+  List<bool> isItemDeleteConfirmationVisibleList = [];
+  // bool isItemDeleteConfirmationVisible = false;
+
+  // var isAnimationVisible = false;
+
+  List<bool> isButtonActiveList = [];
+
+  var isLoadingBarVisibleList = [];
+
   ShoppingCartRouteState() {
     _controllers = [];
     _emailController = TextEditingController();
@@ -2278,6 +2290,10 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
       final TextEditingController controller = TextEditingController();
       _controllers.add(controller);
       controller.text = cart.itemsData[key].toInt().toString();
+      isAnimationVisibleList.add(false);
+      isItemDeleteConfirmationVisibleList.add(false);
+      isButtonActiveList.add(false);
+      isLoadingBarVisibleList.add(false);
     }
   }
 
@@ -2568,6 +2584,10 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     totalDeliveryCharges = 0;
     totalPrice = 0;
     List<double> deliveryCharges = [];
+    // for (int i = 0; i < items.length; i++) {
+    //   isAnimationVisibleList.add(false);
+    //   isItemDeleteConfirmationVisibleList.add(false);
+    // }
     return Card(
       margin: EdgeInsets.only(
         top: groupMargin,
@@ -2617,39 +2637,244 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   }
                   // deliveryCharges.add()
                 }
-                return CartItem(
-                  onQuantityChange: (value) async {
-                    if (value == null || value == 0) {
-                      return;
-                    }
-                    Firestore.instance
-                        .collection('carts')
-                        .document((Session.data['user'] as User).userId)
-                        .setData(
-                      {
-                        'itemsData': {
-                          item.itemId: value.toDouble(),
-                        }
+                return Stack(
+                  children: <Widget>[
+                    CartItem(
+                      onDelete: () {
+                        isAnimationVisibleList[index] = true;
+                        Future.delayed(Duration(milliseconds: 100)).then(
+                          (_) {
+                            isItemDeleteConfirmationVisibleList[index] = true;
+                            setState(() {});
+                          },
+                        );
+                        setState(() {});
                       },
-                      merge: true,
-                    );
-                    itemsData.update(item.itemId, (a) {
-                      return value.toDouble();
-                    });
-                    totalPrice = 0;
-                    for (var item in items) {
-                      totalPrice += item.price * itemsData[item.itemId];
-                    }
-                    totalPrice += totalDeliveryCharges;
+                      onQuantityChange: (value) async {
+                        if (value == null || value == 0) {
+                          return;
+                        }
+                        Firestore.instance
+                            .collection('carts')
+                            .document((Session.data['user'] as User).userId)
+                            .setData(
+                          {
+                            'itemsData': {
+                              item.itemId: value.toDouble(),
+                            }
+                          },
+                          merge: true,
+                        );
+                        itemsData.update(item.itemId, (a) {
+                          return value.toDouble();
+                        });
+                        totalPrice = 0;
+                        for (var item in items) {
+                          totalPrice += item.price * itemsData[item.itemId];
+                        }
+                        totalPrice += totalDeliveryCharges;
 
-                    // if (value != null) {
-                    //   totalPrice += item.price * value;
-                    setState(() {});
-                    // }
-                  },
-                  item: item,
-                  controller: _controllers[index],
-                  itemIndex: index,
+                        // if (value != null) {
+                        //   totalPrice += item.price * value;
+                        setState(() {});
+                        // }
+                      },
+                      item: item,
+                      controller: _controllers[index],
+                      itemIndex: index,
+                    ),
+                    isAnimationVisibleList[index]
+                        ? Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 4,
+                            bottom: 4,
+                            child: AnimatedOpacity(
+                                duration: Duration(milliseconds: 800),
+                                opacity:
+                                    isItemDeleteConfirmationVisibleList[index]
+                                        ? 1
+                                        : 0,
+                                onEnd: () {
+                                  if (isItemDeleteConfirmationVisibleList[
+                                      index]) {
+                                    isAnimationVisibleList[index] = true;
+                                    isButtonActiveList[index] = true;
+                                  } else {
+                                    isAnimationVisibleList[index] = false;
+                                  }
+                                  setState(() {});
+                                },
+                                child: Container(
+                                  color: Colors.white.withAlpha(240),
+                                  padding: EdgeInsets.only(
+                                      top: 8,
+                                      bottom: 8,
+                                      left: MediaQuery.of(context).size.width *
+                                          0.2,
+                                      right: MediaQuery.of(context).size.width *
+                                          0.2),
+                                  child: isLoadingBarVisibleList[index]
+                                      ? Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : Row(
+                                          children: <Widget>[
+                                            Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: <Widget>[
+                                                IconButton(
+                                                  splashColor: Theme.of(context)
+                                                      .primaryColor,
+                                                  tooltip: "Cancel",
+                                                  onPressed:
+                                                      isButtonActiveList[index]
+                                                          ? () {
+                                                              isButtonActiveList[
+                                                                      index] =
+                                                                  false;
+                                                              isItemDeleteConfirmationVisibleList[
+                                                                      index] =
+                                                                  false;
+                                                              setState(() {});
+                                                            }
+                                                          : null,
+                                                  icon: Icon(
+                                                    Icons.close,
+                                                    color: Theme.of(context)
+                                                        .primaryColor,
+                                                    size: 36,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 4,
+                                                ),
+                                                Text(
+                                                  'Cancel',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .subhead,
+                                                ),
+                                              ],
+                                            ),
+                                            Spacer(),
+                                            Column(
+                                              children: <Widget>[
+                                                IconButton(
+                                                  tooltip: "Confirm",
+                                                  splashColor: Theme.of(context)
+                                                      .primaryColor,
+                                                  onPressed: isButtonActiveList[
+                                                          index]
+                                                      ? () async {
+                                                          // isButtonActiveList[index] =
+                                                          //     false;
+                                                          // isItemDeleteConfirmationVisibleList[
+                                                          //     index] = false;
+                                                          // setState(() {});
+
+                                                          isLoadingBarVisibleList[
+                                                              index] = true;
+                                                          setState(() {});
+
+                                                          User user = Session
+                                                              .data['user'];
+                                                          UserCart cart =
+                                                              Session
+                                                                  .data['cart'];
+                                                          var itemsData = Map<
+                                                              String,
+                                                              double>.from(
+                                                            cart.itemsData,
+                                                          );
+                                                          // var quantities = List.from(cart.quantities);
+                                                          // itemsData.removeWhere(
+                                                          //   (Map<String, double> e) {
+                                                          //     return e.containsKey(ItemDetailsRoute._item.itemId);
+                                                          //   },
+                                                          // );
+
+                                                          itemsData.removeWhere(
+                                                            (key, value) =>
+                                                                key ==
+                                                                items[index]
+                                                                    .itemId,
+                                                          );
+                                                          // quantities.removeAt(index);
+                                                          Firestore.instance
+                                                              .collection(
+                                                                  'carts')
+                                                              .document(
+                                                                  user.userId)
+                                                              .setData(
+                                                            {
+                                                              'itemsData':
+                                                                  itemsData,
+                                                              // 'quantities': quantities,
+                                                            },
+                                                          ).catchError((error) {
+                                                            Utils.showSnackBarError(
+                                                                context,
+                                                                error
+                                                                    .toString());
+                                                            setState(() {
+                                                              isLoadingBarVisibleList[
+                                                                      index] =
+                                                                  false;
+                                                            });
+                                                          }).then((_) {
+                                                            cart.items.remove(
+                                                              ItemDetailsRoute
+                                                                  ._item.itemId,
+                                                            );
+                                                            cart.itemsData
+                                                                .removeWhere(
+                                                                    (key,
+                                                                        value) {
+                                                              if (key ==
+                                                                  items[index]
+                                                                      .itemId) {
+                                                                return true;
+                                                              }
+                                                              return false;
+                                                            });
+                                                            // cart.quantities.removeAt(index);
+                                                            setState(() {
+                                                              isLoadingBarVisibleList[
+                                                                      index] =
+                                                                  false;
+                                                              items.removeAt(
+                                                                  index);
+                                                            });
+                                                          });
+                                                        }
+                                                      : null,
+                                                  icon: Icon(
+                                                    Icons.check,
+                                                    color: Colors.red,
+                                                    size: 36,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: 4,
+                                                ),
+                                                Text(
+                                                  'Yes',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .subhead
+                                                      .copyWith(
+                                                        color: Colors.red,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                )),
+                          )
+                        : Opacity(opacity: 0),
+                  ],
                 );
               }),
             ),
@@ -2734,13 +2959,15 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 class CartItem extends StatefulWidget {
   final controller;
   final model.StoreItem item;
+  final Function onDelete;
   final int itemIndex;
   final Function(int) onQuantityChange;
   CartItem(
       {this.item,
       this.controller,
       this.itemIndex,
-      @required this.onQuantityChange});
+      @required this.onQuantityChange,
+      @required this.onDelete});
 
   @override
   State<StatefulWidget> createState() {
@@ -2759,6 +2986,8 @@ class CartItemState extends State<CartItem> {
   Function(int) onQuantityChange;
 
   final _quantityFocusNode = FocusNode();
+
+  bool isPressed = false;
   CartItemState(
       {@required this.item,
       this.controller,
@@ -2835,7 +3064,7 @@ class CartItemState extends State<CartItem> {
                   Row(
                     children: [
                       Expanded(
-                        flex: 7,
+                        flex: 6,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2915,6 +3144,23 @@ class CartItemState extends State<CartItem> {
                           ],
                         ),
                       ),
+                      Expanded(
+                        child: IconButton(
+                          onPressed: () {
+                            if (!isPressed) {
+                              widget.onDelete();
+                              isPressed = true;
+                              Future.delayed(Duration(seconds: 1)).then((_) {
+                                isPressed = false;
+                              });
+                            }
+                          },
+                          icon: Icon(
+                            Icons.delete,
+                            color: Colors.red,
+                          ),
+                        ),
+                      )
                     ],
                   ),
                   SizedBox(

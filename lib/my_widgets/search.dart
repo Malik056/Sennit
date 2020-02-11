@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flappy_search_bar/flappy_search_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/user/recieveIt.dart';
 
@@ -14,10 +16,20 @@ class SearchWidget extends StatefulWidget {
 class SearchWidgetState extends State<SearchWidget> {
   Future<List<model.StoreItem>> initialize() async {
     List<model.StoreItem> items = [];
+    LatLng myLatLng = (await Utils.getMyLocation());
+
     QuerySnapshot snapshot =
         await Firestore.instance.collection('items').getDocuments();
     for (DocumentSnapshot snapshot in snapshot.documents) {
-      items.add(model.StoreItem.fromMap(snapshot.data));
+      if (Utils.calculateDistance(
+            myLatLng,
+            Utils.latLngFromString(
+              snapshot.data['latlng'],
+            ),
+          ) <=
+          8 * 1.6) {
+        items.add(model.StoreItem.fromMap(snapshot.data));
+      }
     }
     return items;
   }
