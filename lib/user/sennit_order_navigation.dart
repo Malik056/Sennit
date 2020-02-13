@@ -481,6 +481,9 @@ class _MapWidget extends StatefulWidget {
   }
 
   void animateTo(LatLng position) async {
+    if (position == null) {
+      return;
+    }
     await state._controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: position, zoom: 15.0),
@@ -626,7 +629,12 @@ class _MapState extends State<_MapWidget> {
                     // padding: EdgeInsets.all(8),
                     child: ListTile(
                       onTap: () {
-                        widget.animateTo(data['driverLatLng']);
+                        print('Driver tap: LatLng: ${data['driverLatLng']}');
+                        widget.animateTo(
+                          Utils.latLngFromString(
+                            data['driverLatLng'],
+                          ),
+                        );
                       },
                       leading: data['driverImage'] == null ||
                               data['driverImage'] == ''

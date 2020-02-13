@@ -455,11 +455,11 @@ class SendItCartRoute extends StatelessWidget {
                 return;
               }
 
-              // RaveStatus status = await performTransaction(
-              //   context,
-              //   SendItCartRouteState.totalCharges,
-              // );
-              final status = RaveStatus.success;
+              RaveStatus status = await performTransaction(
+                context,
+                SendItCartRouteState.totalCharges,
+              );
+              // final status = RaveStatus.success;
 
               if (status == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
@@ -510,23 +510,23 @@ class SendItCartRoute extends StatelessWidget {
                   SendItCartRouteState.senderPhoneNumberController.text;
 
               String otp = randomAlphaNumeric(6).toUpperCase();
-              // var url =
-              //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.senderPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
-              // var response = await post(
-              //   url,
-              // );
-              // var url2 =
-              //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.receiverPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
-              // var response2 = await post(
-              //   url2,
-              // );
-              // if ((response.statusCode == 200 ||
-              //         response.statusCode == 201 ||
-              //         response.statusCode == 202) &&
-              //     (response2.statusCode == 200 ||
-              //         response2.statusCode == 201 ||
-              //         response2.statusCode == 202)) {
-              if (true) {
+              var url =
+                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.senderPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              var response = await post(
+                url,
+              );
+              var url2 =
+                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.receiverPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              var response2 = await post(
+                url2,
+              );
+              if ((response.statusCode == 200 ||
+                      response.statusCode == 201 ||
+                      response.statusCode == 202) &&
+                  (response2.statusCode == 200 ||
+                      response2.statusCode == 201 ||
+                      response2.statusCode == 202)) {
+              // if (true) {
                 await Firestore.instance
                     .collection("postedOrders")
                     .add(sennitOrder.toMap())
