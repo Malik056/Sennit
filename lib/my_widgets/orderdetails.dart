@@ -5,6 +5,7 @@ import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/user/sennit_order_navigation.dart';
 
 class OrderTile extends StatelessWidget {
   final data;
@@ -18,7 +19,8 @@ class OrderTile extends StatelessWidget {
         dense: true,
         isThreeLine: true,
         onTap: () {
-          if (!data.containsKey('numberOfSleevesNeeded') || data['numberOfSleevesNeeded'] == null) {
+          if (!data.containsKey('numberOfSleevesNeeded') ||
+              data['numberOfSleevesNeeded'] == null) {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -221,12 +223,35 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 height: 10,
               ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
+                  SizedBox(
+                    width: 10,
+                  ),
+                  RaisedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SennitOrderNavigationRoute(
+                            data: Map<String, dynamic>.from(data),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Track Your Order',
+                      style: Theme.of(context).textTheme.subtitle.copyWith(
+                            color: Colors.white,
+                          ),
+                    ),
+                  ),
+                  Spacer(),
                   Text(
-                    'Price: R${data['price']}',
+                    'Total: R${data['price']}',
                     style: textTheme.title,
-                    strutStyle: StrutStyle(height: strutHeight),
+                  ),
+                  SizedBox(
+                    width: 10,
                   ),
                 ],
               ),

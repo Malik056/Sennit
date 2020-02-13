@@ -54,7 +54,7 @@ Future<void> locationInitializer() async {
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  locationInitializer();
+  await locationInitializer();
   await databaseInitializer();
   // await initializeDateFormatting('en_ZA');
   final user = await FirebaseAuth.instance.currentUser();
@@ -519,20 +519,23 @@ class Utils {
   static showPlacePicker(BuildContext context) async {
     String apiKey = await getAPIkey(context: context);
     // LocationPicker(apiKey);
-    Map<String, LocationResult> map = Map<String, LocationResult>.from(
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => LocationPicker(
-            apiKey,
-            automaticallyAnimateToCurrentLocation: true,
-            initialCenter: Utils.getLastKnowLocation(),
-            requiredGPS: true,
-            myLocationButtonEnabled: true,
-            layersButtonEnabled: true,
-          ),
-        ),
-      ),
-    );
+    Map<String, LocationResult> map =
+        Map<String, LocationResult>.from((await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => LocationPicker(
+                  apiKey,
+                  automaticallyAnimateToCurrentLocation: true,
+                  initialCenter: Utils.getLastKnowLocation(),
+                  requiredGPS: true,
+                  myLocationButtonEnabled: true,
+                  layersButtonEnabled: false,
+                ),
+              ),
+            )) ??
+            {});
+    if (map.isEmpty) {
+      return null;
+    }
     var keys = map.keys.toList();
     return map[keys[0]];
   }
@@ -559,6 +562,9 @@ class Utils {
   }
 
   static LatLng latLngFromString(String latlng) {
+    if (latlng == null) {
+      return null;
+    }
     List<String> splittedValues = latlng.split(',');
     double lattitude = double.parse(splittedValues[0]);
     double longitude = double.parse(splittedValues[1]);

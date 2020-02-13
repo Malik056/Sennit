@@ -59,11 +59,7 @@ class UserHomeRoute extends StatelessWidget {
             ),
           ],
         ),
-        body: StreamBuilder<String>(
-            stream: null,
-            builder: (context, snapshot) {
-              return UserHomeBody(MediaQuery.of(context).size);
-            }),
+        body: UserHomeBody(MediaQuery.of(context).size),
         backgroundColor: Colors.white,
       ),
     );

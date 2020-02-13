@@ -8,6 +8,7 @@ import 'package:location/location.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
 class SennitOrderNavigationRoute extends StatelessWidget {
@@ -48,27 +49,81 @@ class SennitOrderNavigationRoute extends StatelessWidget {
     _Body body = _Body(
       verificationCode: verificationCode,
       onCancelPopupConfiremd: () async {
+        data.update(('status'), (old) => 'Pending', ifAbsent: () => 'Acceptec');
+        data.update(
+          ('driverId'),
+          (old) => FieldValue.delete(),
+          ifAbsent: () => FieldValue.delete(),
+        );
+        data.update(
+          ('driverName'),
+          (old) => FieldValue.delete(),
+          ifAbsent: () => FieldValue.delete(),
+        );
+        data.update(
+          ('driverImage'),
+          (old) => FieldValue.delete(),
+          ifAbsent: () => FieldValue.delete(),
+        );
+
         await Firestore.instance
             .collection('postedOrders')
             .document(data['orderId'])
             .setData(
+              data,
+              merge: true,
+            );
+        await Firestore.instance
+            .collection('userOrders')
+            .document(data['userId'])
+            .setData(
           {
-            'status': 'Pending',
+            data['orderId']: data,
           },
           merge: true,
         );
       },
       onOrderConfirmed: () async {
+        Driver driver = Session.data['driver'];
         appBar.showButton();
+        data.update(('status'), (old) => 'Accepted',
+            ifAbsent: () => 'Acceptec');
+        data.update(('driverId'), (old) => driver.driverId,
+            ifAbsent: () => driver.driverId);
+        data.update(('driverName'), (old) => driver.fullname,
+            ifAbsent: () => driver.fullname);
+        data.update(('driverImage'), (old) => driver.profilePicture,
+            ifAbsent: () => driver.profilePicture);
+
         await Firestore.instance
             .collection('postedOrders')
             .document(data['orderId'])
             .setData(
+              data,
+              merge: true,
+            );
+        await Firestore.instance
+            .collection('userOrders')
+            .document(data['userId'])
+            .setData(
           {
-            'status': 'Accepted',
+            data['orderId']: data,
           },
           merge: true,
         );
+        Location location = Location();
+        location.onLocationChanged().listen((locationData) {
+          Firestore.instance
+              .collection('postedOrders')
+              .document(data['orderId'])
+              .setData(
+            {
+              'driverLatLng':
+                  '${locationData.latitude},${locationData.longitude}',
+            },
+            merge: true,
+          );
+        });
       },
       onOrderComplete: () async {
         String driverId =
