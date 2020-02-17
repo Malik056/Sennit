@@ -349,8 +349,10 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         address,
                       ),
                       onTap: () async {
-                        LocationResult result =
-                            await Utils.showPlacePicker(context);
+                        LocationResult result = await Utils.showPlacePicker(
+                          context,
+                          initialLocation: driver.homeLocationLatLng,
+                        );
                         if (result == null) {
                           if (driver.homeLocationLatLng == null) {
                             Utils.showSnackBarError(

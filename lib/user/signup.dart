@@ -351,7 +351,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                       ),
                       onTap: () async {
                         LocationResult result =
-                            await Utils.showPlacePicker(context);
+                            await Utils.showPlacePicker(context, initialLocation: user.homeLocationLatLng);
                         if (result == null) {
                           if (user.homeLocationLatLng == null) {
                             Utils.showSnackBarError(

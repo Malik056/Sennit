@@ -13,7 +13,6 @@ import 'package:geocoder/geocoder.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
-import 'package:location/location.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
@@ -2036,17 +2035,20 @@ class ShoppingCartRoute extends StatelessWidget {
                 return;
               }
 
-              RaveStatus status = await performTransaction(
+              Map<String, dynamic> result = await performTransaction(
                   context,
                   ShoppingCartRouteState.totalPrice +
                       ShoppingCartRouteState.totalDeliveryCharges);
               // final status = RaveStatus.success;
-              if (status == RaveStatus.cancelled) {
+              if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
                 Navigator.pop(context);
                 return;
-              } else if (status == RaveStatus.error) {
-                Utils.showSnackBarErrorUsingKey(_key, 'An Error Occurred');
+              } else if (result['status'] == RaveStatus.error) {
+                Utils.showSnackBarErrorUsingKey(
+                  _key,
+                  result['errorMessage'],
+                );
                 Navigator.pop(context);
                 return;
               } else {
@@ -2215,7 +2217,7 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = true
+      ..staging = false
       ..isPreAuth = true
       ..displayFee = true;
 
@@ -2224,7 +2226,10 @@ class ShoppingCartRoute extends StatelessWidget {
         .initialize(context: context, initializer: initializer);
     print(response.message);
 
-    return response.status;
+    return <String, dynamic>{
+      'status': response.status,
+      'errorMessage': response.message,
+    };
   }
 }
 
@@ -2332,11 +2337,20 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   ),
                   ListTile(
                     onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
+                      Coordinates destination =
+                          ShoppingCartRoute._toAddress?.coordinates;
+                      LatLng latlng = destination == null
+                          ? null
+                          : LatLng(destination.latitude, destination.longitude);
+                      LocationResult result = await Utils.showPlacePicker(
+                        context,
+                        initialLocation: latlng,
+                      );
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
-                            result.latLng.latitude, result.latLng.longitude);
+                          result.latLng.latitude,
+                          result.latLng.longitude,
+                        );
                         ShoppingCartRoute._toAddress = (await Geocoder.local
                             .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
@@ -2583,7 +2597,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     }
     totalDeliveryCharges = 0;
     totalPrice = 0;
-    List<double> deliveryCharges = [];
+    List<List<double>> deliveryCharges = [];
     // for (int i = 0; i < items.length; i++) {
     //   isAnimationVisibleList.add(false);
     //   isItemDeleteConfirmationVisibleList.add(false);
@@ -2625,13 +2639,19 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   );
 
                   if (distance <= 10) {
-                    deliveryCharges.add(60.0);
+                    deliveryCharges.add(
+                      List<double>.generate(
+                          itemsData[item.itemId].toInt(), (i) => 60),
+                    );
                   } else {
                     distance -= 10;
                     double kiloMeters = distance.ceilToDouble();
                     deliveryCharges.add(
-                      double.parse(
-                        (60 + (4.5 * kiloMeters)).toStringAsFixed(2),
+                      List<double>.generate(
+                        itemsData[item.itemId].toInt(),
+                        (i) => double.parse(
+                          (60 + (4.5 * kiloMeters)).toStringAsFixed(2),
+                        ),
                       ),
                     );
                   }
@@ -2939,13 +2959,13 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     );
   }
 
-  String getDeliveryCharges(List<double> deliveryCharges) {
+  String getDeliveryCharges(List<List<double>> deliveryCharges) {
     String finalString = '';
     double total = 0;
     int index = 0;
     for (var value in deliveryCharges) {
-      total += value;
-      finalString += 'R$value';
+      total += value[0] * value.length;
+      finalString += 'R$value x ${value.length}';
       if (++index < deliveryCharges.length) {
         finalString += ' + ';
       }
@@ -3009,7 +3029,6 @@ class CartItemState extends State<CartItem> {
         onQuantityChange(1);
       } else if (value > 99) {
         cart.itemsData[item.itemId] = 99.0;
-
         onQuantityChange(99);
       } else {
         cart.itemsData[item.itemId] = value.toDouble();

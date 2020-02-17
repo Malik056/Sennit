@@ -516,7 +516,7 @@ class Utils {
     return 12742 * asin(sqrt(a));
   }
 
-  static showPlacePicker(BuildContext context) async {
+  static showPlacePicker(BuildContext context, {@required LatLng initialLocation}) async {
     String apiKey = await getAPIkey(context: context);
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
@@ -524,8 +524,8 @@ class Utils {
               MaterialPageRoute(
                 builder: (context) => LocationPicker(
                   apiKey,
-                  automaticallyAnimateToCurrentLocation: true,
-                  initialCenter: Utils.getLastKnowLocation(),
+                  automaticallyAnimateToCurrentLocation: false,
+                  initialCenter: initialLocation ??Utils.getLastKnowLocation(),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,

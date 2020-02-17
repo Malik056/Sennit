@@ -201,8 +201,24 @@ class AddressAddingState extends State<AddressAddingBody> {
                                 : 'Select an Address',
                       ),
                       onTap: () async {
-                        LocationResult result =
-                            await Utils.showPlacePicker(context);
+                        Coordinates coordinates;
+                        widget.sourcePage ==
+                                SourcePage.addressSelectionDestination
+                            ? coordinates =
+                                AddressAddingRoute._toAddress?.coordinates
+                            : coordinates =
+                                AddressAddingRoute._fromAddress.coordinates;
+
+                        LatLng latlng = coordinates == null
+                            ? null
+                            : LatLng(
+                                coordinates.latitude,
+                                coordinates.longitude,
+                              );
+                        LocationResult result = await Utils.showPlacePicker(
+                          context,
+                          initialLocation: latlng,
+                        );
                         if (result != null) {
                           Coordinates coordinates = Coordinates(
                               result.latLng.latitude, result.latLng.longitude);
@@ -455,20 +471,20 @@ class SendItCartRoute extends StatelessWidget {
                 return;
               }
 
-              RaveStatus status = await performTransaction(
+              Map<String, dynamic> result = await performTransaction(
                 context,
                 SendItCartRouteState.totalCharges,
               );
               // final status = RaveStatus.success;
 
-              if (status == RaveStatus.cancelled) {
+              if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
                 return;
-              } else if (status == RaveStatus.error) {
-                Utils.showSnackBarErrorUsingKey(_key, 'An Error Occurred');
+              } else if (result['status'] == RaveStatus.error) {
+                Utils.showSnackBarErrorUsingKey(_key, result['errorMessage']);
                 return;
               } else {
-                Utils.showSnackBarErrorUsingKey(_key, 'Payment Succesfull');
+                Utils.showSnackBarSuccessUsingKey(_key, 'Payment Succesfull');
               }
 
               Utils.showLoadingDialog(context);
@@ -526,7 +542,7 @@ class SendItCartRoute extends StatelessWidget {
                   (response2.statusCode == 200 ||
                       response2.statusCode == 201 ||
                       response2.statusCode == 202)) {
-              // if (true) {
+                // if (true) {
                 await Firestore.instance
                     .collection("postedOrders")
                     .add(sennitOrder.toMap())
@@ -655,7 +671,7 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = true
+      ..staging = false
       ..isPreAuth = true
       ..displayFee = true;
 
@@ -664,7 +680,10 @@ class SendItCartRoute extends StatelessWidget {
         .initialize(context: context, initializer: initializer);
     print(response.message);
 
-    return response.status;
+    return <String, dynamic>{
+      'status': response.status,
+      'errorMessage': response.message,
+    };
   }
 }
 
@@ -769,8 +788,17 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                   ),
                   ListTile(
                     onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
+                      Coordinates coordinates =
+                          AddressAddingRoute._fromAddress?.coordinates;
+                      LatLng latlng = coordinates == null
+                          ? null
+                          : LatLng(
+                              coordinates.latitude,
+                              coordinates.longitude,
+                            );
+                      LocationResult result = await Utils.showPlacePicker(
+                          context,
+                          initialLocation: latlng);
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);
@@ -923,8 +951,18 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                   ),
                   ListTile(
                     onTap: () async {
-                      LocationResult result =
-                          await Utils.showPlacePicker(context);
+                      Coordinates coordinates =
+                          AddressAddingRoute._toAddress?.coordinates;
+                      LatLng latlng = coordinates == null
+                          ? null
+                          : LatLng(
+                              coordinates.latitude,
+                              coordinates.longitude,
+                            );
+                      LocationResult result = await Utils.showPlacePicker(
+                        context,
+                        initialLocation: latlng,
+                      );
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);

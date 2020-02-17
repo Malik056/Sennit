@@ -504,18 +504,19 @@ class _MapWidget extends StatefulWidget {
 }
 
 class _MapState extends State<_MapWidget> {
-  GoogleMap map;
+  // GoogleMap map;
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
   BitmapDescriptor driverIcon;
   GoogleMapController _controller;
+  Widget driverInfoWindow;
 
   @override
   void initState() {
     super.initState();
   }
 
-  Future<void> initialize() async {
+  Future<GoogleMap> initialize() async {
     final myLocation = await Utils.getMyLocation();
     driverIcon = await BitmapDescriptor.fromAssetImage(
       ImageConfiguration(
@@ -561,14 +562,14 @@ class _MapState extends State<_MapWidget> {
 
     markers..add(markerPickup)..add(markerDropOff);
 
-    map = GoogleMap(
+    return GoogleMap(
       compassEnabled: true,
       initialCameraPosition:
           CameraPosition(target: myLocation, zoom: 14, tilt: 30),
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       buildingsEnabled: true,
-      markers: markers,
+      markers: Set<Marker>.from(markers),
       polylines: polylines,
       mapType: MapType.normal,
       zoomGesturesEnabled: true,
@@ -587,7 +588,7 @@ class _MapState extends State<_MapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
+    return FutureBuilder<GoogleMap>(
       future: initialize(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -602,84 +603,158 @@ class _MapState extends State<_MapWidget> {
                 .document(widget.orderId)
                 .snapshots(),
             builder: (context, streamSnapshot) {
-              Map<String, dynamic> data = streamSnapshot.data?.data;
-              Marker driverMarker;
-              Widget driverInfoWindow;
-              if (data != null &&
-                  data.containsKey('driverId') &&
-                  data['driverId'] != '' &&
-                  data['driverId'] != null) {
-                LatLng driverLatLng =
-                    Utils.latLngFromString(data['driverLatLng']);
-                widget.onDriverAvailable(driverLatLng);
-                driverMarker = Marker(
-                  markerId: MarkerId('driverMarker'),
-                  infoWindow: InfoWindow(
-                    title: data['driverName'],
-                  ),
-                  icon: driverIcon,
-                );
-                map.markers.add(driverMarker);
-
-                driverInfoWindow = Card(
-                  margin: EdgeInsets.all(8),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width / 1.1,
-                    // margin: EdgeInsets.all(8),
-                    // padding: EdgeInsets.all(8),
-                    child: ListTile(
-                      onTap: () {
-                        print('Driver tap: LatLng: ${data['driverLatLng']}');
-                        widget.animateTo(
-                          Utils.latLngFromString(
-                            data['driverLatLng'],
-                          ),
-                        );
-                      },
-                      leading: data['driverImage'] == null ||
-                              data['driverImage'] == ''
-                          ? Icon(
-                              Icons.account_circle,
-                              size: 40,
-                              color: Theme.of(context).primaryColor,
-                            )
-                          : FadeInImage.assetNetwork(
-                              placeholder: 'assets/user.png',
-                              image: data['driverImage'],
+              return FutureBuilder<GoogleMap>(
+                  future:
+                      reinitialize(streamSnapshot.data?.data, snapshot.data),
+                  builder: (context, snapshot) {
+                    return Stack(
+                      children: [
+                        snapshot.data ??
+                            Opacity(
+                              opacity: 0,
                             ),
-                      title: Text(data['driverName']),
-                      subtitle: Text(
-                        'LatLng: ' + data['driverLatLng'] ??
-                            'Waiting for Driver',
-                        style: Theme.of(context).textTheme.body1.copyWith(
-                              fontSize: 14,
-                              color: Colors.black,
-                            ),
-                      ),
-                      trailing: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              return Stack(
-                children: [
-                  map,
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: driverInfoWindow ??
-                        Opacity(
-                          opacity: 0,
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: driverInfoWindow ??
+                              Opacity(
+                                opacity: 0,
+                              ),
                         ),
-                  ),
-                ],
-              );
+                      ],
+                    );
+                  });
             });
       },
     );
+  }
+
+  Future<GoogleMap> reinitialize(driverData, map) async {
+    Map<String, dynamic> data = driverData;
+
+    if (data != null &&
+        data.containsKey('driverId') &&
+        data['driverId'] != '' &&
+        data['driverId'] != null) {
+      LatLng driverLatLng = Utils.latLngFromString(data['driverLatLng']);
+      widget.onDriverAvailable(driverLatLng);
+
+      Marker markerPickup = Marker(
+        markerId: MarkerId("marker1"),
+        infoWindow:
+            InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
+        position: widget.pickup,
+        onTap: () {},
+        flat: false,
+        icon: await BitmapDescriptor.fromAssetImage(
+            ImageConfiguration(
+              size: Size(
+                100,
+                100,
+              ),
+            ),
+            'assets/images/pickup.png'),
+      );
+
+      Marker markerDropOff = Marker(
+        markerId: MarkerId("markerDrop"),
+        infoWindow:
+            InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
+        position: widget.dropOff,
+        icon: await BitmapDescriptor.fromAssetImage(
+          ImageConfiguration(
+            size: Size(
+              100,
+              100,
+            ),
+          ),
+          'assets/images/flag.png',
+        ),
+      );
+
+      markers..add(markerPickup)..add(markerDropOff);
+
+      Marker driverMarker = Marker(
+        markerId: MarkerId('driverMarker'),
+        infoWindow: InfoWindow(
+          title: data['driverName'],
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRose),
+      );
+      LatLng currentLatLng = await _controller?.getLatLng(
+        ScreenCoordinate(
+            x: MediaQuery.of(context).size.width ~/ 2,
+            y: MediaQuery.of(context).size.width ~/ 2),
+      );
+      markers..add(driverMarker);
+      driverInfoWindow = Card(
+        margin: EdgeInsets.all(8),
+        child: Container(
+          width: MediaQuery.of(context).size.width / 1.1,
+          // margin: EdgeInsets.all(8),
+          // padding: EdgeInsets.all(8),
+          child: ListTile(
+            onTap: () {
+              print('Driver tap: LatLng: ${data['driverLatLng']}');
+              widget.animateTo(
+                Utils.latLngFromString(
+                  data['driverLatLng'],
+                ),
+              );
+              // setState(() {});
+            },
+            leading: data['driverImage'] == null || data['driverImage'] == ''
+                ? Icon(
+                    Icons.account_circle,
+                    size: 40,
+                    color: Theme.of(context).primaryColor,
+                  )
+                : FadeInImage.assetNetwork(
+                    placeholder: 'assets/user.png',
+                    image: data['driverImage'],
+                  ),
+            title: Text(data['driverName']),
+            subtitle: Text(
+              'LatLng: ' + data['driverLatLng'] ?? 'Waiting for Driver',
+              style: Theme.of(context).textTheme.body1.copyWith(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+            ),
+            trailing: Icon(
+              Icons.location_on,
+              color: Theme.of(context).primaryColor,
+            ),
+          ),
+        ),
+      );
+
+      return GoogleMap(
+        compassEnabled: true,
+        initialCameraPosition: CameraPosition(
+          target: currentLatLng??Utils.getLastKnowLocation(),
+          zoom: 0,
+          tilt: 30,
+        ),
+        myLocationEnabled: true,
+        myLocationButtonEnabled: false,
+        buildingsEnabled: true,
+        markers: markers,
+        polylines: polylines,
+        mapType: MapType.normal,
+        zoomGesturesEnabled: true,
+        mapToolbarEnabled: false,
+        polygons: Set(),
+        circles: Set(),
+        onMapCreated: (controller) {
+          _controller = controller;
+        },
+        onTap: (latlng) async {
+          widget.onMapTap(latlng);
+          print('Map Original Widget Tapped');
+        },
+      );
+    }
+    return map;
   }
 }
 
