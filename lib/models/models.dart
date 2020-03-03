@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/main.dart';
 
@@ -172,6 +171,7 @@ class Driver {
   DateTime userCreatedOn;
   String email;
   String phoneNumber;
+  String licencePlateNumber;
   String profilePicture;
   DateTime dateOfBirth;
   Gender gender;
@@ -184,6 +184,7 @@ class Driver {
     this.driverId,
     this.firstName,
     this.lastName,
+    this.licencePlateNumber,
     this.homeLocationAddress,
     this.homeLocationLatLng,
     this.userCreatedOn,
@@ -213,6 +214,7 @@ class Driver {
     DateTime dateOfBirth,
     Gender gender,
     String rank,
+    String licencePlateNumber,
     double rating,
     int totalReviews,
     double balance,
@@ -225,6 +227,7 @@ class Driver {
       homeLocationLatLng: homeLocationLatLng ?? this.homeLocationLatLng,
       userCreatedOn: userCreatedOn ?? this.userCreatedOn,
       email: email ?? this.email,
+      licencePlateNumber: licencePlateNumber ?? this.licencePlateNumber,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       profilePicture: profilePicture ?? this.profilePicture,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
@@ -245,6 +248,7 @@ class Driver {
       'homeLocationLatLng': Utils.latLngToString(homeLocationLatLng),
       'userCreatedOn': userCreatedOn.millisecondsSinceEpoch,
       'email': email,
+      'licencePlateNumber': licencePlateNumber,
       'phoneNumber': phoneNumber,
       'profilePicture': profilePicture,
       'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
@@ -267,6 +271,7 @@ class Driver {
       homeLocationLatLng: Utils.latLngFromString(map['homeLocationLatLng']),
       userCreatedOn: DateTime(map['userCreatedOn']),
       email: map['email'],
+      licencePlateNumber: map['licencePlateNumber'],
       phoneNumber: map['phoneNumber'],
       profilePicture: map['profilePicture'],
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
@@ -284,7 +289,7 @@ class Driver {
 
   @override
   String toString() {
-    return 'Driver driverId: $driverId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, homeLocationLatLng: $homeLocationLatLng, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, profilePicture: $profilePicture, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank, rating: $rating, totalReviews: $totalReviews, balance: $balance';
+    return 'Driver driverId: $driverId, firstName: $firstName, lastName: $lastName, homeLocationAddress: $homeLocationAddress, homeLocationLatLng: $homeLocationLatLng, licencePlateNumber: $licencePlateNumber, userCreatedOn: $userCreatedOn, email: $email, phoneNumber: $phoneNumber, profilePicture: $profilePicture, dateOfBirth: $dateOfBirth, gender: $gender, rank: $rank, rating: $rating, totalReviews: $totalReviews, balance: $balance';
   }
 
   @override
@@ -295,6 +300,7 @@ class Driver {
         o.driverId == driverId &&
         o.firstName == firstName &&
         o.lastName == lastName &&
+        o.licencePlateNumber == licencePlateNumber &&
         o.homeLocationAddress == homeLocationAddress &&
         o.homeLocationLatLng == homeLocationLatLng &&
         o.userCreatedOn == userCreatedOn &&
@@ -317,6 +323,7 @@ class Driver {
         homeLocationAddress.hashCode ^
         homeLocationLatLng.hashCode ^
         userCreatedOn.hashCode ^
+        licencePlateNumber.hashCode ^
         email.hashCode ^
         phoneNumber.hashCode ^
         profilePicture.hashCode ^

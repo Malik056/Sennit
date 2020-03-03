@@ -1,26 +1,35 @@
+import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart'
+    as mapbox;
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-import 'package:maps_launcher/maps_launcher.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
 class SennitOrderNavigationRoute extends StatelessWidget {
+  static const NAME = "SennitOrderNavigationRoute";
   static var popUpHeight = 200.0;
   static var popUpWidth = 300.0;
+  static double _lastTimestamp;
+  static double _lastDistance;
+  static double _currentDistance;
+  static double _currentTimestamp;
   // bool isOrderConfirmed = false;
   final _Body body;
   final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
   final MySolidBottomSheet myboottomSheet;
 
-  final Future<String> verificationCode;
+  final String verificationCode;
+
+  static StreamSubscription<LocationData> _driverLocationSubscription;
 
   void onDonePressed() {
     body.showDeliveryCompleteDialogue();
@@ -37,19 +46,19 @@ class SennitOrderNavigationRoute extends StatelessWidget {
   factory SennitOrderNavigationRoute({@required Map<String, dynamic> data}) {
     _MyAppBar appBar;
     MySolidBottomSheet sheet;
-    var snapshot = Firestore.instance
-        .collection("verificationCodes")
-        .document(data['orderId'])
-        .get();
-    var result = snapshot.then<String>((value) {
-      return value.data['key'];
-    });
+    // var snapshot = Firestore.instance
+    //     .collection("verificationCodes")
+    //     .document(data['orderId'])
+    //     .get();
+    // var result = snapshot.then<String>((value) {
+    //   return value.data['key'];
+    // });
 
-    var verificationCode = result;
+    var verificationCode = data['otp'];
     _Body body = _Body(
       verificationCode: verificationCode,
       onCancelPopupConfiremd: () async {
-        data.update(('status'), (old) => 'Pending', ifAbsent: () => 'Acceptec');
+        data.update(('status'), (old) => 'Pending', ifAbsent: () => 'Accepted');
         data.update(
           ('driverId'),
           (old) => FieldValue.delete(),
@@ -87,14 +96,23 @@ class SennitOrderNavigationRoute extends StatelessWidget {
         Driver driver = Session.data['driver'];
         appBar.showButton();
         data.update(('status'), (old) => 'Accepted',
-            ifAbsent: () => 'Acceptec');
+            ifAbsent: () => 'Accepted');
         data.update(('driverId'), (old) => driver.driverId,
             ifAbsent: () => driver.driverId);
         data.update(('driverName'), (old) => driver.fullname,
             ifAbsent: () => driver.fullname);
         data.update(('driverImage'), (old) => driver.profilePicture,
             ifAbsent: () => driver.profilePicture);
-
+        data.update(('driverPhoneNumber'), (old) => driver.phoneNumber,
+            ifAbsent: () => driver.profilePicture);
+        data.update(
+            ('driverLicencePlateNumber'), (old) => driver.profilePicture,
+            ifAbsent: () => driver.profilePicture);
+        data.update(
+          'acceptedOn',
+          (old) => DateTime.now().millisecondsSinceEpoch,
+          ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+        );
         await Firestore.instance
             .collection('postedOrders')
             .document(data['orderId'])
@@ -112,17 +130,38 @@ class SennitOrderNavigationRoute extends StatelessWidget {
           merge: true,
         );
         Location location = Location();
-        location.onLocationChanged().listen((locationData) {
+        if (_driverLocationSubscription != null) {
+          _driverLocationSubscription = null;
+        }
+        _driverLocationSubscription =
+            location.onLocationChanged().listen((locationData) {
+          _lastDistance = _currentDistance;
+          _lastTimestamp = _currentTimestamp;
+          _currentDistance = Utils.calculateDistance(
+            Utils.latLngFromString(data['dropOffLatLng']),
+            LatLng(
+              locationData.latitude,
+              locationData.longitude,
+            ),
+          );
+          _currentTimestamp = DateTime.now().millisecondsSinceEpoch.toDouble();
+
+          Map<String, dynamic> dataToUpload = {
+            'lastDistance': _lastDistance,
+            'lastTimestamp': _lastTimestamp,
+            'currentDistance': _currentDistance,
+            'currentTimestamp': _currentTimestamp,
+            'driverLatLng':
+                '${locationData.latitude},${locationData.longitude}',
+          };
+
           Firestore.instance
               .collection('postedOrders')
               .document(data['orderId'])
               .setData(
-            {
-              'driverLatLng':
-                  '${locationData.latitude},${locationData.longitude}',
-            },
-            merge: true,
-          );
+                dataToUpload,
+                merge: true,
+              );
         });
       },
       onOrderComplete: () async {
@@ -130,10 +169,15 @@ class SennitOrderNavigationRoute extends StatelessWidget {
             await FirebaseAuth.instance.currentUser().then((user) => user.uid);
         DateTime now = DateTime.now();
 
-        Firestore.instance
-            .collection("verificationCodes")
-            .document(data['orderId'])
-            .delete();
+        // Firestore.instance
+        //     .collection("verificationCodes")
+        //     .document(data['orderId'])
+        //     .delete();
+
+        // if (_driverLocationSubscription != null) {
+        await _driverLocationSubscription?.cancel();
+        _driverLocationSubscription = null;
+        // }
 
         await Firestore.instance
             .collection('userOrders')
@@ -182,7 +226,7 @@ class SennitOrderNavigationRoute extends StatelessWidget {
       },
     );
     appBar = _MyAppBar(
-      title: "Navigation",
+      title: "${data['price']}R",
       onDonePressed: () {
         body.showDeliveryCompleteDialogue();
       },
@@ -208,7 +252,7 @@ class SennitOrderNavigationRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        if (body.isOrderConfirmationPopupShown()) {
+        if (body.isOrderConfirmationPopupShown() ?? false) {
           Navigator.pop(context);
           return false;
         }
@@ -217,7 +261,7 @@ class SennitOrderNavigationRoute extends StatelessWidget {
           myAppbar.enableButton();
           return false;
         }
-        if (body.isCancelPopupShown()) {
+        if (body.isCancelPopupShown() ?? false) {
           body.hideCancelDialogue();
           myAppbar.enableButton();
           return false;
@@ -430,7 +474,7 @@ class _Body extends StatefulWidget {
   final Function onCancelPopupConfiremd;
   final Function(LatLng) onMapTap;
   final Map<String, dynamic> data;
-  final verificationCode;
+  final String verificationCode;
   final onOrderComplete;
 
   _Body({
@@ -450,7 +494,7 @@ class _Body extends StatefulWidget {
   }
 
   bool isOrderConfirmationPopupShown() {
-    return state.isOrderConfirmationVisible;
+    return state?.isOrderConfirmationVisible;
   }
 
   bool isCancelPopupShown() {
@@ -544,6 +588,13 @@ class _BodyState extends State<_Body> {
       onOrderCompletePopupCancel: widget.onVerifyPopupCancel,
       onCancelPopupConfirmed: widget.onCancelPopupConfiremd,
     );
+  }
+
+  @override
+  void dispose() {
+    SennitOrderNavigationRoute?._driverLocationSubscription?.cancel();
+    SennitOrderNavigationRoute?._driverLocationSubscription = null;
+    super.dispose();
   }
 
   Widget getBody() {
@@ -704,7 +755,7 @@ class _Popups extends StatefulWidget {
   final Function onCancelPopupCancel;
   final Function onOrderCompletePopupCancel;
   final Function onCancelPopupConfirmed;
-  final verificationCode;
+  final String verificationCode;
   final onOrderComplete;
 
   _Popups({
@@ -872,7 +923,7 @@ class _DeliveryDonePopUp extends StatefulWidget {
   // final height;
   final Function onCancel;
   final Function onConfirm;
-  final Future<String> verificationCode;
+  final String verificationCode;
 
   _DeliveryDonePopUp({
     @required this.verificationCode,
@@ -965,7 +1016,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
                 style: Theme.of(context).textTheme.button,
               ),
               onPressed: () async {
-                final key = await widget.verificationCode;
+                final key = widget.verificationCode;
                 if (confirmationKey == key) {
                   Utils.showSuccessDialog('Success');
                   Future.delayed(Duration(seconds: 2)).then((a) {
@@ -1229,241 +1280,292 @@ class _OrderTile extends StatelessWidget {
     return Utils.calculateDistance(source, destination);
   }
 
+  _startNavigation(context, LatLng destination, LatLng myLocation) async {
+    Utils.showLoadingDialog(context);
+    // MapsLauncher.launchCoordinates(
+    //     pickup.latitude, pickup.longitude);
+    mapbox.MapboxNavigation _directions;
+    // var _distanceRemaining;
+    // var _durationRemaining;
+
+    _directions = mapbox.MapboxNavigation(
+      onRouteProgress: (arrived) async {
+        // _distanceRemaining = await _directions.distanceRemaining;
+        // _durationRemaining = await _directions.durationRemaining;
+        // setState(() {
+        //   _arrived = arrived;
+        // });
+        // if (arrived) {
+        //   await _directions.finishNavigation();
+        //   // Navigator.popUntil(
+        //   //   context,
+        //   //   (route) => route.settings.name == SennitOrderNavigationRoute.NAME,
+        //   // );
+        //   // Utils.showSuccessDialog('You Have Arrived');
+        //   // await Future.delayed(Duration(seconds: 2));
+        //   // BotToast.cleanAll();
+        // }
+      },
+    );
+    await _directions.startNavigation(
+      origin: mapbox.Location(
+        name: "",
+        latitude: myLocation.latitude,
+        longitude: myLocation.longitude,
+      ),
+      destination: mapbox.Location(
+        name: "",
+        longitude: destination.longitude,
+        latitude: destination.latitude,
+      ),
+      mode: mapbox.NavigationMode.drivingWithTraffic,
+      simulateRoute: true,
+      language: "English",
+    );
+    // await Future.delayed(
+    //   Duration(seconds: 2),
+    // );
+    Navigator.popUntil(
+      context,
+      (route) => route.settings.name == SennitOrderNavigationRoute.NAME,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<dynamic>(
-        initialData: Utils.getLastKnowLocation(),
-        stream: location.onLocationChanged(),
-        builder: (context, snapshot) {
-          LatLng myLocation = snapshot.connectionState ==
-                  ConnectionState.waiting
-              ? (snapshot.data is LatLng)
-                  ? snapshot.data
-                  : snapshot.data is Coordinates
-                      ? LatLng(snapshot.data.latitude, snapshot.data.longitude)
-                      : snapshot.connectionState == ConnectionState.active
-                          ? LatLng((snapshot.data as LocationData).latitude,
-                              (snapshot.data as LocationData).longitude)
-                          : null
-              : null;
-          LatLng pickup = Utils.latLngFromString(data['pickUpLatLng']);
-          LatLng destination = Utils.latLngFromString(data['dropOffLatLng']);
+      initialData: Utils.getLastKnowLocation(),
+      stream: location.onLocationChanged(),
+      builder: (context, snapshot) {
+        LatLng myLocation = snapshot.connectionState == ConnectionState.waiting
+            ? (snapshot.data is LatLng)
+                ? snapshot.data
+                : snapshot.data is Coordinates
+                    ? LatLng(snapshot.data.latitude, snapshot.data.longitude)
+                    : null
+            : snapshot.connectionState == ConnectionState.active
+                ? LatLng((snapshot.data as LocationData).latitude,
+                    (snapshot.data as LocationData).longitude)
+                : null;
+        LatLng pickup = Utils.latLngFromString(data['pickUpLatLng']);
+        LatLng destination = Utils.latLngFromString(data['dropOffLatLng']);
 
-          return Card(
-            margin: EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SizedBox(
-                  height: 8,
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Card(
-                            elevation: 4.0,
-                            child: InkWell(
-                              splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () async {
-                                onSelectItem(pickup);
-                              },
-                              child: Container(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    Container(
-                                      decoration: ShapeDecoration(
-                                        color: Theme.of(context).primaryColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.only(
-                                              topLeft: Radius.circular(4),
-                                              topRight: Radius.circular(4)),
-                                        ),
+        return Card(
+          margin: EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(
+                height: 8,
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Card(
+                          elevation: 4.0,
+                          child: InkWell(
+                            splashColor:
+                                Theme.of(context).primaryColor.withAlpha(190),
+                            onTap: () async {
+                              onSelectItem(pickup);
+                            },
+                            child: Container(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Container(
+                                    decoration: ShapeDecoration(
+                                      color: Theme.of(context).primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4)),
                                       ),
-                                      padding: EdgeInsets.all(4),
-                                      child: Text(
-                                        ' P i c k u p ',
-                                        // textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 16,
+                                    ),
+                                    padding: EdgeInsets.all(4),
+                                    child: Text(
+                                      ' P i c k u p ',
+                                      // textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('${data['pickUpAddress']}'),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  myLocation != null
+                                      ? Container(
+                                          child: Text.rich(
+                                            TextSpan(
+                                              text: 'Distance: ',
+                                              children: [
+                                                TextSpan(
+                                                  text:
+                                                      '${getDistanceFromYourLocation(myLocation, pickup).toStringAsFixed(1)} Km',
+                                                  style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        )
+                                      : Opacity(
+                                          opacity: 0,
+                                        ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 6,
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          child: RaisedButton(
+                            child: Text(
+                              'Start Navigation',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            onPressed: () async {
+                              _startNavigation(
+                                context,
+                                pickup,
+                                myLocation,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 2,
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Card(
+                          elevation: 4.0,
+                          child: InkWell(
+                            splashColor:
+                                Theme.of(context).primaryColor.withAlpha(190),
+                            onTap: () async {
+                              onSelectItem(destination);
+                            },
+                            child: Container(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Container(
+                                    decoration: ShapeDecoration(
+                                      color: Theme.of(context).primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4)),
+                                      ),
+                                    ),
+                                    padding: EdgeInsets.all(4),
+                                    child: Text(
+                                      ' D r o p O f f ',
+                                      style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                          fontSize: 14),
                                     ),
-                                    SizedBox(
-                                      height: 4,
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text('${data['pickUpAddress']}'),
-                                    ),
-                                    SizedBox(
-                                      height: 4,
-                                    ),
-                                    myLocation != null
-                                        ? Container(
-                                            child: Text.rich(
-                                              TextSpan(
-                                                text: 'Distance: ',
-                                                children: [
-                                                  TextSpan(
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('${data['dropOffAddress']}'),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  myLocation != null
+                                      ? Container(
+                                          child: Text.rich(
+                                            TextSpan(
+                                              text: 'Distance: ',
+                                              children: [
+                                                TextSpan(
                                                     text:
-                                                        '${getDistanceFromYourLocation(myLocation, pickup).toStringAsFixed(1)} Km',
+                                                        '${getDistanceFromYourLocation(myLocation, destination).toStringAsFixed(1)} Km',
                                                     style: TextStyle(
                                                       fontWeight:
                                                           FontWeight.normal,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                                    )),
+                                              ],
                                             ),
-                                          )
-                                        : Opacity(
-                                            opacity: 0,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            height: 6,
-                          ),
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            child: RaisedButton(
-                              child: Text(
-                                'Open in Maps',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onPressed: () {
-                                MapsLauncher.launchCoordinates(
-                                    pickup.latitude, pickup.longitude);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 2,
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Card(
-                            elevation: 4.0,
-                            child: InkWell(
-                              splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () async {
-                                onSelectItem(destination);
-                              },
-                              child: Container(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    Container(
-                                      decoration: ShapeDecoration(
-                                        color: Theme.of(context).primaryColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.only(
-                                              topLeft: Radius.circular(4),
-                                              topRight: Radius.circular(4)),
+                                        )
+                                      : Opacity(
+                                          opacity: 0,
                                         ),
-                                      ),
-                                      padding: EdgeInsets.all(4),
-                                      child: Text(
-                                        ' D r o p O f f ',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: 4,
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.all(8.0),
-                                      child: Text('${data['dropOffAddress']}'),
-                                    ),
-                                    SizedBox(
-                                      height: 4,
-                                    ),
-                                    myLocation != null
-                                        ? Container(
-                                            child: Text.rich(
-                                              TextSpan(
-                                                text: 'Distance: ',
-                                                children: [
-                                                  TextSpan(
-                                                      text:
-                                                          '${getDistanceFromYourLocation(myLocation, destination).toStringAsFixed(1)} Km',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.normal,
-                                                      )),
-                                                ],
-                                              ),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          )
-                                        : Opacity(
-                                            opacity: 0,
-                                          ),
-                                  ],
-                                ),
+                                ],
                               ),
                             ),
                           ),
-                          SizedBox(
-                            height: 6,
-                          ),
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            child: RaisedButton(
-                              child: Text(
-                                'Open in Maps',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              onPressed: () {
-                                MapsLauncher.launchCoordinates(
-                                    destination.latitude,
-                                    destination.longitude);
-                              },
-                              onLongPress: () {},
+                        ),
+                        SizedBox(
+                          height: 6,
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          child: RaisedButton(
+                            child: Text(
+                              'Start Navigation',
+                              style: TextStyle(color: Colors.white),
                             ),
+                            onPressed: () async {
+                              _startNavigation(
+                                  context, destination, myLocation);
+                            },
+                            onLongPress: () {},
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        });
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

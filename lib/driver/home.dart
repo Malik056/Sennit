@@ -247,34 +247,53 @@ class _NotificationPageState extends State<_NotificationPage> {
               return Center(
                 child: Text(
                   'No Notifications',
-                  style: Theme.of(context).textTheme.title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .title
+                      .copyWith(fontWeight: FontWeight.bold),
                 ),
               );
             }
 
             var documents = snapshot.data.documents;
+            List<Widget> tiles = [];
+
+            Driver driver = Session.data['driver'];
+
+            for (int index = 0; index < documents.length; index++) {
+              documents[index].data.update("orderId", (value) {
+                return documents[index].documentID;
+              }, ifAbsent: () {
+                return documents[index].documentID;
+              });
+              if ((documents[index].data['status'] as String).toUpperCase() !=
+                      'PENDING' &&
+                  documents[index].data['driverId'] != driver.driverId) {
+                // return null;
+              } else if (documents[index].data.containsKey("numberOfBoxes")) {
+                tiles.add(SennitNotificationTile(data: documents[index].data));
+              } else {
+                tiles.add(ReceiveItNotificationTile(documents[index].data));
+              }
+            }
+
+            if (tiles.isEmpty) {
+              return Center(
+                child: Text(
+                  'No Notifications',
+                  style: Theme.of(context)
+                      .textTheme
+                      .title
+                      .copyWith(fontWeight: FontWeight.bold),
+                ),
+              );
+            }
 
             return SingleChildScrollView(
               physics: BouncingScrollPhysics(),
               child: Column(
-                  children: List.generate(documents.length, (index) {
-                documents[index].data.update("orderId", (value) {
-                  return documents[index].documentID;
-                }, ifAbsent: () {
-                  return documents[index].documentID;
-                });
-                if ((documents[index].data['status'] as String).toUpperCase() !=
-                    'PENDING') {
-                  return Opacity(
-                    opacity: 0,
-                  );
-                }
-                if (documents[index].data.containsKey("numberOfBoxes")) {
-                  return SennitNotificationTile(data: documents[index].data);
-                } else {
-                  return ReceiveItNotificationTile(documents[index].data);
-                }
-              })),
+                children: tiles,
+              ),
             );
           },
         );
@@ -367,7 +386,7 @@ class SennitNotificationTile extends StatelessWidget {
                           height: 6.0,
                         ),
                         Text(
-                          "${data['orderPrice']}R",
+                          "${data['price']}R",
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -507,13 +526,18 @@ class SennitNotificationTile extends StatelessWidget {
         ? InkWell(
             child: card,
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (context) {
-                  return SennitOrderNavigationRoute(
-                    data: data,
-                  );
-                },
-              ));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) {
+                      return SennitOrderNavigationRoute(
+                        data: data,
+                      );
+                    },
+                    maintainState: false,
+                    settings:
+                        RouteSettings(name: SennitOrderNavigationRoute.NAME),
+                  ));
             },
           )
         : card;
@@ -802,6 +826,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
                 data: data,
               );
             },
+            settings: RouteSettings(name: RecieveItOrderNavigationRoute.NAME),
           ),
         );
       },

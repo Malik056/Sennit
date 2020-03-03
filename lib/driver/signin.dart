@@ -2,11 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:sennit/database/mydatabase.dart';
-import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/forgot_password.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+
+import '../main.dart';
 
 class DriverSignInRoute extends StatelessWidget {
   @override
@@ -63,16 +63,20 @@ class _DriverSignInState extends State<DriverSignIn> {
                   if (email.isEmpty) {
                     return "Email can't be empty";
                   } else {
-                    RegExp re = RegExp(
-                        r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-                        caseSensitive: false,
-                        multiLine: false);
-                    if (!re.hasMatch(email)) {
+                    if (Utils.isEmailCorrect(email.trim())) {
+                      this.email = email.trim();
+                      return null;
+                    } else {
                       return 'Invalid Email Format';
                     }
+                    // RegExp re = RegExp(
+                    //     r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+                    //     caseSensitive: false,
+                    //     multiLine: false);
+                    // if (!re.hasMatch(email)) {
+                    //   return 'Invalid Email Format';
+                    // }
                   }
-                  this.email = email;
-                  return null;
                 },
               ),
               TextFormField(
@@ -249,25 +253,28 @@ class _DriverSignInState extends State<DriverSignIn> {
                             Scaffold.of(context).showSnackBar(snackBar);
                             return;
                           }
-                        }).catchError((_) {
-                          Navigator.pop(context);
-                          signInButtonEnabled = true;
-                          Utils.showSnackBarError(
-                            context,
-                            '${_.message}',
-                          );
-                          return;
-                        }).timeout(
-                          Duration(seconds: 12),
-                          onTimeout: () {
+                        }).catchError(
+                          (_) {
                             Navigator.pop(context);
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
                               context,
-                              'Request Timed out',
+                              '${_.message}',
                             );
+                            return;
                           },
                         );
+                        // .timeout(
+                        //   Duration(seconds: 12),
+                        //   onTimeout: () {
+                        //     Navigator.pop(context);
+                        //     signInButtonEnabled = true;
+                        //     Utils.showSnackBarError(
+                        //       context,
+                        //       'Request Timed out',
+                        //     );
+                        //   },
+                        // );
                       } on dynamic catch (_) {
                         Navigator.pop(context);
                         signInButtonEnabled = true;

@@ -10,7 +10,6 @@ import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
@@ -84,10 +83,12 @@ main() async {
           driverResult.data != null &&
           driverResult.data.length > 0 &&
           driverResult.exists) {
+        driverResult.data
+            .update('driverId', (old) => user.uid, ifAbsent: () => user.uid);
         Session.data.update('driver', (a) {
-          return Driver.fromMap(result.data);
+          return Driver.fromMap(driverResult.data);
         }, ifAbsent: () {
-          return Driver.fromMap(result.data);
+          return Driver.fromMap(driverResult.data);
         });
         if (user.isEmailVerified) {
           MyApp.initialRoute = MyApp.driverHome;
@@ -516,7 +517,8 @@ class Utils {
     return 12742 * asin(sqrt(a));
   }
 
-  static showPlacePicker(BuildContext context, {@required LatLng initialLocation}) async {
+  static showPlacePicker(BuildContext context,
+      {@required LatLng initialLocation}) async {
     String apiKey = await getAPIkey(context: context);
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
@@ -525,7 +527,7 @@ class Utils {
                 builder: (context) => LocationPicker(
                   apiKey,
                   automaticallyAnimateToCurrentLocation: false,
-                  initialCenter: initialLocation ??Utils.getLastKnowLocation(),
+                  initialCenter: initialLocation ?? Utils.getLastKnowLocation(),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,
@@ -594,6 +596,9 @@ class Utils {
   }
 
   static String latLngToString(LatLng latLng) {
+    if (latLng == null) {
+      return null;
+    }
     return "${latLng.latitude},${latLng.longitude}";
   }
 
@@ -636,10 +641,15 @@ class Utils {
     if (email.isEmpty) {
       return false;
     } else {
+      // RegExp re = RegExp(
+      //     r'^[a-zA-Z]+(([a-zA-Z0-9])*)+(((\.([a-zA-Z0-9])+)*(_([a-zA-Z0-9])+)*)*)*@[a-zA-Z]+(\.[a-zA-Z]+)+$',
+      //     caseSensitive: false,
+      //     multiLine: false);
       RegExp re = RegExp(
-          r'^[a-zA-Z0-9]+(._([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-          caseSensitive: false,
-          multiLine: false);
+        r'^[^@]+@[^@.]+(\.[^@.]+)+$',
+        caseSensitive: false,
+        multiLine: false,
+      );
       if (!re.hasMatch(email)) {
         return false;
       }

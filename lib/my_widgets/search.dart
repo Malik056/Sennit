@@ -77,6 +77,14 @@ class SearchWidgetState extends State<SearchWidget> {
                       ],
                     ),
                   );
+                } else if (snapshot.data.length == 0) {
+                  return Center(
+                      child: Text(
+                    'No Items Found Near You!',
+                    style: Theme.of(context).textTheme.title.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ));
                 }
                 items = snapshot.data;
                 return SearchBar<model.StoreItem>(

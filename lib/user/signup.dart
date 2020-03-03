@@ -136,16 +136,23 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         if (email.isEmpty) {
                           return "Email can't be empty";
                         } else {
-                          RegExp re = RegExp(
-                              r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-                              caseSensitive: false,
-                              multiLine: false);
-                          if (!re.hasMatch(email)) {
+                          // // RegExp re = RegExp(
+                          // //     r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+                          // //     caseSensitive: false,
+                          // //     multiLine: false);
+                          // if (!re.hasMatch(email)) {
+                          //   return 'Invalid Email Format';
+                          // }
+
+                          if (Utils.isEmailCorrect(email.trim())) {
+                            user.email = email.trim();
+                            return null;
+                          } else {
                             return 'Invalid Email Format';
                           }
                         }
-                        user.email = email;
-                        return null;
+                        // user.email = email;
+                        // return null;
                       },
                       style: Theme.of(context).textTheme.body1,
                     ),
@@ -350,8 +357,9 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         address,
                       ),
                       onTap: () async {
-                        LocationResult result =
-                            await Utils.showPlacePicker(context, initialLocation: user.homeLocationLatLng);
+                        LocationResult result = await Utils.showPlacePicker(
+                            context,
+                            initialLocation: user.homeLocationLatLng);
                         if (result == null) {
                           if (user.homeLocationLatLng == null) {
                             Utils.showSnackBarError(
@@ -460,6 +468,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       duration: Duration(seconds: 1),
                                     );
                                     Scaffold.of(context).showSnackBar(snackBar);
+                                    Navigator.pop(context);
                                   } else {
                                     user.userId = firebaseUser.uid;
                                     Map map = user.toMap();

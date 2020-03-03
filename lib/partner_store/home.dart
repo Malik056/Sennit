@@ -7,8 +7,12 @@ import 'package:intl/intl.dart';
 import 'package:sennit/main.dart';
 
 class OrderedItemsList extends StatelessWidget {
-  bool buttonPressed = false;
+  static bool _buttonPressed;
   final _key = GlobalKey<ScaffoldState>();
+
+  OrderedItemsList(){
+    _buttonPressed = false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +22,12 @@ class OrderedItemsList extends StatelessWidget {
         .get();
     return WillPopScope(
       onWillPop: () async {
-        if (!buttonPressed) {
-          buttonPressed = true;
+        if (!_buttonPressed) {
+          _buttonPressed = true;
           Utils.showSnackBarWarningUsingKey(_key, 'Press Again to Exit',
               duration: Duration(seconds: 2));
           Future.delayed(new Duration(seconds: 2)).then((vale) {
-            buttonPressed = false;
+            _buttonPressed = false;
           });
           return false;
         } else {
