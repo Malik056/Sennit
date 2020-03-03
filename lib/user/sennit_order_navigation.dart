@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-import 'package:maps_launcher/maps_launcher.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
@@ -103,7 +104,7 @@ class SennitOrderNavigationRoute extends StatelessWidget {
       },
     );
     appBar = _MyAppBar(
-      title: "Navigation",
+      title: "${data['price']}R",
       onDonePressed: () {
         body.showDeliveryCompleteDialogue();
       },
@@ -329,6 +330,8 @@ class _MyAppBarState extends State<_MyAppBar> {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      title: Text('Price: ' + widget.title),
+      centerTitle: true,
       actions: <Widget>[
         !isButtonVisible
             ? Opacity(
@@ -415,6 +418,7 @@ class _BodyState extends State<_Body> {
 
   Widget getMap() {
     return _MapWidget(
+      data: widget.data,
       onDriverAvailable: widget.onDriverAvailable,
       orderId: widget.data['orderId'],
       dropOff: Utils.latLngFromString(widget.data['dropOffLatLng']),
@@ -464,6 +468,7 @@ class _MapWidget extends StatefulWidget {
   final LatLng pickup;
   final LatLng dropOff;
   final String orderId;
+  final Map<String, dynamic> data;
   final Function(LatLng) onDriverAvailable;
   final Function(LatLng) onMapTap;
 
@@ -474,13 +479,14 @@ class _MapWidget extends StatefulWidget {
     @required this.dropOff,
     @required this.onMapTap,
     @required this.orderId,
+    @required this.data,
   }) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return state;
   }
 
-  void animateTo(LatLng position) async {
+  Future<void> animateTo(LatLng position) async {
     if (position == null) {
       return;
     }
@@ -507,125 +513,455 @@ class _MapState extends State<_MapWidget> {
   // GoogleMap map;
   Set<Marker> markers = {};
   Set<Polyline> polylines = {};
-  BitmapDescriptor driverIcon;
+  // BitmapDescriptor driverIcon;
   GoogleMapController _controller;
   Widget driverInfoWindow;
+  Marker driverMarker;
+  Marker markerPickup;
+  Marker markerDropOff;
+  BitmapDescriptor driverIcon;
+  BitmapDescriptor pickupIcon;
+  BitmapDescriptor dropOffIcon;
+  Future<LatLng> initializeTracking;
+  StreamSubscription<DocumentSnapshot> _firebaseSubscription;
+
+  String driverId;
+  String driverLicencePlateNumber;
+  String driverImage;
+  String driverName;
+  LatLng driverLatLng;
+  String driverPhoneNumber;
+  bool firstTime = true;
+
+  @override
+  void dispose() {
+    if (_firebaseSubscription != null) {
+      _firebaseSubscription.cancel();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
+    initializeTracking = initialize();
     super.initState();
   }
 
-  Future<GoogleMap> initialize() async {
-    final myLocation = await Utils.getMyLocation();
-    driverIcon = await BitmapDescriptor.fromAssetImage(
-      ImageConfiguration(
-        size: Size(
-          100,
-          100,
-        ),
-      ),
-      'assets/images/flag.png',
-    );
-    Marker markerPickup = Marker(
-      markerId: MarkerId("marker1"),
-      infoWindow:
-          InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
-      position: widget.pickup,
-      onTap: () {},
-      flat: false,
-      icon: await BitmapDescriptor.fromAssetImage(
-          ImageConfiguration(
-            size: Size(
-              100,
-              100,
-            ),
-          ),
-          'assets/images/pickup.png'),
-    );
+  Future<LatLng> initialize() async {
+    driverLatLng = Utils.latLngFromString(widget.data['driverLatLng']);
+    driverId = widget.data['driverId'];
+    driverLicencePlateNumber = widget.data['driverLicencePlateNumber'];
+    driverPhoneNumber = widget.data['driverPhoneNumber'];
+    driverName = widget.data['driverName'];
 
-    Marker markerDropOff = Marker(
-      markerId: MarkerId("markerDrop"),
-      infoWindow:
-          InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
-      position: widget.dropOff,
-      icon: await BitmapDescriptor.fromAssetImage(
+    // final myLocation = await Utils.getMyLocation();
+    driverIcon = await BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(),
+      'assets/images/car.png',
+    );
+    pickupIcon = await BitmapDescriptor.fromAssetImage(
         ImageConfiguration(
           size: Size(
             100,
             100,
           ),
         ),
-        'assets/images/flag.png',
-      ),
-    );
+        'assets/images/pickup.png');
+    dropOffIcon = await BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(
+          size: Size(
+            100,
+            100,
+          ),
+        ),
+        'assets/images/flag.png');
+    if (_firebaseSubscription != null) {
+      _firebaseSubscription.cancel();
+    }
 
-    markers..add(markerPickup)..add(markerDropOff);
-
-    return GoogleMap(
-      compassEnabled: true,
-      initialCameraPosition:
-          CameraPosition(target: myLocation, zoom: 14, tilt: 30),
-      myLocationEnabled: true,
-      myLocationButtonEnabled: false,
-      buildingsEnabled: true,
-      markers: Set<Marker>.from(markers),
-      polylines: polylines,
-      mapType: MapType.normal,
-      zoomGesturesEnabled: true,
-      mapToolbarEnabled: false,
-      polygons: Set(),
-      circles: Set(),
-      onMapCreated: (controller) {
-        _controller = controller;
-      },
-      onTap: (latlng) async {
-        widget.onMapTap(latlng);
-        print('Map Original Widget Tapped');
-      },
+    markerPickup = Marker(
+      markerId: MarkerId('pickupMarker'),
+      infoWindow:
+          InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
+      position: widget.pickup,
+      icon: pickupIcon,
     );
+    markerDropOff = Marker(
+      markerId: MarkerId('dropOffMarker'),
+      infoWindow:
+          InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
+      position: widget.dropOff,
+      icon: dropOffIcon,
+    );
+    driverMarker = Marker(
+      markerId: MarkerId('driverMarker'),
+      flat: true,
+      rotation: 0,
+      position: driverLatLng ?? LatLng(0, 0),
+      icon: driverIcon,
+      draggable: false,
+      visible: driverLatLng != null,
+    );
+    _firebaseSubscription = Firestore.instance
+        .collection('postedOrders')
+        .document(widget.orderId)
+        .snapshots()
+        .listen((orderData) async {
+      driverLatLng = Utils.latLngFromString(orderData.data['driverLatLng']);
+      await Future.delayed(Duration(seconds: 3));
+      if (driverLatLng != null && firstTime && _controller != null) {
+        firstTime = false;
+        await widget.animateTo(driverLatLng);
+      }
+
+      setState(() {
+        driverId = orderData.data['driverId'];
+        driverLicencePlateNumber = orderData.data['driverLicencePlateNumber'];
+        driverPhoneNumber = orderData.data['driverPhoneNumber'];
+        driverName = orderData.data['driverName'];
+        if (driverLatLng != null) {
+          widget.onDriverAvailable(driverLatLng);
+        }
+        driverMarker = Marker(
+          markerId: MarkerId('driverMarker'),
+          flat: true,
+          rotation: orderData.data['driverRotation'] ?? 0,
+          icon: driverIcon,
+          draggable: false,
+          position: orderData.data['driverLatLng'] != null
+              ? Utils.latLngFromString(orderData.data['driverLatLng'])
+              : LatLng(0, 0),
+          visible: orderData.data.containsKey('driverId') &&
+                  orderData.data['driverId'] != null
+              ? true
+              : false,
+        );
+      });
+    });
+    return driverLatLng ?? widget.pickup;
+    // markerPickup = Marker(
+    //   markerId: MarkerId("pickup"),
+    //   infoWindow:
+    //       InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
+    //   position: widget.pickup,
+    //   onTap: () {},
+    //   flat: false,
+    //   icon: await BitmapDescriptor.fromAssetImage(
+    //       ImageConfiguration(
+    //         size: Size(
+    //           100,
+    //           100,
+    //         ),
+    //       ),
+    //       'assets/images/pickup.png'),
+    // );
+
+    // markerDropOff = Marker(
+    //   markerId: MarkerId("dropoff"),
+    //   infoWindow:
+    //       InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
+    //   position: widget.dropOff,
+    //   icon: await BitmapDescriptor.fromAssetImage(
+    //     ImageConfiguration(
+    //       size: Size(
+    //         100,
+    //         100,
+    //       ),
+    //     ),
+    //     'assets/images/flag.png',
+    //   ),
+    // );
+
+    // driverMarker = Marker(
+    //   markerId: MarkerId('DriverMarker'),
+    //   icon: await BitmapDescriptor.fromAssetImage(
+    //     ImageConfiguration(
+    //       size: Size(
+    //         100,
+    //         100,
+    //       ),
+    //     ),
+    //     'assets/images/car.png',
+    //   ),
+    //   position: Utils.latLngFromString(data['driverLatLng']) ?? LatLng(0, 0),
+    //   visible: data['driverLatLng'] != null ? true : false,
+    // );
+
+    // markers..add(markerPickup)..add(markerDropOff)..add(driverMarker);
+
+    // return GoogleMap(
+    //   compassEnabled: true,
+    //   initialCameraPosition:
+    //       CameraPosition(target: myLocation, zoom: 14, tilt: 30),
+    //   myLocationEnabled: true,
+    //   myLocationButtonEnabled: false,
+    //   buildingsEnabled: true,
+    //   markers: Set<Marker>.from(markers),
+    //   polylines: polylines,
+    //   mapType: MapType.normal,
+    //   zoomGesturesEnabled: true,
+    //   mapToolbarEnabled: false,
+    //   polygons: Set(),
+    //   circles: Set(),
+    //   onMapCreated: (controller) {
+    //     _controller = controller;
+    //   },
+    //   onTap: (latlng) async {
+    //     widget.onMapTap(latlng);
+    //     print('Map Original Widget Tapped');
+    //   },
+    // );
   }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   return FutureBuilder<LatLng>(
+  //     future: Utils.getMyLocation(),
+  //     builder: (context, snapshot) {
+  //       if (snapshot.connectionState == ConnectionState.waiting) {
+  //         return Center(
+  //           child: CircularProgressIndicator(),
+  //         );
+  //       }
+
+  //       return StreamBuilder<DocumentSnapshot>(
+  //           stream: Firestore.instance
+  //               .collection("postedOrders")
+  //               .document(widget.orderId)
+  //               .snapshots(),
+  //           builder: (context, streamSnapshot) {
+  //             final data = streamSnapshot.data?.data;
+  //             driverMarker = Marker(
+  //               markerId: MarkerId('DriverMarker'),
+  //               rotation: data['driverRotation']?.heading,
+  //               flat: true,
+  //               zIndex: 2,
+  //               position: data['driverLatLng'] == null
+  //                   ? LatLng(0, 0)
+  //                   : Utils.latLngFromString(
+  //                       data['driverLatLng'],
+  //                     ),
+  //               icon: BitmapDescriptor.fromBytes(driverIcon),
+  //             );
+  //             markerPickup = Marker(
+  //               markerId: MarkerId('pickupMarker'),
+  //               infoWindow: InfoWindow(
+  //                   title: "Pick Up", snippet: "Click to Navigate here!"),
+  //               position: widget.pickup,
+  //               icon: pickupIcon,
+  //             );
+  //             markerDropOff = Marker(
+  //               markerId: MarkerId('dropOffMarker'),
+  //               infoWindow: InfoWindow(
+  //                   title: "Drop Off", snippet: "Click to Navigate here!"),
+  //               position: widget.dropOff,
+  //               icon: dropOffIcon,
+  //             );
+  //             return Stack(
+  //               children: [
+  //                 GoogleMap(
+  //                   initialCameraPosition: CameraPosition(
+  //                     target: snapshot.data,
+  //                     zoom: 14.4746,
+  //                   ),
+  //                   markers: Set.of(
+  //                     [
+  //                       driverMarker,
+  //                       markerPickup,
+  //                       markerDropOff,
+  //                     ],
+  //                   ),
+  //                   onMapCreated: (GoogleMapController controller) {
+  //                     _controller = controller;
+  //                   },
+  //                 ),
+  //                 Align(
+  //                   alignment: Alignment.topCenter,
+  //                   child: data != null &&
+  //                           data.containsKey('driverId') &&
+  //                           data['driverId'] != null
+  //                       ? Card(
+  //                           margin: EdgeInsets.all(8),
+  //                           child: Container(
+  //                             width: MediaQuery.of(context).size.width / 1.1,
+  //                             // margin: EdgeInsets.all(8),
+  //                             // padding: EdgeInsets.all(8),
+  //                             child: ListTile(
+  //                               onTap: () {
+  //                                 print(
+  //                                     'Driver tap: LatLng: ${data['driverLatLng']}');
+  //                                 widget.animateTo(
+  //                                   Utils.latLngFromString(
+  //                                     data['driverLatLng'],
+  //                                   ),
+  //                                 );
+  //                                 // setState(() {});
+  //                               },
+  //                               leading: data['driverImage'] == null ||
+  //                                       data['driverImage'] == ''
+  //                                   ? Icon(
+  //                                       Icons.acco§t_circle,
+  //                                       size: 40,
+  //                                       color: Theme.of(context).primaryColor,
+  //                                     )
+  //                                   : FadeInImage.assetNetwork(
+  //                                       placeholder: 'assets/user.png',
+  //                                       image: data['driverImage'],
+  //                                     ),
+  //                               title: Text(data['driverName']),
+  //                               subtitle: Text(
+  //                                 'LatLng: ' + data['driverLatLng'] ??
+  //                                     'Waiting for Driver',
+  //                                 style: Theme.of(context)
+  //                                     .textTheme
+  //                                     .body1
+  //                                     .copyWith(
+  //                                       fontSize: 14,
+  //                                       color: Colors.black,
+  //                                     ),
+  //                               ),
+  //                               trailing: Icon(
+  //                                 Icons.location_on,
+  //                                 color: Theme.of(context).primaryColor,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         )
+  //                       : Opacity(
+  //                           opacity: 0,
+  //                         ),
+  //                 ),
+  //               ],
+  //             );
+  //           });
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<GoogleMap>(
-      future: initialize(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        return StreamBuilder<DocumentSnapshot>(
-            stream: Firestore.instance
-                .collection("postedOrders")
-                .document(widget.orderId)
-                .snapshots(),
-            builder: (context, streamSnapshot) {
-              return FutureBuilder<GoogleMap>(
-                  future:
-                      reinitialize(streamSnapshot.data?.data, snapshot.data),
-                  builder: (context, snapshot) {
-                    return Stack(
-                      children: [
-                        snapshot.data ??
-                            Opacity(
-                              opacity: 0,
+    return FutureBuilder<LatLng>(
+        future: initializeTracking,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          return Stack(
+            children: [
+              GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: snapshot.data,
+                  zoom: 14,
+                ),
+                onMapCreated: (GoogleMapController controller) {
+                  _controller = controller;
+                },
+                markers: Set.of(
+                  [
+                    driverMarker,
+                    markerPickup,
+                    markerDropOff,
+                  ],
+                ),
+                mapType: MapType.normal,
+              ),
+              Align(
+                alignment: Alignment.topCenter,
+                child: driverId != null
+                    ? Card(
+                        margin: EdgeInsets.all(8),
+                        child: Container(
+                          width: MediaQuery.of(context).size.width / 1.1,
+                          // margin: EdgeInsets.all(8),
+                          // padding: EdgeInsets.all(8),
+                          child: ListTile(
+                            onTap: () {
+                              print(
+                                  'Driver tap: LatLng: ${driverLatLng.toString()}');
+                              widget.animateTo(
+                                // Utils.latLngFromString(
+                                driverLatLng,
+                                // ),
+                              );
+                              // setState(() {});
+                            },
+                            leading: driverImage == null || driverImage == ''
+                                ? Icon(
+                                    Icons.account_circle,
+                                    size: 40,
+                                    color: Theme.of(context).primaryColor,
+                                  )
+                                : FadeInImage.assetNetwork(
+                                    placeholder: 'assets/user.png',
+                                    image: driverImage,
+                                  ),
+                            title: Text(driverName),
+                            subtitle: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  driverLicencePlateNumber ?? 'Not Registered',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .title
+                                      .copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).primaryColor,
+                                      ),
+                                ),
+                                SizedBox(
+                                  height: 4,
+                                ),
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                          text: 'Phone: ',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .subtitle),
+                                      TextSpan(
+                                          text: driverPhoneNumber,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .body1),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                        Align(
-                          alignment: Alignment.topCenter,
-                          child: driverInfoWindow ??
-                              Opacity(
-                                opacity: 0,
-                              ),
+                            trailing: Icon(
+                              Icons.location_on,
+                              color: Theme.of(context).primaryColor,
+                            ),
+                          ),
                         ),
-                      ],
-                    );
-                  });
-            });
-      },
-    );
+                      )
+                    : Card(
+                        margin: EdgeInsets.all(8),
+                        child: Container(
+                          width: MediaQuery.of(context).size.width / 1.1,
+                          // margin: EdgeInsets.all(8),
+                          // padding: EdgeInsets.all(8),
+                          child: Center(
+                            heightFactor: 2,
+                            child: Text(
+                              ' Finding Your Driver .... ',
+                              style: Theme.of(context).textTheme.title.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          );
+        });
   }
 
   Future<GoogleMap> reinitialize(driverData, map) async {
@@ -731,7 +1067,7 @@ class _MapState extends State<_MapWidget> {
       return GoogleMap(
         compassEnabled: true,
         initialCameraPosition: CameraPosition(
-          target: currentLatLng??Utils.getLastKnowLocation(),
+          target: currentLatLng ?? Utils.getLastKnowLocation(),
           zoom: 0,
           tilt: 30,
         ),
@@ -1013,6 +1349,7 @@ class _OrderTileState extends State<_OrderTile> {
     widget.location.changeSettings(
       accuracy: LocationAccuracy.NAVIGATION,
     );
+    driverLatLng = Utils.latLngFromString(widget.data['driverLatLng']);
   }
 
   double getDistanceFromYourLocation(LatLng source, LatLng destination) {
@@ -1145,19 +1482,19 @@ class _OrderTileState extends State<_OrderTile> {
                     SizedBox(
                       height: 6,
                     ),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      child: RaisedButton(
-                        child: Text(
-                          'Open in Maps',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        onPressed: () {
-                          MapsLauncher.launchCoordinates(
-                              pickup.latitude, pickup.longitude);
-                        },
-                      ),
-                    ),
+                    // Container(
+                    //   padding: EdgeInsets.all(8),
+                    //   child: RaisedButton(
+                    //     child: Text(
+                    //       'Open in Maps',
+                    //       style: TextStyle(color: Colors.white),
+                    //     ),
+                    //     onPressed: () {
+                    //       MapsLauncher.launchCoordinates(
+                    //           pickup.latitude, pickup.longitude);
+                    //     },
+                    //   ),
+                    // ),
                   ],
                 ),
               ),
@@ -1239,20 +1576,20 @@ class _OrderTileState extends State<_OrderTile> {
                     SizedBox(
                       height: 6,
                     ),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      child: RaisedButton(
-                        child: Text(
-                          'Open in Maps',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        onPressed: () {
-                          MapsLauncher.launchCoordinates(
-                              destination.latitude, destination.longitude);
-                        },
-                        onLongPress: () {},
-                      ),
-                    ),
+                    // Container(
+                    //   padding: EdgeInsets.all(8),
+                    //   child: RaisedButton(
+                    //     child: Text(
+                    //       'Open in Maps',
+                    //       style: TextStyle(color: Colors.white),
+                    //     ),
+                    //     onPressed: () {
+                    //       MapsLauncher.launchCoordinates(
+                    //           destination.latitude, destination.longitude);
+                    //     },
+                    //     onLongPress: () {},
+                    //   ),
+                    // ),
                   ],
                 ),
               ),

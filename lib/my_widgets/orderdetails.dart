@@ -5,7 +5,7 @@ import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:sennit/main.dart';
-import 'package:sennit/user/sennit_order_navigation.dart';
+import 'package:sennit/user/generic_tracking_screen.dart';
 
 class OrderTile extends StatelessWidget {
   final data;
@@ -232,7 +232,8 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => SennitOrderNavigationRoute(
+                          builder: (context) => OrderTracking(
+                            type: OrderTrackingType.SENNIT,
                             data: Map<String, dynamic>.from(data),
                           ),
                         ),
@@ -293,6 +294,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 SizedBox(
@@ -516,12 +518,46 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                 SizedBox(
                   height: 20,
                 ),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text(
-                    'Total: R${data['price']}',
-                    style: textTheme.title,
-                  ),
+                // Align(
+                //   alignment: Alignment.bottomRight,
+                //   child: Text(
+                //     'Total: R${data['price']}',
+                //     style: textTheme.title,
+                //   ),
+                // ),
+                Row(
+                  children: <Widget>[
+                    SizedBox(
+                      width: 10,
+                    ),
+                    RaisedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OrderTracking(
+                              type: OrderTrackingType.RECEIVE_IT,
+                              data: Map<String, dynamic>.from(data),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'Track Your Order',
+                        style: Theme.of(context).textTheme.subtitle.copyWith(
+                              color: Colors.white,
+                            ),
+                      ),
+                    ),
+                    Spacer(),
+                    Text(
+                      'Total: R${data['price']}',
+                      style: textTheme.title,
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                  ],
                 ),
               ],
             ),

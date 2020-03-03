@@ -135,16 +135,23 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         if (email.isEmpty) {
                           return "Email can't be empty";
                         } else {
-                          RegExp re = RegExp(
-                              r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-                              caseSensitive: false,
-                              multiLine: false);
-                          if (!re.hasMatch(email)) {
+                          // RegExp re = RegExp(
+                          //     r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+                          //     caseSensitive: false,
+                          //     multiLine: false);
+                          // if (!re.hasMatch(email)) {
+                          //   return 'Invalid Email Format';
+                          // }
+
+                          if (Utils.isEmailCorrect(email.trim())) {
+                            driver.email = email.trim();
+                            return null;
+                          } else {
                             return 'Invalid Email Format';
                           }
                         }
-                        driver.email = email;
-                        return null;
+                        // driver.email = email;
+                        // return null;
                       },
                       style: Theme.of(context).textTheme.body1,
                     ),

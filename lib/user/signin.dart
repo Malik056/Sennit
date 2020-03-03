@@ -72,16 +72,20 @@ class _UserSignInState extends State<UserSignIn> {
                   if (email.isEmpty) {
                     return "Email can't be empty";
                   } else {
-                    RegExp re = RegExp(
-                        r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
-                        caseSensitive: false,
-                        multiLine: false);
-                    if (!re.hasMatch(email)) {
+                    // RegExp re = RegExp(
+                    //     r'^[a-zA-Z0-9]+(.([a-zA-Z0-9])+)*[a-zA-Z0-9]+@[a-zA-Z]+(.[a-zA-Z]+)+$',
+                    //     caseSensitive: false,
+                    //     multiLine: false);
+                    // if (!re.hasMatch(email)) {
+                    //   return 'Invalid Email Format';
+                    // }
+                    if (Utils.isEmailCorrect(email.trim())) {
+                      this.email = email.trim();
+                      return null;
+                    } else {
                       return 'Invalid Email Format';
                     }
-                    this.email = email;
                   }
-                  return null;
                 },
               ),
               TextFormField(
@@ -164,106 +168,115 @@ class _UserSignInState extends State<UserSignIn> {
                         var auth = FirebaseAuth.instance;
                         auth
                             .signInWithEmailAndPassword(
-                          email: email,
+                          email: email.trim(),
                           password: password,
                         )
-                            .then((result) {
-                          if (result.user != null) {
-                            String userId = result.user.uid;
-                            Firestore.instance
-                                .collection('users')
-                                .document(userId)
-                                .get()
-                                .then(
-                              (userData) async {
-                                if (userData == null ||
-                                    !userData.exists ||
-                                    userData.data == null ||
-                                    userData.data.length <= 0) {
-                                  Utils.showSnackBarError(
-                                    context,
-                                    "User not found",
+                            .then(
+                          (result) {
+                            if (result.user != null) {
+                              String userId = result.user.uid;
+                              Firestore.instance
+                                  .collection('users')
+                                  .document(userId)
+                                  .get()
+                                  .then(
+                                (userData) async {
+                                  if (userData == null ||
+                                      !userData.exists ||
+                                      userData.data == null ||
+                                      userData.data.length <= 0) {
+                                    Navigator.pop(context);
+                                    Utils.showSnackBarError(
+                                      context,
+                                      "User not found",
+                                    );
+                                    return;
+                                  }
+                                  User user = User.fromMap(userData.data);
+                                  Session.data.update(
+                                    'user',
+                                    (a) {
+                                      return user;
+                                    },
+                                    ifAbsent: () {
+                                      return user;
+                                    },
                                   );
-                                  return;
-                                }
-                                User user = User.fromMap(userData.data);
-                                Session.data.update(
-                                  'user',
-                                  (a) {
-                                    return user;
-                                  },
-                                  ifAbsent: () {
-                                    return user;
-                                  },
-                                );
-                                await DatabaseHelper.signInUser(userId);
-                                List<UserLocationHistory> userLocationHistory =
-                                    await DatabaseHelper
-                                        .getUserLocationHistory();
-                                Session.data.putIfAbsent(
-                                  "userLocationHistory",
-                                  () {
-                                    return userLocationHistory;
-                                  },
-                                );
-                                MyApp.futureCart = initializeCart(user.userId);
-                                // Navigator.pop(context);
-                                if (result.user.isEmailVerified) {
-                                  // Navigator.popUntil(
-                                  //     context, (route) => route.isFirst);
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                    MyApp.userHome,
-                                    (route) => false,
+                                  await DatabaseHelper.signInUser(userId);
+                                  List<UserLocationHistory>
+                                      userLocationHistory = await DatabaseHelper
+                                          .getUserLocationHistory();
+                                  Session.data.putIfAbsent(
+                                    "userLocationHistory",
+                                    () {
+                                      return userLocationHistory;
+                                    },
                                   );
-                                } else {
-                                  result.user.sendEmailVerification();
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (context) {
-                                      return VerifyEmailRoute(
-                                        context: context,
-                                      );
-                                    }),
-                                  );
-                                }
-                              },
-                            );
-                          } else {
-                            Navigator.pop(context);
-                            signInButtonEnabled = true;
-                            SnackBar snackBar = SnackBar(
-                              content: Text(
-                                'Invalid Email or Password',
-                                style: TextStyle(
-                                  color: Colors.white,
+                                  MyApp.futureCart =
+                                      initializeCart(user.userId);
+                                  // Navigator.pop(context);
+                                  if (result.user.isEmailVerified) {
+                                    // Navigator.popUntil(
+                                    //     context, (route) => route.isFirst);
+                                    Navigator.of(context)
+                                        .pushNamedAndRemoveUntil(
+                                      MyApp.userHome,
+                                      (route) => false,
+                                    );
+                                  } else {
+                                    result.user.sendEmailVerification();
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (context) {
+                                        return VerifyEmailRoute(
+                                          context: context,
+                                        );
+                                      }),
+                                    );
+                                  }
+                                },
+                              );
+                            } else {
+                              Navigator.pop(context);
+                              signInButtonEnabled = true;
+                              SnackBar snackBar = SnackBar(
+                                content: Text(
+                                  'Invalid Email or Password',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              ),
-                              backgroundColor: Colors.red,
-                              duration: Duration(seconds: 1),
-                            );
-                            Scaffold.of(context).showSnackBar(snackBar);
-                            return;
-                          }
-                        }).catchError((_) {
-                          Navigator.pop(context);
-                          signInButtonEnabled = true;
-                          Utils.showSnackBarError(
-                            context,
-                            '${_.message}',
-                          );
-                          return;
-                        }).timeout(
-                          Duration(seconds: 12),
-                          onTimeout: () {
+                                backgroundColor: Colors.red,
+                                duration: Duration(seconds: 1),
+                              );
+                              Scaffold.of(context).showSnackBar(snackBar);
+                              return;
+                            }
+                          },
+                        ).catchError(
+                          (_) {
                             Navigator.pop(context);
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
                               context,
-                              'Request Timed out',
+                              '${_.message}',
                             );
+                            return;
                           },
                         );
+                        // .timeout(
+                        //   Duration(seconds: 12),
+                        //   onTimeout: () {
+                        //     Navigator.pop(context);
+                        //     signInButtonEnabled = true;
+                        //     Utils.showSnackBarError(
+                        //       context,
+                        //       'Request Timed out',
+                        //     );
+                        //   },
+                        // );
                       } on dynamic catch (_) {
+                        print(_);
                         Navigator.pop(context);
                         signInButtonEnabled = true;
                         Utils.showSnackBarError(
@@ -355,13 +368,13 @@ class _UserSignInState extends State<UserSignIn> {
     List<StoreItem> storeItems = [];
     var allItems =
         (await Firestore.instance.collection("items").getDocuments()).documents;
-    
+
     // int i = 0;
-    
+
     for (DocumentSnapshot snapshot in allItems) {
-        if (cart.itemsData.containsKey(snapshot.documentID)) {
-          storeItems.add(StoreItem.fromMap(snapshot.data));
-        }
+      if (cart.itemsData.containsKey(snapshot.documentID)) {
+        storeItems.add(StoreItem.fromMap(snapshot.data));
+      }
     }
 
     cart.items = storeItems;

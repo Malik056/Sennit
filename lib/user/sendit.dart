@@ -7,12 +7,11 @@ import 'package:geocoder/geocoder.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
-// import 'package:place_picker/place_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
-import 'package:sennit/user/sennit_order_navigation.dart';
+import 'package:sennit/user/generic_tracking_screen.dart';
 
 enum SourcePage { addressSelectionFrom, addressSelectionDestination, recieveIt }
 
@@ -456,26 +455,33 @@ class SendItCartRoute extends StatelessWidget {
                 );
                 return;
               } else if (!Utils.isEmailCorrect(
-                  SendItCartRouteState.senderEmailController.text)) {
+                  SendItCartRouteState.senderEmailController.text.trim())) {
                 Utils.showSnackBarErrorUsingKey(
                   _key,
                   'Please Enter Valid Sender Email Address',
                 );
                 return;
               } else if (!Utils.isEmailCorrect(
-                  SendItCartRouteState.receiverEmailController.text)) {
+                  SendItCartRouteState.receiverEmailController.text.trim())) {
                 Utils.showSnackBarErrorUsingKey(
                   _key,
                   'Please Enter Valid Receiver Email Address',
                 );
                 return;
               }
+              SendItCartRouteState.senderEmailController.text =
+                  SendItCartRouteState.senderEmailController.text.trim();
+              SendItCartRouteState.receiverEmailController.text =
+                  SendItCartRouteState.receiverEmailController.text.trim();
 
               Map<String, dynamic> result = await performTransaction(
                 context,
                 SendItCartRouteState.totalCharges,
               );
-              // final status = RaveStatus.success;
+              // Map<String, dynamic> result = {
+              //   'status': RaveStatus.success,
+              //   'errorMessage': "All Good",
+              // };
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
@@ -517,13 +523,14 @@ class SendItCartRoute extends StatelessWidget {
               );
               sennitOrder.serviceCharges = 0;
               sennitOrder.receiverEmail =
-                  SendItCartRouteState.receiverEmailController.text;
-              sennitOrder.receiverPhone =
-                  SendItCartRouteState.receiverPhoneNumberController.text;
+                  SendItCartRouteState.receiverEmailController.text.trim();
+              sennitOrder.receiverPhone = SendItCartRouteState
+                  .receiverPhoneNumberController.text
+                  .trim();
               sennitOrder.senderEmail =
-                  SendItCartRouteState.senderEmailController.text;
+                  SendItCartRouteState.senderEmailController.text.trim();
               sennitOrder.senderPhone =
-                  SendItCartRouteState.senderPhoneNumberController.text;
+                  SendItCartRouteState.senderPhoneNumberController.text.trim();
 
               String otp = randomAlphaNumeric(6).toUpperCase();
               var url =
@@ -543,29 +550,39 @@ class SendItCartRoute extends StatelessWidget {
                       response2.statusCode == 201 ||
                       response2.statusCode == 202)) {
                 // if (true) {
+                Map<String, dynamic> orderData = sennitOrder.toMap()
+                  ..putIfAbsent('otp', () => otp);
+
                 await Firestore.instance
                     .collection("postedOrders")
-                    .add(sennitOrder.toMap())
+                    .add(orderData)
                     .then((_) async {
                   final orderId = _.documentID;
-                  sennitOrder.orderId = orderId;
+                  // sennitOrder.orderId = orderId;
+                  orderData.update(
+                    'orderId',
+                    (old) => _.documentID,
+                    ifAbsent: () => _.documentID,
+                  );
+
                   await Firestore.instance
                       .collection("userOrders")
                       .document(Session.data['user'].userId)
                       .setData(
                     {
-                      orderId: sennitOrder.toMap(),
+                      orderId: orderData,
                     },
                     merge: true,
                   );
-                  await Firestore.instance
-                      .collection("verificationCodes")
-                      .document(orderId)
-                      .setData(
-                    {
-                      "key": otp,
-                    },
-                  );
+
+                  //   await Firestore.instance
+                  //       .collection("verificationCodes")
+                  //       .document(orderId)
+                  //       .setData(
+                  //     {
+                  //       "key": otp,
+                  //     },
+                  //   );
                 });
 
                 BotToast.showEnhancedWidget(toastBuilder: (a) {
@@ -609,10 +626,12 @@ class SendItCartRoute extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) {
-                      return SennitOrderNavigationRoute(
-                        data: sennitOrder.toMap(),
+                      return OrderTracking(
+                        type: OrderTrackingType.SENNIT,
+                        data: [orderData],
                       );
                     },
+                    settings: RouteSettings(name: OrderTracking.NAME),
                   ),
                 );
               } else {
