@@ -235,7 +235,7 @@ class SennitOrderNavigationRoute extends StatelessWidget {
     sheet = MySolidBottomSheet(
       data: data,
       onSelectItem: (latlng) {
-        body.animteToLatLng(latlng);
+        body.animateToLatLng(latlng);
       },
     );
 
@@ -525,7 +525,7 @@ class _Body extends StatefulWidget {
     state?.mapWidget?.centerCamera();
   }
 
-  void animteToLatLng(LatLng coordinates) {
+  void animateToLatLng(LatLng coordinates) {
     state?.mapWidget?.animateTo(coordinates);
   }
 }

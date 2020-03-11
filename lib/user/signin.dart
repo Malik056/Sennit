@@ -348,16 +348,30 @@ class _UserSignInState extends State<UserSignIn> {
   }
 
   static Future<void> initializeCart(String userId) async {
+    if (userId == null) return;
+    if (Session.data.containsKey('cart') &&
+        Session.data['cart'] != null &&
+        (Session.data['cart'] as UserCart).itemsData.length > 0) {
+      return Firestore.instance
+          .collection("carts")
+          .document(userId)
+          .setData({'itemsData': Session.data['cart'].itemsData});
+    }
+
     var value =
         await Firestore.instance.collection("carts").document(userId).get();
 
     if (value == null || value.data == null || value.data.isEmpty) {
       UserCart cart = UserCart(itemsData: {});
-      Session.data.update("cart", (value) {
-        return cart;
-      }, ifAbsent: () {
-        return cart;
-      });
+      Session.data.update(
+        "cart",
+        (value) {
+          return cart;
+        },
+        ifAbsent: () {
+          return cart;
+        },
+      );
       return Firestore.instance.collection('carts').document(userId).setData(
         {
           'itemsData': {},

@@ -99,7 +99,7 @@ class User {
       'userCreatedOn': userCreatedOn.millisecondsSinceEpoch,
       'email': email,
       'phoneNumber': phoneNumber,
-      'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
+      'dateOfBirth': dateOfBirth?.millisecondsSinceEpoch,
       'gender': Utils.genderToString(gender),
       'rank': rank,
       'profilePicture': profilePicture,
@@ -120,7 +120,7 @@ class User {
       userCreatedOn: DateTime.fromMillisecondsSinceEpoch(map['userCreatedOn']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],
-      dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
+      dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth'] ?? 0),
       gender: Utils.getGenderFromString(map['gender']),
       profilePicture: map['profilePicture'],
       rank: map['rank'],
@@ -251,7 +251,7 @@ class Driver {
       'licencePlateNumber': licencePlateNumber,
       'phoneNumber': phoneNumber,
       'profilePicture': profilePicture,
-      'dateOfBirth': dateOfBirth.millisecondsSinceEpoch,
+      'dateOfBirth': dateOfBirth?.millisecondsSinceEpoch,
       'gender': Utils.genderToString(gender),
       'rank': rank,
       'rating': rating,
@@ -274,7 +274,7 @@ class Driver {
       licencePlateNumber: map['licencePlateNumber'],
       phoneNumber: map['phoneNumber'],
       profilePicture: map['profilePicture'],
-      dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth']),
+      dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth'] ?? 0),
       gender: Utils.getGenderFromString(map['gender']),
       rank: map['rank'],
       rating: map['rating'] ?? 0,
@@ -1651,7 +1651,7 @@ class Store {
   List<String> items;
   List<StoreItem> storeItems = [];
   String storeImage;
-  String storeMoto;
+  String storeMotto;
   LatLng storeLatLng;
   String storeAddress;
 
@@ -1660,7 +1660,7 @@ class Store {
     this.storeName,
     this.items,
     this.storeImage,
-    this.storeMoto,
+    this.storeMotto,
     this.storeLatLng,
     this.storeAddress,
   });
@@ -1679,7 +1679,7 @@ class Store {
       storeName: storeName ?? this.storeName,
       items: items ?? this.items,
       storeImage: storeImage ?? this.storeImage,
-      storeMoto: storeMoto ?? this.storeMoto,
+      storeMotto: storeMoto ?? this.storeMotto,
       storeAddress: storeAddress ?? this.storeAddress,
       storeLatLng: storeLatLng ?? this.storeLatLng,
     );
@@ -1691,7 +1691,7 @@ class Store {
       'storeName': storeName,
       'items': List<dynamic>.from(items.map((x) => x)),
       'storeImage': storeImage,
-      'storeMoto': storeMoto,
+      'storeMoto': storeMotto,
       'storeAddress': storeAddress,
       'storeLatLng': Utils.latLngToString(storeLatLng),
     };
@@ -1705,7 +1705,7 @@ class Store {
       storeName: map['storeName'],
       items: List<String>.from(map['items']),
       storeImage: map['storeImage'],
-      storeMoto: map['storeMoto'],
+      storeMotto: map['storeMoto'],
       storeAddress: map['storeAddress'],
       storeLatLng: Utils.latLngFromString(map['storeLatLng']),
     );
@@ -1717,7 +1717,7 @@ class Store {
 
   @override
   String toString() {
-    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMoto: $storeMoto, storeAddress: $storeAddress, storeLatLng: $storeLatLng';
+    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMoto: $storeMotto, storeAddress: $storeAddress, storeLatLng: $storeLatLng';
   }
 
   @override
@@ -1729,7 +1729,7 @@ class Store {
         o.storeName == storeName &&
         o.items == items &&
         o.storeImage == storeImage &&
-        o.storeMoto == storeMoto;
+        o.storeMotto == storeMotto;
   }
 
   @override
@@ -1738,7 +1738,7 @@ class Store {
         storeName.hashCode ^
         items.hashCode ^
         storeImage.hashCode ^
-        storeMoto.hashCode;
+        storeMotto.hashCode;
   }
 }
 

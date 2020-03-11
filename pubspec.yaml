@@ -11,7 +11,7 @@ description: Send Anything Anywhere
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.1.0+3
+version: 1.1.0+14
 
 environment:
   sdk: ">=2.6.0 <3.0.0"
@@ -78,12 +78,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
-    - assets/images/cocologo.jpeg
-    - assets/images/body_cream.jpeg
-    - assets/images/body_lotion.jpg
-    - assets/images/body_wash.jpeg
-    - assets/images/glcerin_soaps.jpeg
-    - assets/images/lip_butter.jpeg
+    - assets/images/right.png
     - assets/images/logo.png
     - assets/images/delivery.png
     - assets/secret.json

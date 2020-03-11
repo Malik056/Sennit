@@ -30,24 +30,57 @@ import 'generic_tracking_screen.dart';
 class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
   static List<Widget> _tabs;
-  ReceiveItRoute() {
-    _tabs = [];
+  final bool demo;
 
+  final TabController tabController;
+
+  Future<Null> _authCheck;
+
+  Future<void> initialize() async {
+    if (_authCheck != null) {
+      await _authCheck;
+    }
+    await MyApp.futureCart;
+  }
+
+  ReceiveItRoute({
+    @required this.demo,
+    @required this.tabController,
+  }) {
+    _tabs = [];
     if (MyApp.futureCart == null) {
       FirebaseAuth.instance.currentUser().then((user) {
-        UserSignIn.initializeCart(user.uid);
+        UserSignIn.initializeCart(user?.uid);
       });
     }
-    drawerNameController.text = ((Session.data['user']) as User).fullname;
-    _tabs
-      ..add(
-        StoresRoute(
-          address: null,
-        ),
-      )
-      ..add(SearchWidget())
-      ..add(UserNotificationWidget())
-      ..add(PastOrdersRoute());
+    if (demo) {
+      _authCheck = FirebaseAuth.instance.currentUser().then((value) {
+        if (value == null) {
+          FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: 'demo@sennit.com',
+            password: '123456',
+          );
+        }
+        _tabs
+          ..add(
+            StoresRoute(
+              address: null,
+            ),
+          )
+          ..add(SearchWidget());
+      });
+    } else {
+      drawerNameController.text = ((Session.data['user']) as User).fullname;
+      _tabs
+        ..add(
+          StoresRoute(
+            address: null,
+          ),
+        )
+        ..add(SearchWidget())
+        ..add(UserNotificationWidget())
+        ..add(PastOrdersRoute());
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -56,58 +89,70 @@ class ReceiveItRoute extends StatelessWidget {
       appBar: AppBar(
         title: Text('Stores'),
         centerTitle: true,
-      ),
-      endDrawer: Drawer(
-        child: ListView(
-          children: <Widget>[
-            UserAccountsDrawerHeader(
-              arrowColor: Colors.white,
-              accountName: Text(user.fullname),
-              accountEmail: Text("${user.email}"),
-              currentAccountPicture: user.profilePicture != null
-                  ? CircleAvatar(
-                      child: Image.network(user.profilePicture),
-                      backgroundColor: Colors.white,
-                    )
-                  : CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Center(
-                        child: Icon(Icons.person),
-                      ),
-                    ),
-            ),
-            Card(
-              child: ListTile(
-                title: Text('Change Password'),
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (c) {
-                    return AuthenticateAgainRoute();
-                  }));
-                },
-              ),
-            ),
-            Card(
-              child: ListTile(
-                title: Text('Privacy Policy'),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.exit_to_app),
-                title: Text('Logout'),
-                onTap: () {
-                  // Navigator.of(context).popUntil((route) => route.isFirst);
-                  FirebaseAuth.instance.signOut();
-                  Session.data..removeWhere((key, value) => true);
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                      MyApp.startPage, (route) => false);
-                },
-              ),
-            )
-          ],
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            if (demo) {
+              tabController?.animateTo(0);
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
       ),
-      bottomNavigationBar: _StatefullBottomNavigation(),
+      endDrawer: !demo
+          ? Drawer(
+              child: ListView(
+                children: <Widget>[
+                  UserAccountsDrawerHeader(
+                    arrowColor: Colors.white,
+                    accountName: Text(user.fullname),
+                    accountEmail: Text("${user.email}"),
+                    currentAccountPicture: user.profilePicture != null
+                        ? CircleAvatar(
+                            child: Image.network(user.profilePicture),
+                            backgroundColor: Colors.white,
+                          )
+                        : CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Center(
+                              child: Icon(Icons.person),
+                            ),
+                          ),
+                  ),
+                  Card(
+                    child: ListTile(
+                      title: Text('Change Password'),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (c) {
+                          return AuthenticateAgainRoute();
+                        }));
+                      },
+                    ),
+                  ),
+                  Card(
+                    child: ListTile(
+                      title: Text('Privacy Policy'),
+                    ),
+                  ),
+                  Card(
+                    child: ListTile(
+                      leading: Icon(Icons.exit_to_app),
+                      title: Text('Logout'),
+                      onTap: () {
+                        // Navigator.of(context).popUntil((route) => route.isFirst);
+                        FirebaseAuth.instance.signOut();
+                        Session.data..removeWhere((key, value) => true);
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                            MyApp.startPage, (route) => false);
+                      },
+                    ),
+                  )
+                ],
+              ),
+            )
+          : null,
+      bottomNavigationBar: _StatefulBottomNavigation(demo),
       floatingActionButton: FloatingActionButton(
         child: Icon(
           Icons.shopping_cart,
@@ -117,13 +162,16 @@ class ReceiveItRoute extends StatelessWidget {
           Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShoppingCartRoute(null),
+                builder: (context) => ShoppingCartRoute(
+                  null,
+                  demo: this.demo,
+                ),
               ));
         },
         backgroundColor: Theme.of(context).accentColor,
       ),
       body: FutureBuilder<void>(
-        future: MyApp.futureCart,
+        future: initialize(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -150,7 +198,7 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   dispose() {
     super.dispose();
     _controller.dispose();
-    ReceiveItRoute._tabs = null;
+    // ReceiveItRoute._tabs = null;
   }
 
   @override
@@ -183,21 +231,26 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   }
 }
 
-class _StatefullBottomNavigation extends StatefulWidget {
-  final state = _BottomNavigationState();
+class _StatefulBottomNavigation extends StatefulWidget {
+  final bool demo;
+  _StatefulBottomNavigation(this.demo) : state = _BottomNavigationState(demo);
+  final _BottomNavigationState state;
   @override
   State<StatefulWidget> createState() {
     return state;
   }
 
   setState() {
-    state.rebuild();
+    state?.rebuild();
   }
 }
 
-class _BottomNavigationState extends State<_StatefullBottomNavigation> {
+class _BottomNavigationState extends State<_StatefulBottomNavigation> {
   static int _index;
+  final bool demo;
   static _BottomNavigationState _bottomNavigationState;
+
+  _BottomNavigationState(this.demo);
   rebuild() {
     setState(() {});
   }
@@ -227,78 +280,110 @@ class _BottomNavigationState extends State<_StatefullBottomNavigation> {
           });
         }
       },
-      items: [
-        BottomNavigationBarItem(
-          title: Text(
-            'Home',
-            style: TextStyle(
-                color: Theme.of(context).primaryColor,
-                fontWeight: FontWeight.w600),
-          ),
-          icon: Icon(
-            Icons.store,
-            color: Colors.black54,
-          ),
-          activeIcon: Icon(
-            Icons.store,
-            color: Theme.of(context).accentColor,
-          ),
-        ),
-        BottomNavigationBarItem(
-          title: Text('Search', style: TextStyle(color: Colors.black)),
-          icon: Icon(
-            Icons.search,
-            color: Colors.black54,
-          ),
-          activeIcon: Icon(
-            Icons.search,
-            color: Theme.of(context).accentColor,
-          ),
-        ),
-        BottomNavigationBarItem(
-          title: Text('Notification', style: TextStyle(color: Colors.black)),
-          icon: Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(
-                Icons.notifications,
-                color: Colors.black54,
-              ),
-              Positioned(
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.red,
-                    gradient: RadialGradient(radius: 0.5, colors: [
-                      Color.fromARGB(255, 0xff, 0x88, 0x88),
-                      Colors.redAccent
-                    ]),
-                  ),
+      items: !demo
+          ? [
+              BottomNavigationBarItem(
+                title: Text(
+                  'Home',
+                  style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.w600),
                 ),
-                top: 0,
-                right: 1,
+                icon: Icon(
+                  Icons.store,
+                  color: Colors.black54,
+                ),
+                activeIcon: Icon(
+                  Icons.store,
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+              BottomNavigationBarItem(
+                title: Text('Search', style: TextStyle(color: Colors.black)),
+                icon: Icon(
+                  Icons.search,
+                  color: Colors.black54,
+                ),
+                activeIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+              BottomNavigationBarItem(
+                title:
+                    Text('Notification', style: TextStyle(color: Colors.black)),
+                icon: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.notifications,
+                      color: Colors.black54,
+                    ),
+                    Positioned(
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red,
+                          gradient: RadialGradient(radius: 0.5, colors: [
+                            Color.fromARGB(255, 0xff, 0x88, 0x88),
+                            Colors.redAccent
+                          ]),
+                        ),
+                      ),
+                      top: 0,
+                      right: 1,
+                    ),
+                  ],
+                ),
+                activeIcon: Icon(
+                  Icons.notifications,
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+              BottomNavigationBarItem(
+                title:
+                    Text('Past Order', style: TextStyle(color: Colors.black)),
+                icon: Icon(
+                  Icons.bookmark,
+                  color: Colors.black54,
+                ),
+                activeIcon: Icon(
+                  Icons.bookmark,
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+            ]
+          : [
+              BottomNavigationBarItem(
+                title: Text(
+                  'Home',
+                  style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.w600),
+                ),
+                icon: Icon(
+                  Icons.store,
+                  color: Colors.black54,
+                ),
+                activeIcon: Icon(
+                  Icons.store,
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+              BottomNavigationBarItem(
+                title: Text('Search', style: TextStyle(color: Colors.black)),
+                icon: Icon(
+                  Icons.search,
+                  color: Colors.black54,
+                ),
+                activeIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).accentColor,
+                ),
               ),
             ],
-          ),
-          activeIcon: Icon(
-            Icons.notifications,
-            color: Theme.of(context).accentColor,
-          ),
-        ),
-        BottomNavigationBarItem(
-          title: Text('Past Order', style: TextStyle(color: Colors.black)),
-          icon: Icon(
-            Icons.bookmark,
-            color: Colors.black54,
-          ),
-          activeIcon: Icon(
-            Icons.bookmark,
-            color: Theme.of(context).accentColor,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -365,7 +450,7 @@ class StoresRouteState extends State<StoresRoute> {
       store = Store.fromMap(storeAsMap);
       LatLng latlng = await Utils.getMyLocation();
 
-      if (Utils.calculateDistance(store.storeLatLng, latlng) <= 2008 * 1.6) {
+      if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
         var itemIds = storeAsMap['items'];
 
         for (String itemId in itemIds) {
@@ -496,7 +581,7 @@ class StoreItem extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        store.storeMoto,
+                        store.storeMotto,
                         style: TextStyle(fontSize: 16, color: Colors.black),
                       ),
                     ],
@@ -607,7 +692,11 @@ class StoreItem extends StatelessWidget {
 
 class StoreMainPage extends StatelessWidget {
   final Store store;
-  StoreMainPage({this.store});
+  final bool demo;
+  StoreMainPage({
+    this.store,
+    this.demo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -620,12 +709,15 @@ class StoreMainPage extends StatelessWidget {
           Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShoppingCartRoute(null),
+                builder: (context) => ShoppingCartRoute(
+                  null,
+                  demo: this.demo,
+                ),
               ));
         },
       ),
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrooled) {
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
           return <Widget>[
             SliverAppBar(
               expandedHeight: 250,
@@ -909,7 +1001,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               merge: true,
             ).catchError((error) {
               Utils.showSnackBarError(
-                  context, "Network Problem Occured! Try Again");
+                  context, "Network Problem Occurred! Try Again");
               setState(() {
                 addingToCart = false;
               });
@@ -1001,7 +1093,7 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
       bottomSheet: BottomSheet(
         elevation: 40,
         onClosing: () {},
-        builder: (conext) {
+        builder: (context) {
           return BottomSheetButton();
         },
       ),
@@ -1018,11 +1110,11 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
       //   ),
       // ],
       floatingActionButton: FloatingMenu(
-          itemId: ItemDetailsRoute._item.itemId,
-          // onComeBack: () {
-          //   setState(() {});
-          // }
-          ),
+        itemId: ItemDetailsRoute._item.itemId,
+        // onComeBack: () {
+        //   setState(() {});
+        // }
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: itemDetailsBody,
     );
@@ -1032,10 +1124,11 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
 class FloatingMenu extends StatefulWidget {
   final itemId;
   // final Function() onComeBack;
-
+  final bool demo;
   FloatingMenu({
     Key key,
     this.itemId,
+    this.demo,
     // this.onComeBack,
   }) : super(key: key);
 
@@ -1098,7 +1191,8 @@ class _FloatingMenuState extends State<FloatingMenu> {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ShoppingCartRoute(null),
+                builder: (context) =>
+                    ShoppingCartRoute(null, demo: widget.demo),
                 maintainState: false,
               ),
             );
@@ -1172,7 +1266,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
       length: 3,
       initialIndex: 0,
       child: NestedScrollView(
-        headerSliverBuilder: (context, constriant) {
+        headerSliverBuilder: (context, constraint) {
           return [
             SliverAppBar(
               floating: true,
@@ -1855,7 +1949,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
   //                     ),
   //                     // mainAxisSize: MainAxisSize.max,
   //                     Text(
-  //                         'This is some medium lenght review. I want it to check how app looks.\n'),
+  //                         'This is some medium length review. I want it to check how app looks.\n'),
   //                   ],
   //                 ),
   //               ),
@@ -1924,7 +2018,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
   //                     ),
   //                     // mainAxisSize: MainAxisSize.max,
   //                     Text(
-  //                         'This is some medium lenght review. I want it to check how app looks. This is some medium lenght review. I want it to check how app looks. This is some medium lenght review. I want it to check how app looks.\n'),
+  //                         'This is some medium length review. I want it to check how app looks. This is some medium length review. I want it to check how app looks. This is some medium length review. I want it to check how app looks.\n'),
   //                   ],
   //                 ),
   //               ),
@@ -1986,8 +2080,12 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
 class ShoppingCartRoute extends StatelessWidget {
   // static Address _fromAddress;
   static Address _toAddress;
+  final bool demo;
   final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
-  ShoppingCartRoute(toAddress) {
+  ShoppingCartRoute(
+    toAddress, {
+    @required this.demo,
+  }) : body = ShoppingCartRouteBody(demo: demo) {
     // _fromAddress = fromAddress;
 
     if (toAddress != null) {
@@ -1997,7 +2095,7 @@ class ShoppingCartRoute extends StatelessWidget {
     }
   }
 
-  final ShoppingCartRouteBody body = ShoppingCartRouteBody();
+  final ShoppingCartRouteBody body;
 
   @override
   Widget build(BuildContext context) {
@@ -2005,245 +2103,257 @@ class ShoppingCartRoute extends StatelessWidget {
       key: _key,
       appBar: AppBar(
         actions: <Widget>[
-          FlatButton(
-            onPressed: () async {
-              Utils.showLoadingDialog(context);
-              UserCart cart = Session.data['cart'];
-              if (ShoppingCartRouteState._emailController.text == "" ||
-                  ShoppingCartRouteState._emailController.text == null) {
-                Utils.showSnackBarErrorUsingKey(
-                  _key,
-                  'Please Provide your email Address',
-                );
-                Navigator.pop(context);
-                return;
-              } else if (ShoppingCartRouteState._phoneNumberController.text ==
-                      "" ||
-                  ShoppingCartRouteState._phoneNumberController.text == null) {
-                Utils.showSnackBarErrorUsingKey(
-                  _key,
-                  'Please Provide your Phone Number',
-                );
-                Navigator.pop(context);
-                return;
-              } else if (ShoppingCartRouteState
-                          ._phoneNumberController.text.length !=
-                      10 ||
-                  !ShoppingCartRouteState._phoneNumberController.text
-                      .startsWith('0')) {
-                Utils.showSnackBarErrorUsingKey(
-                  _key,
-                  'The Phone number Should start with 0 and Should Contain total of 10 digits',
-                );
-                Navigator.pop(context);
-                return;
-              } else if (!Utils.isEmailCorrect(
-                  ShoppingCartRouteState._emailController.text)) {
-                Utils.showSnackBarErrorUsingKey(
-                  _key,
-                  'Invalid Email Format',
-                );
-                Navigator.pop(context);
-                return;
-              } else if (cart.itemsData == null || cart.itemsData.length == 0) {
-                Navigator.pop(context);
+          !demo
+              ? FlatButton(
+                  onPressed: () async {
+                    Utils.showLoadingDialog(context);
+                    UserCart cart = Session.data['cart'];
+                    if (ShoppingCartRouteState._emailController.text == "" ||
+                        ShoppingCartRouteState._emailController.text == null) {
+                      Utils.showSnackBarErrorUsingKey(
+                        _key,
+                        'Please Provide your email Address',
+                      );
+                      Navigator.pop(context);
+                      return;
+                    } else if (ShoppingCartRouteState
+                                ._phoneNumberController.text ==
+                            "" ||
+                        ShoppingCartRouteState._phoneNumberController.text ==
+                            null) {
+                      Utils.showSnackBarErrorUsingKey(
+                        _key,
+                        'Please Provide your Phone Number',
+                      );
+                      Navigator.pop(context);
+                      return;
+                    } else if (ShoppingCartRouteState
+                                ._phoneNumberController.text.length !=
+                            10 ||
+                        !ShoppingCartRouteState._phoneNumberController.text
+                            .startsWith('0')) {
+                      Utils.showSnackBarErrorUsingKey(
+                        _key,
+                        'The Phone number Should start with 0 and Should Contain total of 10 digits',
+                      );
+                      Navigator.pop(context);
+                      return;
+                    } else if (!Utils.isEmailCorrect(
+                        ShoppingCartRouteState._emailController.text)) {
+                      Utils.showSnackBarErrorUsingKey(
+                        _key,
+                        'Invalid Email Format',
+                      );
+                      Navigator.pop(context);
+                      return;
+                    } else if (cart.itemsData == null ||
+                        cart.itemsData.length == 0) {
+                      Navigator.pop(context);
 
-                BotToast.showNotification(
-                  title: (_) {
-                    return Text("Your Cart is Empty");
-                  },
-                  align: Alignment.bottomCenter,
-                  subtitle: (_) => Text("Please Add some items in your cart"),
-                  trailing: (_) => RaisedButton(
-                    color: Theme.of(context).primaryColor,
-                    child: Text(
-                      'Shop now',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onPressed: () {
-                      Navigator.popUntil(context, (route) {
-                        return route.settings.name == 'receiveIt';
-                      });
-                    },
-                  ),
-                );
-
-                // BotToast.showText(
-                //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
-                return;
-              } else if (ShoppingCartRoute._toAddress == null) {
-                BotToast.showText(
-                    text: 'Please Select a Destination First!',
-                    duration: Duration(seconds: 2));
-                // Utils.showSnackBarError(context, 'Please Select a Destination');
-                Navigator.pop(context);
-                return;
-              }
-
-              Map<String, dynamic> result = await performTransaction(
-                  context,
-                  ShoppingCartRouteState.totalPrice +
-                      ShoppingCartRouteState.totalDeliveryCharges);
-
-              // Map<String, dynamic> result = {
-              //   'status': RaveStatus.success,
-              //   'errorMessage': 'someMessage'
-              // };
-
-              if (result['status'] == RaveStatus.cancelled) {
-                Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
-                Navigator.pop(context);
-                return;
-              } else if (result['status'] == RaveStatus.error) {
-                Utils.showSnackBarErrorUsingKey(
-                  _key,
-                  result['errorMessage'],
-                );
-                Navigator.pop(context);
-                return;
-              } else {
-                Utils.showSnackBarSuccessUsingKey(_key, 'Payment Succesfull');
-              }
-
-              User user = Session.data['user'];
-              model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
-              List<model.StoreItem> items = cart.items;
-              double price = ShoppingCartRouteState.totalPrice +
-                  ShoppingCartRouteState.totalDeliveryCharges;
-
-              List<LatLng> pickups = [];
-              Map<String, double> itemsData = cart.itemsData;
-              order.pickups = pickups;
-              List<String> stores = [];
-              order.stores = stores;
-              for (model.StoreItem item in items) {
-                // price += item.price * itemsData[item.itemId];
-                pickups.add(item.latlng);
-                stores.add(item.storeName);
-              }
-              // order.quantities = quantities;
-              order.date = DateTime.now();
-              order.userId = user.userId;
-              order.email = ShoppingCartRouteState._emailController.text;
-              order.phoneNumber =
-                  ShoppingCartRouteState._phoneNumberController.text;
-              order.house = ShoppingCartRouteState._houseController.text;
-              order.itemsData = itemsData;
-              order.price = price;
-              order.status = 'Pending';
-              order.destination = LatLng(
-                ShoppingCartRoute._toAddress.coordinates.latitude,
-                ShoppingCartRoute._toAddress.coordinates.longitude,
-              );
-              String otp = randomAlphaNumeric(6).toUpperCase();
-              var url =
-                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-              var response = await post(
-                url,
-              );
-
-              if (response.statusCode == 200 ||
-                  response.statusCode == 201 ||
-                  response.statusCode == 202) {
-                // if (true) {
-                Map<String, dynamic> orderData = order.toMap()
-                  ..putIfAbsent('otp', () => otp);
-                Firestore.instance
-                    .collection('postedOrders')
-                    .add(orderData)
-                    .catchError((error) {})
-                    .then((data) async {
-                  // Firestore.instance
-                  //     .collection("notifications")
-                  //     .document(user.userId)
-                  //     .setData({
-                  //   "${DateTime.now().millisecondsSinceEpoch}": {
-                  //     "price": order.price,
-                  //     "destination": Utils.latLngToString(order.destination),
-                  //     "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
-                  //     "items": items.map((x) => x.itemName),
-                  //     "sleevesRequried": null,
-                  //   }
-                  // });
-                  orderData.update('orderId', (old) => data.documentID,
-                      ifAbsent: () => data.documentID);
-
-                  await Firestore.instance
-                      .collection("userOrders")
-                      .document(user.userId)
-                      .setData(
-                    {
-                      data.documentID: orderData,
-                    },
-                    merge: true,
-                  );
-                  // await Firestore.instance
-                  //     .collection("verificationCodes")
-                  //     .document(data.documentID)
-                  //     .setData(
-                  //   {
-                  //     "key": otp,
-                  //   },
-                  // );
-
-                  // print('Response status: ${response.statusCode}');
-                  // print('Response body: ${response.body}');
-                  // print('Response reason: ${response.reasonPhrase}');
-                  // print('${response.request.url}');
-
-                  await Firestore.instance
-                      .collection('carts')
-                      .document(user.userId)
-                      .delete()
-                      .catchError((error) {})
-                      .then(
-                    (_) async {
-                      await Firestore.instance
-                          .collection('carts')
-                          .document(user.userId)
-                          .setData({});
-                      // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                      // Navigator.pop(context);
-                      Session.data['cart'] = UserCart(itemsData: {});
-                      Utils.showSuccessDialog('Your Order is on its way!');
-                      Future.delayed(Duration(seconds: 2)).then((_) {
-                        BotToast.cleanAll();
-                      });
-                      Navigator.popUntil(
-                          context, ModalRoute.withName('receiveIt'));
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return OrderTracking(
-                              type: OrderTrackingType.RECEIVE_IT,
-                              data: orderData,
-                            );
+                      BotToast.showNotification(
+                        title: (_) {
+                          return Text("Your Cart is Empty");
+                        },
+                        align: Alignment.bottomCenter,
+                        subtitle: (_) =>
+                            Text("Please Add some items in your cart"),
+                        trailing: (_) => RaisedButton(
+                          color: Theme.of(context).primaryColor,
+                          child: Text(
+                            'Shop now',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          onPressed: () {
+                            Navigator.popUntil(context, (route) {
+                              return route.settings.name == 'receiveIt';
+                            });
                           },
-                          settings: RouteSettings(name: OrderTracking.NAME),
                         ),
                       );
-                    },
-                  );
-                });
-              } else {
-                Utils.showSnackBarErrorUsingKey(
-                    _key, 'Unable to send OTP please Try Again!');
-                // print('Response status: ${response.statusCode}');
-                // print('Response body: ${response.body}');
-                // print('Response reason: ${response.reasonPhrase}');
-                Navigator.pop(context);
-              }
-            },
-            child: Text(
-              'Done',
-              style: TextStyle(
-                color: Colors.blue,
-                // fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+
+                      // BotToast.showText(
+                      //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
+                      return;
+                    } else if (ShoppingCartRoute._toAddress == null) {
+                      BotToast.showText(
+                          text: 'Please Select a Destination First!',
+                          duration: Duration(seconds: 2));
+                      // Utils.showSnackBarError(context, 'Please Select a Destination');
+                      Navigator.pop(context);
+                      return;
+                    }
+
+                    Map<String, dynamic> result = await performTransaction(
+                        context,
+                        ShoppingCartRouteState.totalPrice +
+                            ShoppingCartRouteState.totalDeliveryCharges);
+
+                    // Map<String, dynamic> result = {
+                    //   'status': RaveStatus.success,
+                    //   'errorMessage': 'someMessage'
+                    // };
+
+                    if (result['status'] == RaveStatus.cancelled) {
+                      Utils.showSnackBarWarningUsingKey(
+                          _key, 'Payment Cancelled');
+                      Navigator.pop(context);
+                      return;
+                    } else if (result['status'] == RaveStatus.error) {
+                      Utils.showSnackBarErrorUsingKey(
+                        _key,
+                        result['errorMessage'],
+                      );
+                      Navigator.pop(context);
+                      return;
+                    } else {
+                      Utils.showSnackBarSuccessUsingKey(
+                          _key, 'Payment Successful');
+                    }
+
+                    User user = Session.data['user'];
+                    model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
+                    List<model.StoreItem> items = cart.items;
+                    double price = ShoppingCartRouteState.totalPrice +
+                        ShoppingCartRouteState.totalDeliveryCharges;
+
+                    List<LatLng> pickups = [];
+                    Map<String, double> itemsData = cart.itemsData;
+                    order.pickups = pickups;
+                    List<String> stores = [];
+                    order.stores = stores;
+                    for (model.StoreItem item in items) {
+                      // price += item.price * itemsData[item.itemId];
+                      pickups.add(item.latlng);
+                      stores.add(item.storeName);
+                    }
+                    // order.quantities = quantities;
+                    order.date = DateTime.now();
+                    order.userId = user.userId;
+                    order.email = ShoppingCartRouteState._emailController.text;
+                    order.phoneNumber =
+                        ShoppingCartRouteState._phoneNumberController.text;
+                    order.house = ShoppingCartRouteState._houseController.text;
+                    order.itemsData = itemsData;
+                    order.price = price;
+                    order.status = 'Pending';
+                    order.destination = LatLng(
+                      ShoppingCartRoute._toAddress.coordinates.latitude,
+                      ShoppingCartRoute._toAddress.coordinates.longitude,
+                    );
+                    String otp = randomAlphaNumeric(6).toUpperCase();
+                    var url =
+                        "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                    var response = await post(
+                      url,
+                    );
+
+                    if (response.statusCode == 200 ||
+                        response.statusCode == 201 ||
+                        response.statusCode == 202) {
+                      // if (true) {
+                      Map<String, dynamic> orderData = order.toMap()
+                        ..putIfAbsent('otp', () => otp);
+                      Firestore.instance
+                          .collection('postedOrders')
+                          .add(orderData)
+                          .catchError((error) {})
+                          .then((data) async {
+                        // Firestore.instance
+                        //     .collection("notifications")
+                        //     .document(user.userId)
+                        //     .setData({
+                        //   "${DateTime.now().millisecondsSinceEpoch}": {
+                        //     "price": order.price,
+                        //     "destination": Utils.latLngToString(order.destination),
+                        //     "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
+                        //     "items": items.map((x) => x.itemName),
+                        //     "sleevesRequired": null,
+                        //   }
+                        // });
+                        orderData.update('orderId', (old) => data.documentID,
+                            ifAbsent: () => data.documentID);
+
+                        await Firestore.instance
+                            .collection("userOrders")
+                            .document(user.userId)
+                            .setData(
+                          {
+                            data.documentID: orderData,
+                          },
+                          merge: true,
+                        );
+                        // await Firestore.instance
+                        //     .collection("verificationCodes")
+                        //     .document(data.documentID)
+                        //     .setData(
+                        //   {
+                        //     "key": otp,
+                        //   },
+                        // );
+
+                        // print('Response status: ${response.statusCode}');
+                        // print('Response body: ${response.body}');
+                        // print('Response reason: ${response.reasonPhrase}');
+                        // print('${response.request.url}');
+
+                        await Firestore.instance
+                            .collection('carts')
+                            .document(user.userId)
+                            .delete()
+                            .catchError((error) {})
+                            .then(
+                          (_) async {
+                            await Firestore.instance
+                                .collection('carts')
+                                .document(user.userId)
+                                .setData({});
+                            // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                            // Navigator.pop(context);
+                            Session.data['cart'] = UserCart(itemsData: {});
+                            Utils.showSuccessDialog(
+                                'Your Order is on its way!');
+                            Future.delayed(Duration(seconds: 2)).then((_) {
+                              BotToast.cleanAll();
+                            });
+                            Navigator.popUntil(
+                                context, ModalRoute.withName('receiveIt'));
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return OrderTracking(
+                                    type: OrderTrackingType.RECEIVE_IT,
+                                    data: orderData,
+                                  );
+                                },
+                                settings:
+                                    RouteSettings(name: OrderTracking.NAME),
+                              ),
+                            );
+                          },
+                        );
+                      });
+                    } else {
+                      Utils.showSnackBarErrorUsingKey(
+                          _key, 'Unable to send OTP please Try Again!');
+                      // print('Response status: ${response.statusCode}');
+                      // print('Response body: ${response.body}');
+                      // print('Response reason: ${response.reasonPhrase}');
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: Text(
+                    'Done',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      // fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              : Opacity(
+                  opacity: 0,
+                ),
         ],
         title: Text(
           'Cart',
@@ -2252,6 +2362,63 @@ class ShoppingCartRoute extends StatelessWidget {
         // backgroundColor: Theme.of(context).accentColor,
       ),
       body: body,
+      bottomSheet: demo
+          ? BottomAppBar(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  SizedBox(
+                    height: 5,
+                  ),
+                  Text(
+                    'Login to Checkout',
+                    style: Theme.of(context).textTheme.title.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  SizedBox(
+                    height: 5,
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Spacer(),
+                      Expanded(
+                        flex: 2,
+                        child: RaisedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, MyApp.userSignup);
+                          },
+                          child: Text(
+                            'Signup',
+                            style: Theme.of(context).textTheme.button.copyWith(
+                                  color: Colors.white,
+                                ),
+                          ),
+                        ),
+                      ),
+                      Spacer(),
+                      Expanded(
+                        flex: 2,
+                        child: RaisedButton(
+                          color: Colors.white,
+                          onPressed: () {
+                            Navigator.pushNamed(context, MyApp.userSignin);
+                          },
+                          child: Text(
+                            'SignIn',
+                            style: Theme.of(context).textTheme.button.copyWith(
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                          ),
+                        ),
+                      ),
+                      Spacer(),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          : null,
       // backgroundColor: Theme.of(context).accentColor,
     );
   }
@@ -2299,7 +2466,10 @@ class ShoppingCartRoute extends StatelessWidget {
 }
 
 class ShoppingCartRouteBody extends StatefulWidget {
+  final bool demo;
   final ShoppingCartRouteState state = ShoppingCartRouteState();
+
+  ShoppingCartRouteBody({Key key, @required this.demo}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -2322,6 +2492,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   bool boxSizeMedium = false;
   bool boxSizeLarge = false;
   bool sleeveNeeded = false;
+  bool demo;
 
   List<bool> isAnimationVisibleList = [];
   List<bool> isItemDeleteConfirmationVisibleList = [];
@@ -2338,9 +2509,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
-    User user = Session.data['user'];
-    _emailController.text = user.email;
-    _phoneNumberController.text = user.phoneNumber;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.demo) {
+      User user = Session.data['user'];
+      _emailController.text = user.email;
+      _phoneNumberController.text = user.phoneNumber;
+    }
     _phoneNumberController.addListener(() {
       if (_phoneNumberController.text == null ||
           _phoneNumberController.text == "") {
@@ -2348,11 +2526,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
         setState(() {});
       }
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
     totalDeliveryCharges = 0;
     totalPrice = 0;
     UserCart cart = Session.getCart();
@@ -2382,6 +2555,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: BouncingScrollPhysics(),
       child: Column(
         children: [
           Card(
@@ -2416,8 +2590,9 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                           result.latLng.latitude,
                           result.latLng.longitude,
                         );
-                        ShoppingCartRoute._toAddress = (await Geocoder.local
-                            .findAddressesFromCoordinates(coordinates))[0];
+                        ShoppingCartRoute._toAddress = (await Geocoder.google(
+                          await Utils.getAPIKey(context: context),
+                        ).findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },
@@ -2551,6 +2726,9 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             ),
           ),
           _getCartItems(),
+          SizedBox(
+            height: 140,
+          ),
           // SizedBox(
           //   height: 10,
           // ),
@@ -2616,7 +2794,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
           //             Icons.credit_card,
           //           ),
           //           title: Text(
-          //             'Selct payment method',
+          //             'Select payment method',
           //           ),
           //           trailing: Icon(Icons.navigate_next),
           //           onTap: () {},
@@ -2662,7 +2840,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     }
     totalDeliveryCharges = 0;
     totalPrice = 0;
-    List<List<double>> deliveryCharges = [];
+    List<double> deliveryCharges = [];
     // for (int i = 0; i < items.length; i++) {
     //   isAnimationVisibleList.add(false);
     //   isItemDeleteConfirmationVisibleList.add(false);
@@ -2692,11 +2870,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                 totalPrice +=
                     items[index].price * itemsData[items[index].itemId];
                 if (ShoppingCartRoute._toAddress != null) {
-                  double distance = Utils.calculateDistance(
-                    LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
-                        ShoppingCartRoute._toAddress.coordinates.longitude),
-                    items[index].latlng,
-                  );
+                  // double distance = Utils.calculateDistance(
+                  //   LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
+                  //       ShoppingCartRoute._toAddress.coordinates.longitude),
+                  //   items[index].latlng,
+                  // );
 
                   print(
                       'To Coordinates: ${ShoppingCartRoute._toAddress.coordinates}');
@@ -2704,25 +2882,25 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     'Item: ${items[index].latlng}',
                   );
 
-                  if (distance <= 10) {
-                    deliveryCharges.add(
-                      List<double>.generate(
-                        itemsData[items[index].itemId].toInt(),
-                        (i) => 60,
-                      ),
-                    );
-                  } else {
-                    distance -= 10;
-                    double kiloMeters = distance.ceilToDouble();
-                    deliveryCharges.add(
-                      List<double>.generate(
-                        itemsData[items[index].itemId].toInt(),
-                        (i) => double.parse(
-                          (60 + (4.5 * kiloMeters)).toStringAsFixed(2),
-                        ),
-                      ),
-                    );
-                  }
+                  // if (distance <= 5) {
+                  //   deliveryCharges.add(
+                  //     List<double>.generate(
+                  //       itemsData[items[index].itemId].toInt(),
+                  //       (i) => 30,
+                  //     ),
+                  //   );
+                  // } else {
+                  //   distance -= 5;
+                  //   double kiloMeters = distance.ceilToDouble();
+                  //   deliveryCharges.add(
+                  //     List<double>.generate(
+                  //       itemsData[items[index].itemId].toInt(),
+                  //       (i) => double.parse(
+                  //         (30 + (4.5 * kiloMeters)).toStringAsFixed(2),
+                  //       ),
+                  //     ),
+                  //   );
+                  // }
                   // deliveryCharges.add()
                 }
                 return Stack(
@@ -3004,7 +3182,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 180),
                     child: Text(
-                      '${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : getDeliveryCharges(deliveryCharges)}',
+                      '${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : getDeliveryCharges()}',
                       style: Theme.of(context).textTheme.subtitle,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.visible,
@@ -3044,17 +3222,72 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     );
   }
 
-  String getDeliveryCharges(List<List<double>> deliveryCharges) {
+  String getDeliveryCharges() {
     String finalString = '';
     double total = 0;
-    int index = 0;
-    for (List<double> value in deliveryCharges) {
-      total += value[0] * value.length;
-      finalString += '${value[0]}R x ${value.length}';
-      if (++index < deliveryCharges.length) {
-        finalString += ' + ';
+    // int index = 0;
+    Map<String, Map<String, dynamic>> deliveryCharges = {};
+    for (var item in items) {
+      if (deliveryCharges.containsKey(item.latlng.toString())) {
+        deliveryCharges[item.latlng.toString()].update(
+          'count',
+          (old) => old + 1,
+        );
+      } else {
+        Coordinates coordinates = ShoppingCartRoute._toAddress.coordinates;
+        double distance = Utils.calculateDistance(
+            LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
+        deliveryCharges.putIfAbsent(
+          item.latlng.toString(),
+          () {
+            return {
+              'count': 1,
+              'distance': distance,
+            };
+          },
+        );
       }
     }
+
+    deliveryCharges.forEach((k, v) {
+      final distance = v['distance'];
+      if (v['count'] == 1) {
+        double charges = 30;
+        final tempDistance = distance - 5;
+        if (tempDistance <= 0) {
+          v.putIfAbsent('charges', () => charges);
+        } else {
+          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
+          v.putIfAbsent('charges', () => charges);
+        }
+      } else {
+        if (distance <= 10) {
+          v.putIfAbsent('charges', () => 60.0);
+        } else {
+          double charges = 60.0;
+          final tempDistance = distance - 10;
+          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
+          v.putIfAbsent('charges', () => charges);
+        }
+      }
+
+      total += v['charges'];
+
+      if (finalString.isEmpty) {
+        finalString += '${v['charges']}R';
+      } else {
+        finalString += ' + ${v['charges']}R';
+      }
+    });
+
+    totalDeliveryCharges = total;
+    // for (List<double> value in deliveryCharges) {
+    //   total += value[0]; // * value.length;
+    //   finalString += '${value[0]}R'; // x ${value.length}';
+    //   if (++index < deliveryCharges.length) {
+    //     finalString += ' + ';
+    //   }
+    // }
     // finalString += '$total';
     totalDeliveryCharges = total;
     return finalString;

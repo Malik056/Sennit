@@ -220,7 +220,10 @@ class UserHomeState extends State<UserHomeBody> {
                         context,
                         MaterialPageRoute(
                           builder: (context) {
-                            return ReceiveItRoute();
+                            return ReceiveItRoute(
+                              demo: false,
+                              tabController: null,
+                            );
                           },
                           settings: RouteSettings(name: 'receiveIt'),
                         ),

@@ -51,6 +51,7 @@ Future<void> locationInitializer() async {
 }
 
 main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await locationInitializer();
@@ -319,7 +320,7 @@ class UserSignUp {
 
 class Utils {
   static String _apiKey;
-  static Future<String> getAPIkey({@required BuildContext context}) async {
+  static Future<String> getAPIKey({@required BuildContext context}) async {
     if (_apiKey != null) {
       return _apiKey;
     }
@@ -519,7 +520,7 @@ class Utils {
 
   static showPlacePicker(BuildContext context,
       {@required LatLng initialLocation}) async {
-    String apiKey = await getAPIkey(context: context);
+    String apiKey = await getAPIKey(context: context);
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
         Map<String, LocationResult>.from((await Navigator.of(context).push(

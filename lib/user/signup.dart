@@ -191,97 +191,99 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         height: 20,
                       ),
                     ), // Text(
+                    // //   'Date of Birth: ',
+                    // //   style: TextStyle(
+                    // //       color: Theme.of(context).primaryColor,
+                    // //       fontWeight: FontWeight.bold),
+                    // // ),
+                    //TODO:Date OF Birth code from here
+                    // Text(
                     //   'Date of Birth: ',
-                    //   style: TextStyle(
-                    //       color: Theme.of(context).primaryColor,
-                    //       fontWeight: FontWeight.bold),
+                    //   style: TextStyle(color: dateOfBirthHeadingColor),
+                    //   textAlign: TextAlign.start,
                     // ),
-                    Text(
-                      'Date of Birth: ',
-                      style: TextStyle(color: dateOfBirthHeadingColor),
-                      textAlign: TextAlign.start,
-                    ),
-                    Row(
-                      children: [
-                        RaisedButton(
-                          padding: EdgeInsets.only(
-                              left: btnPaddingLeft - 10,
-                              right: btnPaddingRight,
-                              top: btnPaddingTop - 5,
-                              bottom: btnPaddingBottom - 5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.elliptical(100, 100)),
-                          ),
-                          child: Row(
-                            children: <Widget>[
-                              Icon(
-                                FontAwesomeIcons.calendarDay,
-                                color: dateOfBirthTextColor,
-                              ),
-                              Text(
-                                '   $dateText',
-                                style: TextStyle(
-                                  color: dateOfBirthTextColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          onPressed: () async {
-                            DateTime selectedDate = await showDatePicker(
-                              firstDate: DateFormat("yyyy/MM/dd", "en_US")
-                                  .parse("1950/01/01"),
-                              lastDate: DateTime.now(),
-                              context: context,
-                              initialDate: DateFormat("dd-MMM-yyyy", "en_US")
-                                  .parse(dateText == dateInitialText
-                                      ? "01-Jan-2000"
-                                      : dateText),
-                            );
-                            if (selectedDate != null) {
-                              setState(() {
-                                dateSelected = true;
-                                dateOfBirthTextColor = Colors.white;
-                                dateOfBirthHeadingColor =
-                                    Theme.of(context).primaryColor;
-                                dateText = DateFormat("dd-MMM-yyyy", "en_US")
-                                    .format(selectedDate)
-                                    .toString();
-                                user.dateOfBirth = selectedDate;
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    Opacity(
-                      opacity: dateSelected ? 0 : 1,
-                      child: tapped
-                          ? (dateSelected
-                              ? () {
-                                  setState(() {
-                                    dateOfBirthHeadingColor =
-                                        Theme.of(context).primaryColor;
-                                    dateOfBirthTextColor = Colors.white;
-                                  });
-                                  return null;
-                                }()
-                              : () {
-                                  setState(() {
-                                    dateOfBirthHeadingColor = Colors.red;
-                                    dateOfBirthTextColor = Colors.red;
-                                  });
-                                  return Padding(
-                                    padding: EdgeInsets.only(top: 10),
-                                    child: Text(
-                                      'Please select your date of birth',
-                                      style: TextStyle(
-                                          color: Colors.red, fontSize: 12),
-                                    ),
-                                  );
-                                }())
-                          : null,
-                    ),
+                    // Row(
+                    //   children: [
+                    //     RaisedButton(
+                    //       padding: EdgeInsets.only(
+                    //           left: btnPaddingLeft - 10,
+                    //           right: btnPaddingRight,
+                    //           top: btnPaddingTop - 5,
+                    //           bottom: btnPaddingBottom - 5),
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius:
+                    //             BorderRadius.all(Radius.elliptical(100, 100)),
+                    //       ),
+                    //       child: Row(
+                    //         children: <Widget>[
+                    //           Icon(
+                    //             FontAwesomeIcons.calendarDay,
+                    //             color: dateOfBirthTextColor,
+                    //           ),
+                    //           Text(
+                    //             '   $dateText',
+                    //             style: TextStyle(
+                    //               color: dateOfBirthTextColor,
+                    //             ),
+                    //           ),
+                    //         ],
+                    //       ),
+                    //       onPressed: () async {
+                    //         DateTime selectedDate = await showDatePicker(
+                    //           firstDate: DateFormat("yyyy/MM/dd", "en_US")
+                    //               .parse("1950/01/01"),
+                    //           lastDate: DateTime.now(),
+                    //           context: context,
+                    //           initialDate: DateFormat("dd-MMM-yyyy", "en_US")
+                    //               .parse(dateText == dateInitialText
+                    //                   ? "01-Jan-2000"
+                    //                   : dateText),
+                    //         );
+                    //         if (selectedDate != null) {
+                    //           setState(() {
+                    //             dateSelected = true;
+                    //             dateOfBirthTextColor = Colors.white;
+                    //             dateOfBirthHeadingColor =
+                    //                 Theme.of(context).primaryColor;
+                    //             dateText = DateFormat("dd-MMM-yyyy", "en_US")
+                    //                 .format(selectedDate)
+                    //                 .toString();
+                    //             user.dateOfBirth = selectedDate;
+                    //           });
+                    //         }
+                    //       },
+                    //     ),
+                    //   ],
+                    // ),
+                    // Opacity(
+                    //   opacity: dateSelected ? 0 : 1,
+                    //   child: tapped
+                    //       ? (dateSelected
+                    //           ? () {
+                    //               setState(() {
+                    //                 dateOfBirthHeadingColor =
+                    //                     Theme.of(context).primaryColor;
+                    //                 dateOfBirthTextColor = Colors.white;
+                    //               });
+                    //               return null;
+                    //             }
+                    //           : () {
+                    //               setState(() {
+                    //                 dateOfBirthHeadingColor = Colors.red;
+                    //                 dateOfBirthTextColor = Colors.red;
+                    //               });
+                    //               return Padding(
+                    //                 padding: EdgeInsets.only(top: 10),
+                    //                 child: Text(
+                    //                   'Please select your date of birth',
+                    //                   style: TextStyle(
+                    //                       color: Colors.red, fontSize: 12),
+                    //                 ),
+                    //               );
+                    //             }())
+                    //       : null,
+                    // ),
+
                     TextFormField(
                       keyboardType: TextInputType.phone,
                       maxLines: 1,
@@ -437,7 +439,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                             tapped = true;
                             var form = _formKey.currentState;
                             if (form.validate() &&
-                                dateInitialText != dateText &&
+                                // dateInitialText != dateText &&
                                 user.homeLocationLatLng != null) {
                               user.userCreatedOn = DateTime.now();
                               // user.userId =
@@ -535,17 +537,18 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                               } on dynamic catch (_) {
                                 onSignUpError();
                               }
-                            } else if (dateInitialText == dateText ||
+                            } else if (
+                                // dateInitialText == dateText ||
                                 user.homeLocationLatLng == null) {
                               setState(() {
                                 pressed = false;
                                 Navigator.pop(context);
-                                if (dateInitialText == dateText) {
-                                  dateOfBirthHeadingColor = Colors.red;
-                                  dateOfBirthTextColor = Colors.red;
-                                } else {
-                                  //TODO:// Show Location Pick Error
-                                }
+                                // if (dateInitialText == dateText) {
+                                //   dateOfBirthHeadingColor = Colors.red;
+                                //   dateOfBirthTextColor = Colors.red;
+                                // } else {
+                                //   //TODO:// Show Location Pick Error
+                                // }
                               });
                             } else {
                               setState(() {

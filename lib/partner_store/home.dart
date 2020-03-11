@@ -36,29 +36,29 @@ class OrderedItemsList extends StatelessWidget {
         }
       },
       child: Scaffold(
-        drawer: Drawer(
-          child: Column(
-            children: <Widget>[
-              UserAccountsDrawerHeader(
-                accountName: FutureBuilder<DocumentSnapshot>(
-                  future: futureStoreData,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      );
-                    } else {
-                      return Text(snapshot.data.data['storeName']); 
-                    }
-                  },
-                ),
-                accountEmail: null,
-              )
-            ],
-          ),
-        ),
+        // drawer: Drawer(
+        //   child: Column(
+        //     children: <Widget>[
+        //       UserAccountsDrawerHeader(
+        //         accountName: FutureBuilder<DocumentSnapshot>(
+        //           future: futureStoreData,
+        //           builder: (context, snapshot) {
+        //             if (snapshot.connectionState == ConnectionState.waiting) {
+        //               return Center(
+        //                 child: CircularProgressIndicator(
+        //                   strokeWidth: 2,
+        //                 ),
+        //               );
+        //             } else {
+        //               return Text(snapshot.data.data['storeName']); 
+        //             }
+        //           },
+        //         ),
+        //         accountEmail: null,
+        //       )
+        //     ],
+        //   ),
+        // ),
         key: _key,
         appBar: AppBar(
           title: Text('Orders'),

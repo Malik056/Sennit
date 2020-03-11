@@ -1306,18 +1306,45 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
     if (totalItems == 0) {
       return 'N/A';
     }
-    double perItemCost = 0;
-    // if (distance <= 5) {
-    perItemCost = 30;
-    // }
-    distance -= 5;
-    double absoluteValue = distance.ceilToDouble();
-    if (absoluteValue < 0) {
-      absoluteValue = 0;
+
+    double charges = 0;
+
+    if (totalItems == 1) {
+      distance -= 5;
+      charges = 30 + (distance * 4.50);
+    } else if (totalItems == 2 && distance <= 10) {
+      charges = 60;
+    } else if (totalItems > 2 && distance <= 10) {
+      charges = 60 + ((totalItems - 2.0) * 20);
+    } else if (totalItems >= 2) {
+      double boxCharges;
+      if (totalItems <= 10) {
+        boxCharges = totalItems * 48.0;
+      } else {
+        int tempTotalItems = totalItems - 10;
+        boxCharges = 480;
+        boxCharges += tempTotalItems * 20;
+      }
+      charges = boxCharges;
+
+      if (distance > 30) {
+        charges += (distance.ceilToDouble() - 30.0) * 4.50;
+      }
     }
-    perItemCost += (absoluteValue * 4.50);
-    totalCharges = perItemCost * totalItems;
-    return totalCharges;
+
+    // double perItemCost = 0;
+    // // if (distance <= 5) {
+    // perItemCost = 30;
+    // // }
+    // distance -= 5;
+    // double absoluteValue = distance.ceilToDouble();
+    // if (absoluteValue < 0) {
+    //   absoluteValue = 0;
+    // }
+    // perItemCost += (absoluteValue * 4.50);
+    // totalCharges = perItemCost * totalItems;
+
+    return charges;
   }
 }
 

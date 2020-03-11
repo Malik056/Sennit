@@ -142,7 +142,7 @@ class ActiveOrder extends StatelessWidget {
     List<LatLng> route = [];
     for (int i = 1; i < markers.length; i++) {
       List<LatLng> latlngs = await GoogleMapPolyline(
-              apiKey: await Utils.getAPIkey(context: context))
+              apiKey: await Utils.getAPIKey(context: context))
           .getCoordinatesWithLocation(
         origin: lastMarker.position,
         destination: markers.elementAt(i).position,
