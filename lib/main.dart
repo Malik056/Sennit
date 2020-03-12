@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
@@ -52,6 +53,14 @@ Future<void> locationInitializer() async {
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+  _firebaseMessaging.requestNotificationPermissions();
+  _firebaseMessaging.configure(
+    onBackgroundMessage: (Map<String, dynamic> message) async {},
+    onResume: (Map<String, dynamic> message) async {},
+    onMessage: (Map<String, dynamic> message) async {},
+    onLaunch: (Map<String, dynamic> message) async {},
+  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await locationInitializer();
   await databaseInitializer();
