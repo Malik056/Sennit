@@ -51,7 +51,6 @@ Future<void> locationInitializer() async {
 }
 
 main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await locationInitializer();
@@ -515,7 +514,14 @@ class Utils {
             c(latlng2.latitude * p) *
             (1 - c((latlng2.longitude - latlng1.longitude) * p)) /
             2;
-    return 12742 * asin(sqrt(a));
+    return (12742 * asin(sqrt(a))).abs();
+  }
+
+  static double calculateDistanceFromCoordinates(
+      Coordinates coordinates1, Coordinates coordinates2) {
+    LatLng latlng1 = LatLng(coordinates1.latitude, coordinates1.longitude);
+    LatLng latlng2 = LatLng(coordinates2.latitude, coordinates2.longitude);
+    return calculateDistance(latlng1, latlng2);
   }
 
   static showPlacePicker(BuildContext context,

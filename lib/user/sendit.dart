@@ -1116,6 +1116,30 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
           Card(
             margin: EdgeInsets.only(
               top: groupMargin,
+            ), //, left: cardMargin, right: cardMargin),
+            elevation: 5,
+            child: Container(
+              padding: EdgeInsets.only(
+                top: cardPadding,
+                bottom: cardPadding,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Text(
+                    'Distance ',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                  Spacer(),
+                  Text(
+                    '${Utils.calculateDistanceFromCoordinates(SendItCartRoute._fromAddress.coordinates, SendItCartRoute._toAddress.coordinates)}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: EdgeInsets.only(
+              top: groupMargin,
             ), //left: cardMargin, right: cardMargin),
             elevation: 5,
             child: Container(
@@ -1310,8 +1334,11 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
     double charges = 0;
 
     if (totalItems == 1) {
+      charges = 30;
       distance -= 5;
-      charges = 30 + (distance * 4.50);
+      if (distance > 0) {
+        charges += (distance * 4.50);
+      }
     } else if (totalItems == 2 && distance <= 10) {
       charges = 60;
     } else if (totalItems > 2 && distance <= 10) {
@@ -1344,7 +1371,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
     // perItemCost += (absoluteValue * 4.50);
     // totalCharges = perItemCost * totalItems;
 
-    return charges;
+    return charges.toStringAsFixed(2);
   }
 }
 

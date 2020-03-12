@@ -10,7 +10,9 @@ import Firebase
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     var keys: NSDictionary?
-
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+    }
     if let path = Bundle.main.path(forResource: "key", ofType: "plist") {
         keys = NSDictionary(contentsOfFile: path)
     }
