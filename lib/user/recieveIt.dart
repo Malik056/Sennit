@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -31,10 +33,8 @@ class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
   static List<Widget> _tabs;
   final bool demo;
-
   final TabController tabController;
-
-  Future<Null> _authCheck;
+  static Future<Null> _authCheck;
 
   Future<void> initialize() async {
     if (_authCheck != null) {
@@ -47,6 +47,7 @@ class ReceiveItRoute extends StatelessWidget {
     @required this.demo,
     @required this.tabController,
   }) {
+    
     _tabs = [];
     if (MyApp.futureCart == null) {
       FirebaseAuth.instance.currentUser().then((user) {
@@ -2591,7 +2592,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                           result.latLng.longitude,
                         );
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
-                          await Utils.getAPIKey(context: context),
+                          await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
@@ -3195,7 +3196,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     margin: EdgeInsets.all(8),
                   ),
                   Text(
-                    'Total\n$totalDeliveryCharges R',
+                    'Total\n${totalDeliveryCharges.toStringAsFixed(2)} R',
                     style: Theme.of(context).textTheme.subhead,
                     textAlign: TextAlign.center,
                   ),

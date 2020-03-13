@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart'
     as mapbox;
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:location/location.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
@@ -168,6 +170,11 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
         //     .delete();
         await locationSubscription?.cancel();
         locationSubscription = null;
+        var userToken = Firestore.instance
+            .collection('users')
+            .document(data['userId'])
+            .collection('tokens')
+            .getDocuments();
         await Firestore.instance
             .collection('userOrders')
             .document(data['userId'])
@@ -179,6 +186,46 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
             }
           },
           merge: true,
+        );
+        await Firestore.instance
+            .collection('users')
+            .document(data['userId'])
+            .collection('notifications')
+            .add(
+          {
+            'title': 'Order Delivered',
+            'message': '${data['driverName']} has delivered your order.',
+            'seen': false,
+            'rated': false,
+          },
+        );
+        final snapshot = await userToken;
+        final _fcmServerKey = await Utils.getFCMServerKey();
+        final deviceTokens = <String>[];
+        snapshot.documents.forEach((document) {
+          deviceTokens.add(document.documentID);
+        });
+        var postRequest = http.post(
+          'https://fcm.googleapis.com/fcm/send',
+          headers: <String, String>{
+            'Content-Type': 'application/json',
+            'Authorization': 'key=$_fcmServerKey',
+          },
+          body: jsonEncode(
+            <String, dynamic>{
+              'notification': <String, dynamic>{
+                'body': '${data['driverName']} has delivered your order.',
+                'title': 'Order Delivered'
+              },
+              'priority': 'high',
+              'data': <String, dynamic>{
+                'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                'orderId': '${data['orderId']}',
+                'status': 'delivered',
+              },
+              'registration_ids': deviceTokens,
+            },
+          ),
         );
         await Firestore.instance
             .collection('postedOrders')
@@ -200,6 +247,7 @@ class RecieveItOrderNavigationRoute extends StatelessWidget {
               ifAbsent: () => '${now.millisecondsSinceEpoch}',
             ),
         });
+        await postRequest;
         List<Map<String, dynamic>> itemDetails = (await items)['itemDetails'];
         Map<String, double> itemsData =
             Map<String, double>.from(data['itemsData']);

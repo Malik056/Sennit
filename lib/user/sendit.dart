@@ -474,14 +474,14 @@ class SendItCartRoute extends StatelessWidget {
               SendItCartRouteState.receiverEmailController.text =
                   SendItCartRouteState.receiverEmailController.text.trim();
 
-              Map<String, dynamic> result = await performTransaction(
-                context,
-                SendItCartRouteState.totalCharges,
-              );
-              // Map<String, dynamic> result = {
-              //   'status': RaveStatus.success,
-              //   'errorMessage': "All Good",
-              // };
+              // Map<String, dynamic> result = await performTransaction(
+              //   context,
+              //   SendItCartRouteState.totalCharges,
+              // );
+              Map<String, dynamic> result = {
+                'status': RaveStatus.success,
+                'errorMessage': "All Good",
+              };
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
@@ -628,7 +628,7 @@ class SendItCartRoute extends StatelessWidget {
                     builder: (context) {
                       return OrderTracking(
                         type: OrderTrackingType.SENNIT,
-                        data: [orderData],
+                        data: orderData,
                       );
                     },
                     settings: RouteSettings(name: OrderTracking.NAME),
@@ -1126,12 +1126,12 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
               child: Row(
                 children: <Widget>[
                   Text(
-                    'Distance ',
+                    ' Distance ',
                     style: Theme.of(context).textTheme.subhead,
                   ),
                   Spacer(),
                   Text(
-                    '${Utils.calculateDistanceFromCoordinates(SendItCartRoute._fromAddress.coordinates, SendItCartRoute._toAddress.coordinates)}',
+                    '${Utils.calculateDistanceFromCoordinates(SendItCartRoute._fromAddress.coordinates, SendItCartRoute._toAddress.coordinates).toStringAsFixed(2)} Km ',
                   ),
                 ],
               ),
@@ -1370,7 +1370,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
     // }
     // perItemCost += (absoluteValue * 4.50);
     // totalCharges = perItemCost * totalItems;
-
+    totalCharges = charges;
     return charges.toStringAsFixed(2);
   }
 }

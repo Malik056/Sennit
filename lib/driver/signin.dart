@@ -205,6 +205,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                                 return;
                               }
                               Driver user = Driver.fromMap(userData.data);
+                              user.driverId = userId;
                               Session.data.update('driver', (a) {
                                 return user;
                               }, ifAbsent: () {

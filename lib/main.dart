@@ -51,19 +51,27 @@ Future<void> locationInitializer() async {
   }
 }
 
+// Future<dynamic> myBackgroundMessageHandler(Map<String, dynamic> message) {
+//   if (message.containsKey('data')) {
+//     // Handle data message
+//     final dynamic data = message['data'];
+//   }
+
+//   if (message.containsKey('notification')) {
+//     // Handle notification message
+//     final dynamic notification = message['notification'];
+//   }
+
+//   // Or do other work.
+// }
+
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
-  _firebaseMessaging.requestNotificationPermissions();
-  _firebaseMessaging.configure(
-    onBackgroundMessage: (Map<String, dynamic> message) async {},
-    onResume: (Map<String, dynamic> message) async {},
-    onMessage: (Map<String, dynamic> message) async {},
-    onLaunch: (Map<String, dynamic> message) async {},
-  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await locationInitializer();
   await databaseInitializer();
+  Utils.getFCMServerKey();
+  Utils.getAPIKey();
   // await initializeDateFormatting('en_ZA');
   final user = await FirebaseAuth.instance.currentUser();
   if (user != null) {
@@ -328,20 +336,23 @@ class UserSignUp {
 
 class Utils {
   static String _apiKey;
-  static Future<String> getAPIKey({@required BuildContext context}) async {
+  static String _fcm_server_key;
+  static Future<String> getAPIKey() async {
     if (_apiKey != null) {
       return _apiKey;
     }
-    showDialog(
-        context: context,
-        builder: (context) {
-          return CircularProgressIndicator();
-        });
     var key = json.decode(await rootBundle.loadString('assets/secret.json'));
     _apiKey = key['Maps'];
-
-    Navigator.pop(context);
     return _apiKey;
+  }
+
+  static Future<String> getFCMServerKey() async {
+    if(_fcm_server_key != null) {
+      return _fcm_server_key;
+    }
+    var key = json.decode(await rootBundle.loadString('assets/secret.json'));
+    _fcm_server_key = key['fcm_server_key'];
+    return _fcm_server_key;
   }
 
   static Future<Map<String, String>> getUserNameAndPassword(
@@ -535,7 +546,7 @@ class Utils {
 
   static showPlacePicker(BuildContext context,
       {@required LatLng initialLocation}) async {
-    String apiKey = await getAPIKey(context: context);
+    String apiKey = await getAPIKey();
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
         Map<String, LocationResult>.from((await Navigator.of(context).push(

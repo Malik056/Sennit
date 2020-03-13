@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -85,6 +88,22 @@ class UserHomeState extends State<UserHomeBody> {
   double defaultSize;
   double currentSizeSendIt;
   double currentSizeRecieveIt;
+  final FirebaseMessaging _fcm = FirebaseMessaging();
+
+  saveDeviceToken() async {
+    String uid = (await FirebaseAuth.instance.currentUser()).uid;
+    String fcmToken = await _fcm.getToken();
+    if (fcmToken != null) {
+      Firestore.instance
+          .collection('users')
+          .document(uid)
+          .collection('tokens')
+          .document('$fcmToken')
+          .setData({
+        'token': fcmToken,
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -92,7 +111,23 @@ class UserHomeState extends State<UserHomeBody> {
     currentSizeRecieveIt = defaultSize;
     currentSizeSendIt = defaultSize;
     super.initState();
+    if (Platform.isIOS) {
+      _fcm.requestNotificationPermissions(IosNotificationSettings());
+      saveDeviceToken();
+    } else {
+      saveDeviceToken();
+    }
+    _fcm.configure(
+      onMessage: (data) async {
+        print(data['notification']['message']);
+      },
+      onBackgroundMessage: _backgroundMessageHandler,
+      onResume: (data) async {},
+      onLaunch: (data) async {},
+    );
   }
+
+  _backgroundMessageHandler(Map<String, dynamic> message) async {}
 
   @override
   Widget build(BuildContext context) {

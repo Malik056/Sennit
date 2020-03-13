@@ -6,18 +6,19 @@ import 'package:sennit/models/models.dart';
 import '../main.dart';
 
 class UserNotificationWidget extends StatelessWidget {
-  Stream<DocumentSnapshot> getNotifications() {
+  Stream<QuerySnapshot> getNotifications() {
     User user = Session.data['user'];
     return Firestore.instance
-        .collection('userNotifications')
+        .collection('users')
         .document('${user.userId}')
+        .collection('notifications')
         .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: StreamBuilder<DocumentSnapshot>(
+      child: StreamBuilder<QuerySnapshot>(
         stream: getNotifications(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -25,8 +26,8 @@ class UserNotificationWidget extends StatelessWidget {
               child: CircularProgressIndicator(),
             );
           } else if (snapshot.data == null ||
-              snapshot.data.exists ||
-              snapshot.data.data == null) {
+              snapshot.data.documents == null ||
+              snapshot.data.documents.length <= 0) {
             return Center(
               child: Text(
                 'No Notifications Available',
@@ -34,10 +35,7 @@ class UserNotificationWidget extends StatelessWidget {
               ),
             );
           } else {
-            var keys = snapshot.data.data.keys.toList();
-            keys.sort((a, b) {
-              return double.parse(b).compareTo(double.parse(a));
-            });
+            var keys = snapshot.data.documents;
 
             return Container(
               child: Center(
@@ -54,13 +52,14 @@ class UserNotificationWidget extends StatelessWidget {
                           ),
                           child: Text.rich(
                             TextSpan(
-                              text: snapshot.data.data['type'] ==
+                              text: snapshot.data.documents[index]
+                                          .data['rated'] ==
                                       UserNotification.ORDER_POSTED
-                                  ? "Order Posted"
-                                  : snapshot.data.data['type'] ==
-                                          UserNotification.ORDER_PENDING
-                                      ? "Your Order is on its Way"
-                                      : "You order has been delivered, Please Rate the driver",
+                                  ? snapshot.data.documents[index]
+                                          .data['message'] +
+                                      '. Please Click to rate Driver.'
+                                  : snapshot
+                                      .data.documents[index].data['message'],
                               style: Theme.of(context).textTheme.subhead,
                             ),
                             style: Theme.of(context).textTheme.title,

@@ -88,7 +88,7 @@ class _OrderTrackingState extends State<OrderTracking> {
   void initState() {
     super.initState();
     appbar = _MyStatefulAppBar(
-      title: 'R ${widget.data['price']}',
+      title: 'R ${(widget.data['price'] as double).toStringAsFixed(2)}',
       onDonePressed: () {
         body.showPopup();
       },
@@ -189,7 +189,7 @@ class __MyStatefulAppBarState extends State<_MyStatefulAppBar> {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text('Price: ' + widget.title),
+      title: Text(widget.title),
       centerTitle: true,
       actions: <Widget>[
         !isButtonVisible
@@ -602,7 +602,8 @@ class __BodyState extends State<_Body> {
                                                   .subtitle,
                                             ),
                                             TextSpan(
-                                              text: driverPhoneNumber,
+                                              text: driverPhoneNumber ??
+                                                  'Not Available',
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .body1,
@@ -903,7 +904,7 @@ class _MySolidBottomSheetForReceiveItState
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${snapshot.data['itemDetails'][index]['price']} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as double).toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,
@@ -1204,7 +1205,7 @@ class _BottomBarIconState extends State<BottomBarIcon> {
 }
 
 class _VerificationCodePopUp extends StatefulWidget {
-  final _VerificationCoddPopUpState state = _VerificationCoddPopUpState();
+  final _VerificationCodePopUpState state = _VerificationCodePopUpState();
   final String verificationCode;
   final Function() onHide;
 
@@ -1220,7 +1221,7 @@ class _VerificationCodePopUp extends StatefulWidget {
   }
 }
 
-class _VerificationCoddPopUpState extends State<_VerificationCodePopUp> {
+class _VerificationCodePopUpState extends State<_VerificationCodePopUp> {
   bool isVisible = false;
   bool showPopup = false;
   double width = 0;

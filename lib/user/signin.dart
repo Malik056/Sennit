@@ -193,6 +193,7 @@ class _UserSignInState extends State<UserSignIn> {
                                     return;
                                   }
                                   User user = User.fromMap(userData.data);
+                                  user.userId = userId;
                                   Session.data.update(
                                     'user',
                                     (a) {
