@@ -228,13 +228,13 @@ class _ActionButtonState extends State<_ActionButton> {
           );
 
           Firestore.instance
-              .collection('reviewsForDrivers')
+              .collection('drivers')
               .document(ReviewWidget._driverId)
-              .setData(
+              .collection('reviews')
+              .add(
             {"${widget.user.userId}": review.toMap()},
-            merge: true,
           );
-          Navigator.of(context).pop({});
+          Navigator.of(context).pop(true);
         } else if (!_StarWidgetState._update &&
             _StarWidgetState._rating != null &&
             _StarWidgetState._rating > 0) {
@@ -256,10 +256,9 @@ class _ActionButtonState extends State<_ActionButton> {
             {"${widget.user.userId}": review.toMap()},
             merge: true,
           );
-          Navigator.of(context).pop({});
+          Navigator.of(context).pop(true);
         } else if (_StarWidgetState._rating != null &&
             _StarWidgetState._rating > 0) {
-
           ReviewWidget._review.lastUpdated = DateTime.now();
           ReviewWidget._review.reviewDescription =
               ReviewWidget._commentController.text;
@@ -269,9 +268,9 @@ class _ActionButtonState extends State<_ActionButton> {
               .document(widget.itemId)
               .setData({widget.user.userId: ReviewWidget._review.toMap()},
                   merge: true);
-          Navigator.of(context).pop({});
+          Navigator.of(context).pop(true);
         } else {
-          Navigator.of(context).pop({});
+          Navigator.of(context).pop(false);
         }
       },
     );
