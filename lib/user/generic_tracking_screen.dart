@@ -25,9 +25,10 @@ class OrderTracking extends StatefulWidget {
   OrderTracking({@required this.data, @required this.type});
 
   static startNavigation(context, LatLng destination, LatLng myLocation) async {
-    Utils.showLoadingDialog(context);
+    // Utils.showLoadingDialog(context);
     // MapsLauncher.launchCoordinates(
     //     pickup.latitude, pickup.longitude);
+    Utils.showSnackBarWarning(context, 'Loading Route, Please Wait......');
     mapbox.MapboxNavigation _directions;
     // var _distanceRemaining;
     // var _durationRemaining;
@@ -41,10 +42,10 @@ class OrderTracking extends StatefulWidget {
         // });
         if (arrived) {
           await _directions.finishNavigation();
-          Navigator.popUntil(
-            context,
-            (route) => route.settings.name == OrderTracking.NAME,
-          );
+          // Navigator.popUntil(
+          //   context,
+          //   (route) => route.settings.name == OrderTracking.NAME,
+          // );
           Utils.showSuccessDialog('You Have Arrived');
           await Future.delayed(Duration(seconds: 2));
           BotToast.cleanAll();
@@ -66,10 +67,10 @@ class OrderTracking extends StatefulWidget {
       simulateRoute: false,
       language: "English",
     );
-    Navigator.popUntil(
-      context,
-      (route) => route.settings.name == OrderTracking.NAME,
-    );
+    // Navigator.popUntil(
+    //   context,
+    //   (route) => route.settings.name == OrderTracking.NAME,
+    // );
   }
 
   @override
@@ -79,41 +80,14 @@ class OrderTracking extends StatefulWidget {
 }
 
 class _OrderTrackingState extends State<OrderTracking> {
-  _Body body;
-  _MyStatefulAppBar appbar;
+  // _Body body;
+  // _MyStatefulAppBar appbar;
   _MySolidBottomSheetForReceiveIt solidBottomSheet;
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
-    appbar = _MyStatefulAppBar(
-      title: 'R ${(widget.data['price'] as double).toStringAsFixed(2)}',
-      onDonePressed: () {
-        body.showPopup();
-      },
-    );
-    body = _Body(
-      onPopupHidden: () {
-        appbar?.state?.showButton();
-      },
-      pickups: widget.type == OrderTrackingType.RECEIVE_IT
-          ? (widget.data['pickups'] as List)
-              .map((x) => Utils.latLngFromString(x))
-              .toList()
-          : [Utils.latLngFromString(widget.data['pickUpLatLng'])],
-      dropOff: Utils.latLngFromString(widget.data[
-          widget.type == OrderTrackingType.SENNIT
-              ? 'dropOffLatLng'
-              : 'destination']),
-      overlayClicked: () {
-        appbar?.state?.showButton();
-        print('overlayclicked');
-      },
-      onMapTap: (latlng) {},
-      data: widget.data,
-      onDriverAvailable: (latlng) {},
-    );
   }
 
   @override
@@ -122,23 +96,49 @@ class _OrderTrackingState extends State<OrderTracking> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.my_location),
         onPressed: () {
-          body?.animateToLatLng(Utils.getLastKnowLocation());
+          (_Body._key?.currentWidget as _Body)
+              ?.animateToLatLng(Utils.getLastKnowLocation());
         },
       ),
       key: scaffoldKey,
-      appBar: appbar,
-      body: body,
+      appBar: _MyStatefulAppBar(
+        title: 'R ${(widget.data['price'] as double).toStringAsFixed(2)}',
+        onDonePressed: () {
+          _Body._key?.currentState?.showPopup();
+        },
+      ),
+      body: _Body(
+        onPopupHidden: () {
+          _MyStatefulAppBar?._key?.currentState?.showButton();
+        },
+        pickups: widget.type == OrderTrackingType.RECEIVE_IT
+            ? (widget.data['pickups'] as List)
+                .map((x) => Utils.latLngFromString(x))
+                .toList()
+            : [Utils.latLngFromString(widget.data['pickUpLatLng'])],
+        dropOff: Utils.latLngFromString(widget.data[
+            widget.type == OrderTrackingType.SENNIT
+                ? 'dropOffLatLng'
+                : 'destination']),
+        overlayClicked: () {
+          _MyStatefulAppBar?._key?.currentState?.showButton();
+          print('Overlay Clicked');
+        },
+        onMapTap: (latlng) {},
+        data: widget.data,
+        onDriverAvailable: (latlng) {},
+      ),
       bottomSheet: widget.type == OrderTrackingType.RECEIVE_IT
           ? _MySolidBottomSheetForReceiveIt(
               data: widget.data,
               animateToLatLng: (latlng) {
-                body.animateToLatLng(latlng);
+                (_Body._key?.currentWidget as _Body)?.animateToLatLng(latlng);
               },
             )
           : MySolidBottomSheet(
               data: widget.data,
               onSelectItem: (latlng) {
-                body.animateToLatLng(latlng);
+                (_Body._key?.currentWidget as _Body)?.animateToLatLng(latlng);
               },
             ),
     );
@@ -148,13 +148,13 @@ class _OrderTrackingState extends State<OrderTracking> {
 class _MyStatefulAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
   final Function() onDonePressed;
-  final __MyStatefulAppBarState state = __MyStatefulAppBarState();
-  _MyStatefulAppBar(
-      {Key key, @required this.title, @required this.onDonePressed})
-      : super(key: key);
+  static GlobalKey<__MyStatefulAppBarState> _key =
+      GlobalKey<__MyStatefulAppBarState>();
+  _MyStatefulAppBar({@required this.title, @required this.onDonePressed})
+      : super(key: _key);
 
   @override
-  __MyStatefulAppBarState createState() => state;
+  __MyStatefulAppBarState createState() => __MyStatefulAppBarState();
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
@@ -215,7 +215,7 @@ class _Body extends StatefulWidget {
   final List<LatLng> pickups;
   final LatLng dropOff;
   final Function() overlayClicked;
-  final state = __BodyState();
+  static GlobalKey<__BodyState> _key = GlobalKey<__BodyState>();
   final Function(LatLng) onMapTap;
   final Map<String, dynamic> data;
   final Function(LatLng) onDriverAvailable;
@@ -223,7 +223,6 @@ class _Body extends StatefulWidget {
   final Function() onPopupHidden;
 
   _Body({
-    Key key,
     @required this.pickups,
     @required this.dropOff,
     @required this.overlayClicked,
@@ -231,16 +230,16 @@ class _Body extends StatefulWidget {
     @required this.data,
     @required this.onDriverAvailable,
     @required this.onPopupHidden,
-  }) : super(key: key);
+  }) : super(key: _key);
 
   @override
-  __BodyState createState() => state;
+  __BodyState createState() => __BodyState();
 
   Future<void> animateToLatLng(LatLng position) async {
     if (position == null) {
       return;
     }
-    await state._controller.animateCamera(
+    await _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: position, zoom: 15.0),
       ),
@@ -249,21 +248,21 @@ class _Body extends StatefulWidget {
   }
 
   void centerCamera() async {
-    LatLng mylocation = await Utils.getMyLocation();
-    state._controller.animateCamera(
+    LatLng myLocation = await Utils.getMyLocation();
+    _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: mylocation, zoom: 15.0),
+        CameraPosition(target: myLocation, zoom: 15.0),
       ),
     );
-    onMapTap(mylocation);
+    onMapTap(myLocation);
   }
 
   showPopup() {
-    state?.showPopup();
+    _key?.currentState?.showPopup();
   }
 
   hidePopup() {
-    state?.hidePopup();
+    _key?.currentState?.hidePopup();
   }
 }
 
@@ -296,14 +295,18 @@ class __BodyState extends State<_Body> {
 
   showPopup() {
     // isOverlayVisible = true;
-    popUp?.state?.show();
-    setState(() {});
+    _VerificationCodePopUp?._key?.currentState?.show();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   hidePopup() {
     // isOverlayVisible = false;
-    popUp?.state?.hide();
-    setState(() {});
+    _VerificationCodePopUp?._key?.currentState?.hide();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -379,8 +382,7 @@ class __BodyState extends State<_Body> {
         index++;
         Marker markerPickup = Marker(
           markerId: MarkerId("marker$index"),
-          infoWindow:
-              InfoWindow(title: "Pick Up", snippet: "Click to Navigate here!"),
+          infoWindow: InfoWindow(title: "Item", snippet: "Your Ordered Item!"),
           position: pickup,
           onTap: () {},
           flat: false,
@@ -395,8 +397,7 @@ class __BodyState extends State<_Body> {
 
     markerDropOff = Marker(
       markerId: MarkerId('dropOffMarker'),
-      infoWindow:
-          InfoWindow(title: "Drop Off", snippet: "Click to Navigate here!"),
+      infoWindow: InfoWindow(title: "Drop Off", snippet: "Drop off point"),
       position: widget.dropOff,
       icon: dropOffIcon,
     );
@@ -414,7 +415,11 @@ class __BodyState extends State<_Body> {
         .document(widget.data['orderId'])
         .snapshots()
         .listen((orderData) async {
-      driverLatLng = Utils.latLngFromString(orderData?.data['driverLatLng']);
+      if (orderData.data == null) {
+        return;
+      }
+      driverLatLng =
+          Utils.latLngFromString((orderData?.data ?? {})['driverLatLng']);
       await Future.delayed(Duration(seconds: 3));
       time = 0;
       if (driverLatLng != null && firstTime && _controller != null) {
@@ -570,28 +575,28 @@ class __BodyState extends State<_Body> {
                                       SizedBox(
                                         height: 4,
                                       ),
-                                      Text.rich(
-                                        TextSpan(
-                                          children: [
-                                            TextSpan(
-                                              text: 'ETA: ',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .subtitle,
-                                            ),
-                                            TextSpan(
-                                              text:
-                                                  '${time / 60} minutes, ${time % 60} seconds',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .body1,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height: 4,
-                                      ),
+                                      // Text.rich(
+                                      //   TextSpan(
+                                      //     children: [
+                                      //       TextSpan(
+                                      //         text: 'ETA: ',
+                                      //         style: Theme.of(context)
+                                      //             .textTheme
+                                      //             .subtitle,
+                                      //       ),
+                                      //       TextSpan(
+                                      //         text:
+                                      //             '${time / 60} minutes, ${time % 60} seconds',
+                                      //         style: Theme.of(context)
+                                      //             .textTheme
+                                      //             .body1,
+                                      //       ),
+                                      //     ],
+                                      //   ),
+                                      // ),
+                                      // SizedBox(
+                                      //   height: 4,
+                                      // ),
                                       Text.rich(
                                         TextSpan(
                                           children: [
@@ -688,7 +693,8 @@ class __BodyState extends State<_Body> {
 }
 
 class _MySolidBottomSheetForReceiveIt extends StatefulWidget {
-  final state = _MySolidBottomSheetForReceiveItState();
+  static GlobalKey<_MySolidBottomSheetForReceiveItState> _key =
+      GlobalKey<_MySolidBottomSheetForReceiveItState>();
   final data;
 
   final Function(LatLng) animateToLatLng;
@@ -696,11 +702,11 @@ class _MySolidBottomSheetForReceiveIt extends StatefulWidget {
   _MySolidBottomSheetForReceiveIt({
     @required this.data,
     @required this.animateToLatLng,
-  });
+  }) : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _MySolidBottomSheetForReceiveItState();
   }
 }
 
@@ -729,15 +735,21 @@ class _MySolidBottomSheetForReceiveItState
     for (String itemKey in keys) {
       final result =
           await Firestore.instance.collection('items').document(itemKey).get();
-      LatLng latlng = Utils.latLngFromString(result.data['latlng']);
-      Address address = (await Geocoder.local.findAddressesFromCoordinates(
-          Coordinates(latlng.latitude, latlng.longitude)))[0];
-      result.data.putIfAbsent('address', () => address.addressLine);
+      result.data.update(
+        'price',
+        (old) => old.runtimeType == int ? (old as int).toDouble() : old,
+      );
+      // LatLng latlng = Utils.latLngFromString(result.data['latlng']);
+      // Address address = (await Geocoder.google(await Utils.getAPIKey())
+      //     .findAddressesFromCoordinates(
+      //         Coordinates(latlng.latitude, latlng.longitude)))[0];
+      result.data.putIfAbsent('address', () => result.data['storeAddress']);
       itemDetails.add(result.data);
     }
 
-    Address address = (await Geocoder.local.findAddressesFromCoordinates(
-        Coordinates(destination.latitude, destination.longitude)))[0];
+    Address address = (await Geocoder.google(await Utils.getAPIKey())
+        .findAddressesFromCoordinates(
+            Coordinates(destination.latitude, destination.longitude)))[0];
     // itemDetails.add({'destination' : address.addressLine});
     result.putIfAbsent('destination', () {
       return address;
@@ -899,12 +911,12 @@ class _MySolidBottomSheetForReceiveItState
                                                   height: 4,
                                                 ),
                                                 Text(
-                                                    '${snapshot.data['itemDetails'][index]['storeName'] + ', ' + snapshot.data['itemDetails'][index]['address']}'),
+                                                    '${snapshot.data['itemDetails'][index]['storeAddress']}'),
                                                 Align(
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as double).toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,
@@ -943,21 +955,21 @@ class _MySolidBottomSheetForReceiveItState
                                         child: Container(
                                           width: 270.0,
                                           color: Theme.of(context).primaryColor,
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8.0),
-                                                  child: Text(
-                                                    'Navigatre Here!',
-                                                    style: TextStyle(
-                                                        color: Colors.white),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                          // child: Row(
+                                          //   children: [
+                                          //     Expanded(
+                                          //       child: Container(
+                                          //         padding:
+                                          //             const EdgeInsets.all(8.0),
+                                          //         child: Text(
+                                          //           'Navigate Here!',
+                                          //           style: TextStyle(
+                                          //               color: Colors.white),
+                                          //         ),
+                                          //       ),
+                                          //     ),
+                                          //   ],
+                                          // ),
                                         ),
                                       )
                                     ],
@@ -1067,7 +1079,7 @@ class _MySolidBottomSheetForReceiveItState
                                 ),
                                 padding: EdgeInsets.all(8.0),
                                 child: Text(
-                                  'Navigatre Here!',
+                                  'Navigate Here!',
                                   style: TextStyle(
                                     color: Colors.white,
                                   ),
@@ -1091,24 +1103,25 @@ class _MySolidBottomSheetForReceiveItState
 class MySolidBottomSheet extends StatefulWidget {
   final Function(LatLng) onSelectItem;
   final data;
-  final state = MySolidBottomSheetState();
-
+  static GlobalKey<MySolidBottomSheetState> _key =
+      GlobalKey<MySolidBottomSheetState>();
   void refreshState(LatLng driverLatLng) {
-    state.refresh(driverLatLng);
+    _key?.currentState?.refresh(driverLatLng);
   }
 
-  MySolidBottomSheet({Key key, this.onSelectItem, this.data}) : super(key: key);
+  MySolidBottomSheet({Key key, this.onSelectItem, this.data})
+      : super(key: _key);
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return MySolidBottomSheetState();
   }
 
   show() {
-    state?._controller?.show();
+    _key?.currentState?._controller?.show();
   }
 
   hide() {
-    state?._controller?.hide();
+    _key?.currentState?._controller?.hide();
   }
 }
 
@@ -1176,21 +1189,22 @@ class MySolidBottomSheetState extends State<MySolidBottomSheet> {
 }
 
 class BottomBarIcon extends StatefulWidget {
-  BottomBarIcon({Key key}) : super(key: key);
-  final state = _BottomBarIconState();
-
+  BottomBarIcon() : super(key: _key);
+  static GlobalKey<_BottomBarIconState> _key = GlobalKey<_BottomBarIconState>();
   @override
-  _BottomBarIconState createState() => state;
+  _BottomBarIconState createState() => _BottomBarIconState();
 
   setIconState(bool isShown) {
-    state?.isShown = isShown;
-    state?.refresh();
+    _key?.currentState?.isShown = isShown;
+    _key?.currentState?.refresh();
   }
 }
 
 class _BottomBarIconState extends State<BottomBarIcon> {
   void refresh() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   bool isShown = false;
@@ -1205,19 +1219,19 @@ class _BottomBarIconState extends State<BottomBarIcon> {
 }
 
 class _VerificationCodePopUp extends StatefulWidget {
-  final _VerificationCodePopUpState state = _VerificationCodePopUpState();
   final String verificationCode;
   final Function() onHide;
+  static GlobalKey<_VerificationCodePopUpState> _key =
+      GlobalKey<_VerificationCodePopUpState>();
 
   _VerificationCodePopUp({
-    Key key,
     @required this.verificationCode,
     @required this.onHide,
-  }) : super(key: key);
+  }) : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _VerificationCodePopUpState();
   }
 }
 
@@ -1328,24 +1342,23 @@ class _VerificationCodePopUpState extends State<_VerificationCodePopUp> {
 class _OrderTile extends StatefulWidget {
   final Location location = Location();
   final Map<String, dynamic> data;
+  final driverLatLng;
   final Function(LatLng) onSelectItem;
-  final state;
-
+  static GlobalKey<_OrderTileState> _key = GlobalKey<_OrderTileState>();
   void refresh(driverLatLng) {
-    state.refresh(driverLatLng);
+    _key?.currentState?.refresh(driverLatLng);
   }
 
   _OrderTile({
     Key key,
     @required this.data,
     @required this.onSelectItem,
-    @required driverLatLng,
-  })  : state = _OrderTileState(driverLatLng: driverLatLng),
-        super(key: key);
+    @required this.driverLatLng,
+  }) : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _OrderTileState(driverLatLng: driverLatLng);
   }
 }
 

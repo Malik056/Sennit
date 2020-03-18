@@ -162,15 +162,15 @@ class _DriverSignInState extends State<DriverSignIn> {
                         //     .collection("drivers")
                         //     .getDocuments();
 
-                        // bool founduser = false;
+                        // bool foundUser = false;
 
                         // for (DocumentSnapshot snapshot in documents.documents) {
                         //   if (snapshot.data['email'] == email) {
-                        //     founduser = true;
+                        //     foundUser = true;
                         //   }
                         // }
 
-                        // if (!founduser) {
+                        // if (!foundUser) {
                         //   Navigator.pop(context);
                         //   signInButtonEnabled = true;
                         //   Utils.showSnackBarError(

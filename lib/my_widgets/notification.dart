@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/review.dart';
 
@@ -36,89 +37,90 @@ class UserNotificationWidget extends StatelessWidget {
               ),
             );
           } else {
-            return Container(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List<Widget>.generate(
-                    snapshot.data.documents.length,
-                    (index) {
-                      var data = snapshot.data.documents[index];
-                      return Padding(
-                        padding: EdgeInsets.all(4),
-                        child: InkWell(
-                          onTap: () async {
-                            if (!data.data['seen']) {
-                              Utils.showLoadingDialog(context);
-                              await Firestore.instance
+            return SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: List<Widget>.generate(
+                  snapshot.data.documents.length,
+                  (index) {
+                    var data = snapshot.data.documents[index];
+                    return Padding(
+                      padding: EdgeInsets.all(4),
+                      child: InkWell(
+                        onTap: () async {
+                          if (!data.data['seen']) {
+                            Utils.showLoadingDialog(context);
+                            await Firestore.instance
+                                .collection('users')
+                                .document(Session.data['user'].userId)
+                                .collection('notifications')
+                                .document(data.documentID)
+                                .setData({
+                              'seen': true,
+                            }, merge: true);
+                            Navigator.pop(context);
+                          }
+                          if (!data.data['rated']) {
+                            bool result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReviewWidget(
+                                  user: null,
+                                  itemId: null,
+                                  isDriver: true,
+                                  driverId: data.data['driverId'],
+                                  orderId: data.data['orderId'],
+                                ),
+                              ),
+                            );
+                            if (result != null && result) {
+                              Firestore.instance
                                   .collection('users')
                                   .document(Session.data['user'].userId)
                                   .collection('notifications')
                                   .document(data.documentID)
-                                  .setData({
-                                'seen': true,
-                              }, merge: true);
-                              Navigator.pop(context);
+                                  .updateData({
+                                'rated': true,
+                              });
                             }
-                            if (!data.data['rated']) {
-                              bool result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ReviewWidget(
-                                    user: null,
-                                    itemId: null,
-                                    driver: true,
-                                    driverId: data.data['driverId'],
-                                  ),
-                                ),
-                              );
-                              if (result) {
-                                Firestore.instance
-                                    .collection('users')
-                                    .document(Session.data['user'].userId)
-                                    .collection('notifications')
-                                    .document(data.documentID)
-                                    .updateData({
-                                  'rated': true,
-                                });
-                              }
-                            }
-                          },
-                          splashColor:
-                              Theme.of(context).primaryColor.withAlpha(128),
-                          child: Card(
-                            color: data.data['seen']
-                                ? Color.fromARGB(255, 200, 200, 200)
-                                : Color.fromARGB(255, (57 * 3).floor(),
-                                    (59 * 3).floor(), (82 * 3).floor()),
-                            shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(4)),
+                          }
+                        },
+                        splashColor:
+                            Theme.of(context).primaryColor.withAlpha(128),
+                        child: Card(
+                          color: data.data['seen']
+                              ? Color.fromARGB(255, 200, 200, 200)
+                              : Colors.white,
+                          // fromARGB(255, (57 * 3).floor(),
+                          //     (59 * 3).floor(), (82 * 3).floor()),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                          ),
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.check_circle,
+                              color: Theme.of(context).primaryColor,
                             ),
-                            child: Text.rich(
-                              TextSpan(
-                                text: data.data['title'],
-                                children: [
-                                  TextSpan(
-                                    text: !data.data['rated']
-                                        ? data.data['message'] +
-                                            '. Please Click to rate Driver.'
-                                        : data.data['message'],
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .subhead
-                                        .copyWith(fontSize: 14),
-                                  ),
-                                ],
-                                style: Theme.of(context).textTheme.subhead,
-                              ),
-                              style: Theme.of(context).textTheme.title,
+                            title: Text('${data.data['title']}\n'),
+                            subtitle: Text(
+                              !data.data['rated']
+                                  ? data.data['message'] +
+                                      '\nPlease Click to rate Driver.'
+                                  : data.data['message'],
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .subhead
+                                  .copyWith(fontSize: 14),
                             ),
+                            trailing: Text(
+                                '''${DateFormat("dd/MM/yyyy").format(DateTime.fromMillisecondsSinceEpoch(data.data['date']))}'''),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
             );

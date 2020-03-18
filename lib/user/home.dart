@@ -10,14 +10,36 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
-import 'package:sennit/user/recieveIt.dart';
+import 'package:sennit/my_widgets/review.dart';
+import 'package:sennit/user/receiveit.dart';
 
 class UserHomeRoute extends StatelessWidget {
   static bool _willExit = false;
-  final bool initilizeCart;
+  final bool initializeCart;
+  final user = Session.data['user'];
 
-  UserHomeRoute({Key key, this.initilizeCart = false}) : super(key: key) {
-    if (initilizeCart) {
+  static const String NAME = 'UserHomeRoute';
+
+  initializeNotifications() async {
+    final snapshots = await Firestore.instance
+        .collection('users')
+        .document(user.userId)
+        .collection('notifications')
+        .limit(20)
+        .getDocuments();
+    final notifications = <Map<String, dynamic>>[];
+    snapshots.documents.forEach((document) {
+      document.data.update('notificationId', (old) => document.documentID,
+          ifAbsent: () => document.documentID);
+      notifications.add(document.data);
+    });
+    Session.data.update('notifications', (old) => notifications,
+        ifAbsent: () => notifications);
+  }
+
+  UserHomeRoute({Key key, this.initializeCart = false}) : super(key: key) {
+    initializeNotifications();
+    if (initializeCart) {
       FirebaseAuth.instance.currentUser().then((user) async {
         String userId = user.uid;
         final snapshot =
@@ -52,9 +74,12 @@ class UserHomeRoute extends StatelessWidget {
           title: Text('User Home'),
           centerTitle: true,
           actions: <Widget>[
-            FlatButton(
-              child: Text('Signout'),
-              onPressed: () async {
+            InkWell(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Icon(FontAwesomeIcons.signOutAlt),
+              ),
+              onTap: () async {
                 FirebaseAuth.instance.signOut();
                 Session.data..removeWhere((key, value) => true);
                 Navigator.pushReplacementNamed(context, MyApp.startPage);
@@ -84,10 +109,10 @@ class UserHomeBody extends StatefulWidget {
 
 class UserHomeState extends State<UserHomeBody> {
   bool sendItClickable = true;
-  bool recieveItClickable = true;
+  bool receiveItClickable = true;
   double defaultSize;
   double currentSizeSendIt;
-  double currentSizeRecieveIt;
+  double currentSizeReceiveIt;
   final FirebaseMessaging _fcm = FirebaseMessaging();
 
   saveDeviceToken() async {
@@ -108,26 +133,129 @@ class UserHomeState extends State<UserHomeBody> {
   @override
   void initState() {
     defaultSize = widget.screenWidth.width * 0.4;
-    currentSizeRecieveIt = defaultSize;
+    currentSizeReceiveIt = defaultSize;
     currentSizeSendIt = defaultSize;
     super.initState();
     if (Platform.isIOS) {
       _fcm.requestNotificationPermissions(IosNotificationSettings());
-      saveDeviceToken();
-    } else {
-      saveDeviceToken();
     }
+    saveDeviceToken();
+
     _fcm.configure(
       onMessage: (data) async {
-        print(data['notification']['message']);
+        print(data);
+        // BotToast.showNotification(
+        //   align: Alignment.topCenter,
+        //   contentPadding: EdgeInsets.all(8),
+        //   leading: (_) => Icon(
+        //     FontAwesomeIcons.store,
+        //     color: Theme.of(context).primaryColor,
+        //   ),
+        // );
+        MyAppState.showNotificationWithDefaultSound(data);
       },
-      onBackgroundMessage: _backgroundMessageHandler,
-      onResume: (data) async {},
-      onLaunch: (data) async {},
+      onBackgroundMessage: Platform.isIOS ? null : _backgroundMessageHandler,
+      onResume: _onResume,
+      onLaunch: _onLaunch,
     );
   }
 
-  _backgroundMessageHandler(Map<String, dynamic> message) async {}
+  Future<dynamic> _onResume(data) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    if (uid == data['userId']) {
+      await Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            Navigator.pop(context);
+            Utils.showSnackBarError(
+              context,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          MyAppState?.navigatorKey?.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) {
+                print(data);
+                return ReviewWidget(
+                  orderId: data['orderId'],
+                  user: user,
+                  itemId: null,
+                  isDriver: true,
+                  driverId: data['driverId'],
+                  userId: uid,
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  Future<dynamic> _onLaunch(data) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    if (uid == data['userId']) {
+      Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            Utils.showSnackBarError(
+              context,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          MyAppState.navigatorKey?.currentState
+              ?.push(MaterialPageRoute(builder: (ctx) {
+            return ReviewWidget(
+              orderId: data['orderId'],
+              isDriver: true,
+              driverId: data['driverId'],
+              fromNotification: true,
+              userId: uid,
+              user: user,
+              itemId: null,
+              comment: "",
+            );
+          }));
+        },
+      );
+    }
+  }
+
+  static Future<dynamic> _backgroundMessageHandler(
+      Map<String, dynamic> message) async {
+    print(message);
+    MyAppState.showNotificationWithDefaultSound(message);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +288,7 @@ class UserHomeState extends State<UserHomeBody> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         AnimatedContainer(
-                          width: currentSizeRecieveIt,
+                          width: currentSizeReceiveIt,
                           duration: Duration(milliseconds: 100),
                           child: Card(
                             // onPressed: (){},
@@ -194,7 +322,7 @@ class UserHomeState extends State<UserHomeBody> {
                                         // child: Icon(
                                         //   FontAwesomeIcons.shippingFast,
                                         //   color: Theme.of(context).accentColor,
-                                        //   size: currentSizeRecieveIt-40,
+                                        //   size: currentSizeReceiveIt-40,
                                         // ),
 
                                         child: Image.asset(
@@ -212,7 +340,7 @@ class UserHomeState extends State<UserHomeBody> {
                                             padding: EdgeInsets.only(
                                                 top: 10, bottom: 10),
                                             child: Text(
-                                              'Recieve It',
+                                              'Receive It',
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
@@ -246,7 +374,7 @@ class UserHomeState extends State<UserHomeBody> {
                   ),
                   onTapDown: (tap) {
                     setState(() {
-                      currentSizeRecieveIt = defaultSize - 20;
+                      currentSizeReceiveIt = defaultSize - 20;
                     });
                   },
                   onTapUp: (tap) {
@@ -263,12 +391,12 @@ class UserHomeState extends State<UserHomeBody> {
                           settings: RouteSettings(name: 'receiveIt'),
                         ),
                       );
-                      currentSizeRecieveIt = defaultSize;
+                      currentSizeReceiveIt = defaultSize;
                     });
                   },
                   onTapCancel: () {
                     setState(() {
-                      currentSizeRecieveIt = defaultSize;
+                      currentSizeReceiveIt = defaultSize;
                     });
                   },
                   onTap: () {},
@@ -278,7 +406,7 @@ class UserHomeState extends State<UserHomeBody> {
                         fullscreenDialog: false,
                         maintainState: true,
                         builder: (context) {
-                          return HelpScreenRecieveIt();
+                          return HelpScreenReceiveIt();
                         },
                       ),
                     );
@@ -563,44 +691,6 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(
-              height: 5,
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Container(
-                  padding: EdgeInsets.all(6),
-                  decoration: ShapeDecoration(
-                    color: Theme.of(context).accentColor,
-                    shape: CircleBorder(
-                      side: BorderSide(
-                        style: BorderStyle.solid,
-                        color: Theme.of(context).accentColor,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    '4',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // color: Theme.of(context).accentColor,
-                ),
-                SizedBox(
-                  width: 6,
-                ),
-                Text(
-                  'Select Payment Method',
-                  style: Theme.of(context).textTheme.subhead,
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 5,
-            ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
@@ -634,6 +724,44 @@ class HelpScreenSennit extends StatelessWidget {
               ],
             ),
             SizedBox(height: 30),
+            SizedBox(
+              height: 5,
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '4',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Make Payment',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
             Text(
               'Our Delivery Guy will be at your door step in a flash.',
               style: Theme.of(context).textTheme.subtitle,
@@ -646,7 +774,7 @@ class HelpScreenSennit extends StatelessWidget {
   }
 }
 
-class HelpScreenRecieveIt extends StatelessWidget {
+class HelpScreenReceiveIt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -820,41 +948,6 @@ class HelpScreenRecieveIt extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    '4',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // color: Theme.of(context).accentColor,
-                ),
-                SizedBox(
-                  width: 6,
-                ),
-                Text(
-                  'Select Payment Method',
-                  style: Theme.of(context).textTheme.subhead,
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 5,
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                Container(
-                  padding: EdgeInsets.all(6),
-                  decoration: ShapeDecoration(
-                    color: Theme.of(context).accentColor,
-                    shape: CircleBorder(
-                      side: BorderSide(
-                        style: BorderStyle.solid,
-                        color: Theme.of(context).accentColor,
-                      ),
-                    ),
-                  ),
-                  child: Text(
                     '5',
                     style: TextStyle(
                       color: Colors.white,
@@ -873,6 +966,41 @@ class HelpScreenRecieveIt extends StatelessWidget {
               ],
             ),
             SizedBox(height: 30),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: ShapeDecoration(
+                    color: Theme.of(context).accentColor,
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        style: BorderStyle.solid,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    '4',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // color: Theme.of(context).accentColor,
+                ),
+                SizedBox(
+                  width: 6,
+                ),
+                Text(
+                  'Make Payment',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 5,
+            ),
             Text(
               'Our Delivery Guy will be at your door step in a flash.',
               style: Theme.of(context).textTheme.subtitle,

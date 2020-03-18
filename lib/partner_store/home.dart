@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:sennit/main.dart';
 
@@ -10,7 +11,7 @@ class OrderedItemsList extends StatelessWidget {
   static bool _buttonPressed;
   final _key = GlobalKey<ScaffoldState>();
 
-  OrderedItemsList(){
+  OrderedItemsList() {
     _buttonPressed = false;
   }
 
@@ -50,7 +51,7 @@ class OrderedItemsList extends StatelessWidget {
         //                 ),
         //               );
         //             } else {
-        //               return Text(snapshot.data.data['storeName']); 
+        //               return Text(snapshot.data.data['storeName']);
         //             }
         //           },
         //         ),
@@ -65,12 +66,13 @@ class OrderedItemsList extends StatelessWidget {
           centerTitle: true,
           actions: <Widget>[
             FlatButton(
-              child: Text(
-                'Signout',
-                style: Theme.of(context)
-                    .textTheme
-                    .subhead
-                    .copyWith(color: Theme.of(context).primaryColor),
+              child: Icon(
+                FontAwesomeIcons.signOutAlt,
+                // 'Signout',
+                // style: Theme.of(context)
+                //     .textTheme
+                //     .subhead
+                //     .copyWith(color: Theme.of(context).primaryColor),
               ),
               onPressed: () async {
                 Session.data.removeWhere((_, __) => true);

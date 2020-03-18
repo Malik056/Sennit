@@ -20,7 +20,9 @@ class NotificationWidget extends StatelessWidget {
           return Center(
             child: CircularProgressIndicator(),
           );
-        } else if (!snapshot.data.exists || snapshot.data.data.isEmpty || snapshot.data.data.keys.length <= 0) {
+        } else if (!snapshot.data.exists ||
+            snapshot.data.data.isEmpty ||
+            snapshot.data.data.keys.length <= 0) {
           return Center(
             child: Text('No Notifications'),
           );
@@ -48,7 +50,7 @@ class NotificationWidget extends StatelessWidget {
                           return ReviewWidget(
                             user: user,
                             itemId: "",
-                            driver: true,
+                            isDriver: true,
                             driverId: notification['driverId'],
                           );
                         },

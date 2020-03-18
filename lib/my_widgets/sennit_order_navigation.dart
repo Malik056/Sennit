@@ -15,322 +15,337 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
-class SennitOrderNavigationRoute extends StatelessWidget {
+class SennitOrderNavigationRoute extends StatefulWidget {
   static const NAME = "SennitOrderNavigationRoute";
-  static var popUpHeight = 200.0;
-  static var popUpWidth = 300.0;
-  static double _lastTimestamp;
-  static double _lastDistance;
-  static double _currentDistance;
-  static double _currentTimestamp;
   // bool isOrderConfirmed = false;
-  final _Body body;
-  final _MyAppBar myAppbar;
+  // final _Body body;
+  // final _MyAppBar myAppbar;
   final Map<String, dynamic> data;
-  final MySolidBottomSheet myboottomSheet;
-
+  // final MySolidBottomSheet myBottomSheet;
   final String verificationCode;
 
-  static StreamSubscription<LocationData> _driverLocationSubscription;
-
   void onDonePressed() {
-    body.showDeliveryCompleteDialogue();
+    _Body._key.currentState.showDeliveryDonePopup();
   }
 
-  SennitOrderNavigationRoute._({
-    @required this.body,
-    @required this.myAppbar,
+  SennitOrderNavigationRoute({
     @required this.data,
-    @required this.myboottomSheet,
     @required this.verificationCode,
   });
 
-  factory SennitOrderNavigationRoute({@required Map<String, dynamic> data}) {
-    _MyAppBar appBar;
-    MySolidBottomSheet sheet;
-    // var snapshot = Firestore.instance
-    //     .collection("verificationCodes")
-    //     .document(data['orderId'])
-    //     .get();
-    // var result = snapshot.then<String>((value) {
-    //   return value.data['key'];
-    // });
+  @override
+  State<StatefulWidget> createState() {
+    return _SennitOrderNavigationRouteState();
+  }
+}
 
-    var verificationCode = data['otp'];
-    _Body body = _Body(
-      verificationCode: verificationCode,
-      onCancelPopupConfiremd: () async {
-        data.update(('status'), (old) => 'Pending', ifAbsent: () => 'Accepted');
-        data.update(
-          ('driverId'),
-          (old) => FieldValue.delete(),
-          ifAbsent: () => FieldValue.delete(),
-        );
-        data.update(
-          ('driverName'),
-          (old) => FieldValue.delete(),
-          ifAbsent: () => FieldValue.delete(),
-        );
-        data.update(
-          ('driverImage'),
-          (old) => FieldValue.delete(),
-          ifAbsent: () => FieldValue.delete(),
-        );
+class _SennitOrderNavigationRouteState
+    extends State<SennitOrderNavigationRoute> {
+  StreamSubscription<LocationData> _driverLocationSubscription;
+  double _lastTimestamp;
+  double _lastDistance;
+  double _currentDistance;
+  double _currentTimestamp;
 
-        await Firestore.instance
-            .collection('postedOrders')
-            .document(data['orderId'])
-            .setData(
-              data,
-              merge: true,
-            );
-        await Firestore.instance
-            .collection('userOrders')
-            .document(data['userId'])
-            .setData(
-          {
-            data['orderId']: data,
-          },
-          merge: true,
-        );
-      },
-      onOrderConfirmed: () async {
-        Driver driver = Session.data['driver'];
-        appBar.showButton();
-        data.update(('status'), (old) => 'Accepted',
-            ifAbsent: () => 'Accepted');
-        data.update(('driverId'), (old) => driver.driverId,
-            ifAbsent: () => driver.driverId);
-        data.update(('driverName'), (old) => driver.fullname,
-            ifAbsent: () => driver.fullname);
-        data.update(('driverImage'), (old) => driver.profilePicture,
-            ifAbsent: () => driver.profilePicture);
-        data.update(('driverPhoneNumber'), (old) => driver.phoneNumber,
-            ifAbsent: () => driver.profilePicture);
-        data.update(
-            ('driverLicencePlateNumber'), (old) => driver.profilePicture,
-            ifAbsent: () => driver.profilePicture);
-        data.update(
-          'acceptedOn',
-          (old) => DateTime.now().millisecondsSinceEpoch,
-          ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
-        );
-        await Firestore.instance
-            .collection('postedOrders')
-            .document(data['orderId'])
-            .setData(
-              data,
-              merge: true,
-            );
-        await Firestore.instance
-            .collection('userOrders')
-            .document(data['userId'])
-            .setData(
-          {
-            data['orderId']: data,
-          },
-          merge: true,
-        );
-        Location location = Location();
-        if (_driverLocationSubscription != null) {
-          _driverLocationSubscription = null;
-        }
-        _driverLocationSubscription =
-            location.onLocationChanged().listen((locationData) {
-          _lastDistance = _currentDistance;
-          _lastTimestamp = _currentTimestamp;
-          _currentDistance = Utils.calculateDistance(
-            Utils.latLngFromString(data['dropOffLatLng']),
-            LatLng(
-              locationData.latitude,
-              locationData.longitude,
-            ),
-          );
-          _currentTimestamp = DateTime.now().millisecondsSinceEpoch.toDouble();
+  @override
+  void initState() {
+    super.initState();
+  }
 
-          Map<String, dynamic> dataToUpload = {
-            'lastDistance': _lastDistance,
-            'lastTimestamp': _lastTimestamp,
-            'currentDistance': _currentDistance,
-            'currentTimestamp': _currentTimestamp,
-            'driverLatLng':
-                '${locationData.latitude},${locationData.longitude}',
-          };
-
-          Firestore.instance
-              .collection('postedOrders')
-              .document(data['orderId'])
-              .setData(
-                dataToUpload,
-                merge: true,
-              );
-        });
-      },
-      onOrderComplete: () async {
-        String driverId =
-            await FirebaseAuth.instance.currentUser().then((user) => user.uid);
-        DateTime now = DateTime.now();
-
-        // Firestore.instance
-        //     .collection("verificationCodes")
-        //     .document(data['orderId'])
-        //     .delete();
-
-        // if (_driverLocationSubscription != null) {
-        await _driverLocationSubscription?.cancel();
-        _driverLocationSubscription = null;
-        // }
-        var userToken = Firestore.instance
-            .collection('users')
-            .document(data['userId'])
-            .collection('tokens')
-            .getDocuments();
-        await Firestore.instance
-            .collection('userOrders')
-            .document(data['userId'])
-            .setData(
-          {
-            data['orderId']: {
-              'status': 'Delivered',
-              'deliveryDate': '${now.millisecondsSinceEpoch}',
-            }
-          },
-          merge: true,
-        );
-        await Firestore.instance
-            .collection('users')
-            .document(data['userId'])
-            .collection('notifications')
-            .add(
-          {
-            'title': 'Order Delivered',
-            'message': '${data['driverName']} has delivered your order.',
-            'seen': false,
-            'rated': false,
-          },
-        );
-        final snapshot = await userToken;
-        final _fcmServerKey = await Utils.getFCMServerKey();
-        final deviceTokens = <String>[];
-        snapshot.documents.forEach((document) {
-          deviceTokens.add(document.documentID);
-        });
-        var postRequest = http.post(
-          'https://fcm.googleapis.com/fcm/send',
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'key=$_fcmServerKey',
-          },
-          body: jsonEncode(
-            <String, dynamic>{
-              'notification': <String, dynamic>{
-                'body': '${data['driverName']} has delivered your order.',
-                'title': 'Order Delivered'
-              },
-              'priority': 'high',
-              'data': <String, dynamic>{
-                'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                'orderId': '${data['orderId']}',
-                'status': 'delivered',
-              },
-              'registration_ids': deviceTokens,
-            },
-          ),
-        );
-        await Firestore.instance
-            .collection('postedOrders')
-            .document(data['orderId'])
-            .delete();
-
-        await Firestore.instance
-            .collection('driverOrders')
-            .document(driverId)
-            .setData({
-          data['orderId']: data
-            ..update(
-              'status',
-              (old) => 'Delivered',
-              ifAbsent: () => 'Delivered',
-            )
-            ..update(
-              'deliveryDate',
-              (old) => '${now.millisecondsSinceEpoch}',
-              ifAbsent: () => '${now.millisecondsSinceEpoch}',
-            ),
-        });
-        await postRequest;
-      },
-      onVerifyPopupCancel: () {
-        appBar.enableButton();
-      },
-      onCancelPopupCancel: () {
-        appBar.enableButton();
-      },
-      data: data,
-      onMapTap: (latlng) {
-        sheet?.hide();
-      },
-    );
-    appBar = _MyAppBar(
-      title: "${data['price']}R",
-      onDonePressed: () {
-        body.showDeliveryCompleteDialogue();
-      },
-    );
-
-    sheet = MySolidBottomSheet(
-      data: data,
-      onSelectItem: (latlng) {
-        body.animateToLatLng(latlng);
-      },
-    );
-
-    return SennitOrderNavigationRoute._(
-      body: body,
-      myAppbar: appBar,
-      data: data,
-      myboottomSheet: sheet,
-      verificationCode: verificationCode,
-    );
+  @override
+  void dispose() {
+    super.dispose();
+    _driverLocationSubscription.cancel();
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        if (body.isOrderConfirmationPopupShown() ?? false) {
+        if (_Body._key?.currentState?.isOrderConfirmationVisible ?? false) {
+          await _driverLocationSubscription?.cancel();
           Navigator.pop(context);
           return false;
         }
-        if (body.isDeliveryCompletePopupShown()) {
-          body.hideDeliveryCompleteDialogue();
-          myAppbar.enableButton();
+        if (_Body._key?.currentState?.isOrderCompleteDialogueVisible ?? false) {
+          _Body._key?.currentState?.hideDeliverDonePopup();
+          _MyAppBar._key?.currentState?.enableButton();
           return false;
         }
-        if (body.isCancelPopupShown() ?? false) {
-          body.hideCancelDialogue();
-          myAppbar.enableButton();
+        if (_Body._key?.currentState?.isCancelDialogVisible ?? false) {
+          _Body._key?.currentState?.hideCancelPopup();
+          _MyAppBar._key?.currentState?.enableButton();
           return false;
         } else {
-          body.showCancelDialogue();
-          myAppbar.disableButton();
+          _Body._key?.currentState?.showCancelPopup();
+          _MyAppBar._key?.currentState?.disableButton();
           return false;
         }
       },
       child: Scaffold(
-        appBar: myAppbar,
+        appBar: _MyAppBar(
+          title:
+              "${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}R",
+          onDonePressed: () {
+            _Body._key?.currentState?.showDeliveryDonePopup();
+          },
+        ),
         body: Stack(
           children: <Widget>[
-            body,
+            _Body(
+              verificationCode: widget.verificationCode,
+              onCancelPopupConfirmed: () async {
+                _driverLocationSubscription?.cancel();
+                widget.data.update(('status'), (old) => 'Pending',
+                    ifAbsent: () => 'Accepted');
+                widget.data.update(
+                  ('driverId'),
+                  (old) => FieldValue.delete(),
+                  ifAbsent: () => FieldValue.delete(),
+                );
+                widget.data.update(
+                  ('driverName'),
+                  (old) => FieldValue.delete(),
+                  ifAbsent: () => FieldValue.delete(),
+                );
+                widget.data.update(
+                  ('driverImage'),
+                  (old) => FieldValue.delete(),
+                  ifAbsent: () => FieldValue.delete(),
+                );
+
+                await Firestore.instance
+                    .collection('postedOrders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                      widget.data,
+                      merge: true,
+                    );
+                await Firestore.instance
+                    .collection('users')
+                    .document(widget.data['userId'])
+                    .collection('orders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                      widget.data,
+                      merge: true,
+                    );
+              },
+              onOrderConfirmed: () async {
+                Driver driver = Session.data['driver'];
+                _MyAppBar._key?.currentState?.showButton();
+                widget.data.update(('status'), (old) => 'Accepted',
+                    ifAbsent: () => 'Accepted');
+                widget.data.update(('driverId'), (old) => driver.driverId,
+                    ifAbsent: () => driver.driverId);
+                widget.data.update(('driverName'), (old) => driver.fullName,
+                    ifAbsent: () => driver.fullName);
+                widget.data.update(
+                    ('driverImage'), (old) => driver.profilePicture,
+                    ifAbsent: () => driver.profilePicture);
+                widget.data.update(
+                    ('driverPhoneNumber'), (old) => driver.phoneNumber,
+                    ifAbsent: () => driver.profilePicture);
+                widget.data.update(('driverLicencePlateNumber'),
+                    (old) => driver.profilePicture,
+                    ifAbsent: () => driver.profilePicture);
+                widget.data.update(
+                  'acceptedOn',
+                  (old) => DateTime.now().millisecondsSinceEpoch,
+                  ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+                );
+                await Firestore.instance
+                    .collection('postedOrders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                      widget.data,
+                      merge: true,
+                    );
+                await Firestore.instance
+                    .collection('users')
+                    .document(widget.data['userId'])
+                    .collection('orders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                      widget.data,
+                      merge: true,
+                    );
+                Location location = Location();
+                await location.changeSettings(
+                  distanceFilter: 50,
+                );
+                if (_driverLocationSubscription != null) {
+                  _driverLocationSubscription = null;
+                }
+                _driverLocationSubscription =
+                    location.onLocationChanged().listen((locationData) {
+                  _lastDistance = _currentDistance;
+                  _lastTimestamp = _currentTimestamp;
+                  _currentDistance = Utils.calculateDistance(
+                    Utils.latLngFromString(widget.data['dropOffLatLng']),
+                    LatLng(
+                      locationData.latitude,
+                      locationData.longitude,
+                    ),
+                  );
+                  _currentTimestamp =
+                      DateTime.now().millisecondsSinceEpoch.toDouble();
+
+                  Map<String, dynamic> dataToUpload = {
+                    'lastDistance': _lastDistance,
+                    'lastTimestamp': _lastTimestamp,
+                    'currentDistance': _currentDistance,
+                    'currentTimestamp': _currentTimestamp,
+                    'driverLatLng':
+                        '${locationData.latitude},${locationData.longitude}',
+                  };
+
+                  Firestore.instance
+                      .collection('postedOrders')
+                      .document(widget.data['orderId'])
+                      .setData(
+                        dataToUpload,
+                        merge: true,
+                      );
+                });
+              },
+              onOrderComplete: () async {
+                await _driverLocationSubscription?.cancel();
+                _driverLocationSubscription = null;
+                String driverId = await FirebaseAuth.instance
+                    .currentUser()
+                    .then((user) => user.uid);
+                DateTime now = DateTime.now();
+
+                // Firestore.instance
+                //     .collection("verificationCodes")
+                //     .document(data['orderId'])
+                //     .delete();
+
+                // if (_driverLocationSubscription != null) {
+                await _driverLocationSubscription?.cancel();
+                _driverLocationSubscription = null;
+                // }
+                var userToken = Firestore.instance
+                    .collection('users')
+                    .document(widget.data['userId'])
+                    .collection('tokens')
+                    .getDocuments();
+                await Firestore.instance
+                    .collection('users')
+                    .document(widget.data['userId'])
+                    .collection('orders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                  {
+                    'status': 'Delivered',
+                    'deliveryDate': now.millisecondsSinceEpoch,
+                  },
+                  merge: true,
+                );
+                await Firestore.instance
+                    .collection('users')
+                    .document(widget.data['userId'])
+                    .collection('notifications')
+                    .document(
+                      widget.data['orderId'],
+                    )
+                    .setData(
+                  {
+                    'title': 'Order Delivered',
+                    'message':
+                        '${widget.data['driverName']} has delivered your order.',
+                    'seen': false,
+                    'rated': false,
+                    'date': now.millisecondsSinceEpoch,
+                    'orderId': widget.data['orderId'],
+                    'driverId': driverId,
+                    'userId': widget.data['userId'],
+                  },
+                );
+                final snapshot = await userToken;
+                final _fcmServerKey = await Utils.getFCMServerKey();
+                final deviceTokens = <String>[];
+                snapshot.documents.forEach((document) {
+                  deviceTokens.add(document.documentID);
+                });
+                var postRequest = http.post(
+                  'https://fcm.googleapis.com/fcm/send',
+                  headers: <String, String>{
+                    'Content-Type': 'application/json',
+                    'Authorization': 'key=$_fcmServerKey',
+                  },
+                  body: jsonEncode(
+                    <String, dynamic>{
+                      'notification': <String, dynamic>{
+                        'body':
+                            '${widget.data['driverName']} has delivered your order.',
+                        'title': 'Order Delivered'
+                      },
+                      'priority': 'high',
+                      'data': <String, dynamic>{
+                        'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                        'orderId': '${widget.data['orderId']}',
+                        'status': 'delivered',
+                        'date': now.millisecondsSinceEpoch,
+                        'driverId': driverId,
+                        'userId': widget.data['userId'],
+                      },
+                      'registration_ids': deviceTokens,
+                    },
+                  ),
+                );
+                await Firestore.instance
+                    .collection('postedOrders')
+                    .document(widget.data['orderId'])
+                    .delete();
+
+                await Firestore.instance
+                    .collection('drivers')
+                    .document(driverId)
+                    .collection('orders')
+                    .document(widget.data['orderId'])
+                    .setData(
+                      widget.data
+                        ..update(
+                          'status',
+                          (old) => 'Delivered',
+                          ifAbsent: () => 'Delivered',
+                        )
+                        ..update(
+                          'deliveryDate',
+                          (old) => now.millisecondsSinceEpoch,
+                          ifAbsent: () => now.millisecondsSinceEpoch,
+                        ),
+                    );
+                await postRequest;
+              },
+              onVerifyPopupCancel: () {
+                _MyAppBar._key?.currentState?.enableButton();
+              },
+              onCancelPopupCancel: () {
+                _MyAppBar._key?.currentState?.enableButton();
+              },
+              data: widget.data,
+              onMapTap: (latlng) {
+                (MySolidBottomSheet._key?.currentWidget as MySolidBottomSheet)
+                    ?.hide();
+              },
+            ),
           ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            body.centerCamera();
+            (_Body._key?.currentWidget as _Body)?.centerCamera();
           },
           child: Icon(Icons.my_location),
         ),
-        bottomSheet: myboottomSheet,
+        bottomSheet: MySolidBottomSheet(
+          data: widget.data,
+          onSelectItem: (latlng) {
+            _Body._key?.currentState?.widget?.animateToLatLng(latlng);
+          },
+        ),
       ),
     );
   }
@@ -339,20 +354,22 @@ class SennitOrderNavigationRoute extends StatelessWidget {
 class MySolidBottomSheet extends StatefulWidget {
   final Function(LatLng) onSelectItem;
   final data;
-  final state = MySolidBottomSheetState();
+  static GlobalKey<MySolidBottomSheetState> _key =
+      GlobalKey<MySolidBottomSheetState>();
 
-  MySolidBottomSheet({Key key, this.onSelectItem, this.data}) : super(key: key);
+  MySolidBottomSheet({Key key, this.onSelectItem, this.data})
+      : super(key: _key);
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return MySolidBottomSheetState();
   }
 
   show() {
-    state?._controller?.show();
+    _key?.currentState?._controller?.show();
   }
 
   hide() {
-    state?._controller?.hide();
+    _key?.currentState?._controller?.hide();
   }
 }
 
@@ -396,27 +413,31 @@ class MySolidBottomSheetState extends State<MySolidBottomSheet> {
       body: _OrderTile(
         onSelectItem: widget.onSelectItem,
         data: widget.data,
-        // return Container(child: SizedBox(height: , child: Text("lskjfa"),),);
+        // return Container(child: SizedBox(height: , child: Text(""),),);
       ),
     );
   }
 }
 
 class BottomBarIcon extends StatefulWidget {
-  BottomBarIcon({Key key}) : super(key: key);
-  final state = _BottomBarIconState();
+  BottomBarIcon({Key key}) : super(key: _key);
+
+  static GlobalKey<_BottomBarIconState> _key = GlobalKey<_BottomBarIconState>();
+
   @override
-  _BottomBarIconState createState() => state;
+  _BottomBarIconState createState() => _BottomBarIconState();
 
   setIconState(bool isShown) {
-    state.isShown = isShown;
-    state.refresh();
+    _key?.currentState?.isShown = isShown;
+    _key?.currentState?.refresh();
   }
 }
 
 class _BottomBarIconState extends State<BottomBarIcon> {
   void refresh() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   bool isShown = false;
@@ -433,31 +454,31 @@ class _BottomBarIconState extends State<BottomBarIcon> {
 class _MyAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
   final Function onDonePressed;
-  final state = _MyAppBarState();
 
-  _MyAppBar({Key key, this.title, this.onDonePressed}) : super(key: key);
+  _MyAppBar({this.title, this.onDonePressed}) : super(key: _key);
 
   void showButton() {
-    state.showButton();
+    _key?.currentState?.showButton();
   }
 
   void hideButton() {}
 
   void enableButton() {
-    state.enableButton();
+    _key?.currentState?.enableButton();
   }
 
   void disableButton() {
-    state.disableButton();
+    _key?.currentState?.disableButton();
   }
 
   void refresh() {
-    state.refresh();
+    _key?.currentState?.refresh();
   }
 
+  static GlobalKey<_MyAppBarState> _key = GlobalKey<_MyAppBarState>();
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _MyAppBarState();
   }
 
   @override
@@ -476,17 +497,23 @@ class _MyAppBarState extends State<_MyAppBar> {
 
   showButton() {
     isButtonVisible = true;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   enableButton() {
     isButtonEnabled = true;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   disableButton() {
     isButtonEnabled = false;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -513,102 +540,102 @@ class _MyAppBarState extends State<_MyAppBar> {
 }
 
 class _Body extends StatefulWidget {
-  final state = _BodyState();
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onVerifyPopupCancel;
-  final Function onCancelPopupConfiremd;
+  final Function onCancelPopupConfirmed;
   final Function(LatLng) onMapTap;
   final Map<String, dynamic> data;
   final String verificationCode;
   final onOrderComplete;
+  static GlobalKey<_BodyState> _key = GlobalKey<_BodyState>();
 
   _Body({
-    @required this.verificationCode,
-    @required this.data,
-    @required this.onOrderConfirmed,
-    @required this.onCancelPopupCancel,
-    @required this.onVerifyPopupCancel,
-    @required this.onMapTap,
-    @required this.onOrderComplete,
-    @required this.onCancelPopupConfiremd,
-  });
+    this.onOrderConfirmed,
+    this.onCancelPopupCancel,
+    this.onVerifyPopupCancel,
+    this.onCancelPopupConfirmed,
+    this.onMapTap,
+    this.data,
+    this.verificationCode,
+    this.onOrderComplete,
+  }) : super(key: _key); // = GlobalKey<_BodyState>();
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _BodyState();
   }
 
   bool isOrderConfirmationPopupShown() {
-    return state?.isOrderConfirmationVisible;
+    return _key?.currentState?.isOrderConfirmationVisible;
   }
 
   bool isCancelPopupShown() {
-    return state.isCancelDialogVisible;
+    return _key?.currentState?.isCancelDialogVisible;
   }
 
   bool isDeliveryCompletePopupShown() {
-    return state.isOrderCompleteDialogeVisible;
+    return _key?.currentState?.isOrderCompleteDialogueVisible;
   }
 
   showCancelDialogue() {
-    state.showCancelPopup();
+    _key?.currentState?.showCancelPopup();
   }
 
   showDeliveryCompleteDialogue() {
-    state.showDeliveryDonePopup();
+    _key?.currentState?.showDeliveryDonePopup();
   }
 
   hideCancelDialogue() {
-    state.hideCancelPopup();
+    _key?.currentState?.hideCancelPopup();
   }
 
   hideDeliveryCompleteDialogue() {
-    state.hideDeliverDonePopup();
+    _key?.currentState?.hideDeliverDonePopup();
   }
 
   void centerCamera() {
-    state?.mapWidget?.centerCamera();
+    _key?.currentState?.mapWidget?.centerCamera();
   }
 
   void animateToLatLng(LatLng coordinates) {
-    state?.mapWidget?.animateTo(coordinates);
+    _key?.currentState?.mapWidget?.animateTo(coordinates);
   }
 }
 
 class _BodyState extends State<_Body> {
   _Popups _popups;
-
   _MapWidget mapWidget;
 
-  bool get isCancelDialogVisible => _popups?.state?.isCancelDialogVisible;
+  bool get isCancelDialogVisible =>
+      _Popups._key?.currentState?.isCancelDialogVisible;
 
-  bool get isOrderCompleteDialogeVisible =>
-      _popups?.state?.isOrderCompleteDialogeVisible;
+  bool get isOrderCompleteDialogueVisible =>
+      _Popups._key?.currentState?.isOrderCompleteDialogueVisible;
 
   bool get isOrderConfirmationVisible =>
-      _popups?.state?.isOrderConfirmationVisible;
+      _Popups._key?.currentState?.isOrderConfirmationVisible;
 
   showCancelPopup() {
-    _popups?.state?.showCancelPopup();
+    _Popups._key?.currentState?.showCancelPopup();
 
     // setState(() {});
   }
 
   hideCancelPopup() {
     // isCancelDialogVisible = false;
-    _popups?.state?.hideCancelPopup();
+    _Popups._key?.currentState?.hideCancelPopup();
     // setState(() {});
   }
 
   showDeliveryDonePopup() {
-    // isOrderCompleteDialogeVisible = true;
-    _popups?.state?.showOrderCompletePopup();
+    // isOrderCompleteDialogueVisible = true;
+    _Popups._key?.currentState?.showOrderCompletePopup();
     // setState(() {});
   }
 
   hideDeliverDonePopup() {
-    _popups?.state?.hideOrderCompletePopup();
+    _Popups._key?.currentState?.hideOrderCompletePopup();
     // setState(() {});
   }
 
@@ -632,14 +659,12 @@ class _BodyState extends State<_Body> {
       onOrderConfirmed: widget.onOrderConfirmed,
       onCancelPopupCancel: widget.onCancelPopupCancel,
       onOrderCompletePopupCancel: widget.onVerifyPopupCancel,
-      onCancelPopupConfirmed: widget.onCancelPopupConfiremd,
+      onCancelPopupConfirmed: widget.onCancelPopupConfirmed,
     );
   }
 
   @override
   void dispose() {
-    SennitOrderNavigationRoute?._driverLocationSubscription?.cancel();
-    SennitOrderNavigationRoute?._driverLocationSubscription = null;
     super.dispose();
   }
 
@@ -667,7 +692,7 @@ class _BodyState extends State<_Body> {
 }
 
 class _MapWidget extends StatefulWidget {
-  final _MapState state = _MapState();
+  static GlobalKey<_MapState> _key = GlobalKey<_MapState>();
   final LatLng pickup;
   final LatLng dropOff;
   final Function(LatLng) onMapTap;
@@ -677,14 +702,14 @@ class _MapWidget extends StatefulWidget {
       @required this.pickup,
       @required this.dropOff,
       @required this.onMapTap})
-      : super(key: key);
+      : super(key: _key);
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _MapState();
   }
 
   void animateTo(LatLng position) async {
-    await state._controller.animateCamera(
+    await _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: position, zoom: 15.0),
       ),
@@ -693,13 +718,13 @@ class _MapWidget extends StatefulWidget {
   }
 
   void centerCamera() async {
-    LatLng mylocation = await Utils.getMyLocation();
-    state._controller.animateCamera(
+    LatLng myLocation = await Utils.getMyLocation();
+    _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: mylocation, zoom: 15.0),
+        CameraPosition(target: myLocation, zoom: 15.0),
       ),
     );
-    onMapTap(mylocation);
+    onMapTap(myLocation);
   }
 }
 
@@ -796,13 +821,15 @@ class _MapState extends State<_MapWidget> {
 }
 
 class _Popups extends StatefulWidget {
-  final state = _PopupsState();
+  static GlobalKey<_PopupsState> _key = GlobalKey<_PopupsState>();
   final Function onOrderConfirmed;
   final Function onCancelPopupCancel;
   final Function onOrderCompletePopupCancel;
   final Function onCancelPopupConfirmed;
   final String verificationCode;
   final onOrderComplete;
+  static var popUpHeight = 200.0;
+  static var popUpWidth = 300.0;
 
   _Popups({
     @required this.onOrderConfirmed,
@@ -811,11 +838,11 @@ class _Popups extends StatefulWidget {
     @required this.verificationCode,
     @required this.onOrderComplete,
     @required this.onCancelPopupConfirmed,
-  });
+  }) : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _PopupsState();
   }
 }
 
@@ -825,12 +852,14 @@ class _PopupsState extends State<_Popups> {
   _CancelOrderPopUp _cancelOrderPopUp;
 
   bool isOrderConfirmationVisible = true;
-  bool isOrderCompleteDialogeVisible = false;
+  bool isOrderCompleteDialogueVisible = false;
   bool isCancelDialogVisible = false;
 
   showCancelPopup() {
     isCancelDialogVisible = true;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
     // _cancelOrderPopUp?.show();
   }
 
@@ -841,13 +870,13 @@ class _PopupsState extends State<_Popups> {
   }
 
   showOrderCompletePopup() {
-    isOrderCompleteDialogeVisible = true;
+    isOrderCompleteDialogueVisible = true;
     setState(() {});
     // _deliveryDonePopUp?.show();
   }
 
   hideOrderCompletePopup() {
-    isOrderCompleteDialogeVisible = false;
+    isOrderCompleteDialogueVisible = false;
     // _deliveryDonePopUp.hide();
     setState(() {});
   }
@@ -884,12 +913,12 @@ class _PopupsState extends State<_Popups> {
     _deliveryDonePopUp = _DeliveryDonePopUp(
       verificationCode: widget.verificationCode,
       onCancel: () {
-        isOrderCompleteDialogeVisible = false;
+        isOrderCompleteDialogueVisible = false;
         widget.onOrderCompletePopupCancel();
         setState(() {});
       },
       onConfirm: () async {
-        isOrderCompleteDialogeVisible = false;
+        isOrderCompleteDialogueVisible = false;
         Utils.showLoadingDialog(context);
         await widget.onOrderComplete();
         int count = 0;
@@ -901,7 +930,7 @@ class _PopupsState extends State<_Popups> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      behavior: isOrderCompleteDialogeVisible ||
+      behavior: isOrderCompleteDialogueVisible ||
               isCancelDialogVisible ||
               isOrderConfirmationVisible
           ? HitTestBehavior.translucent
@@ -912,8 +941,8 @@ class _PopupsState extends State<_Popups> {
             isCancelDialogVisible = false;
             setState(() {});
             widget.onCancelPopupCancel();
-          } else if (isOrderCompleteDialogeVisible) {
-            isOrderCompleteDialogeVisible = false;
+          } else if (isOrderCompleteDialogueVisible) {
+            isOrderCompleteDialogueVisible = false;
             setState(() {});
             widget.onOrderCompletePopupCancel();
           }
@@ -928,23 +957,16 @@ class _PopupsState extends State<_Popups> {
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 500),
                 child: _cancelOrderPopUp,
-                width: isCancelDialogVisible
-                    ? SennitOrderNavigationRoute.popUpWidth
-                    : 0,
-                height: isCancelDialogVisible
-                    ? SennitOrderNavigationRoute.popUpHeight
-                    : 0,
+                width: isCancelDialogVisible ? _Popups.popUpWidth : 0,
+                height: isCancelDialogVisible ? _Popups.popUpHeight : 0,
               ),
             ),
             Center(
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 500),
-                height: isOrderCompleteDialogeVisible
-                    ? SennitOrderNavigationRoute.popUpHeight
-                    : 0,
-                width: isOrderCompleteDialogeVisible
-                    ? SennitOrderNavigationRoute.popUpWidth
-                    : 0,
+                height:
+                    isOrderCompleteDialogueVisible ? _Popups.popUpHeight : 0,
+                width: isOrderCompleteDialogueVisible ? _Popups.popUpWidth : 0,
                 child: _deliveryDonePopUp,
               ),
             ),
@@ -953,9 +975,8 @@ class _PopupsState extends State<_Popups> {
               child: _orderConfirmationPopup,
               left: 0,
               right: 0,
-              bottom: isOrderConfirmationVisible
-                  ? 0
-                  : -1 * (SennitOrderNavigationRoute.popUpHeight),
+              bottom:
+                  isOrderConfirmationVisible ? 0 : -1 * (_Popups.popUpHeight),
             ),
           ],
         ),
@@ -975,15 +996,16 @@ class _DeliveryDonePopUp extends StatefulWidget {
     @required this.verificationCode,
     @required this.onCancel,
     @required this.onConfirm,
-  }); //@required this.width, @required this.height})
+  }) : super(key: _key); //@required this.width, @required this.height})
 
-  final _DeliveryDonePopUpStateRevised state = _DeliveryDonePopUpStateRevised();
+  static GlobalKey<_DeliveryDonePopUpStateRevised> _key =
+      GlobalKey<_DeliveryDonePopUpStateRevised>();
 
   // : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _DeliveryDonePopUpStateRevised();
   }
 
   void show() {
@@ -1093,20 +1115,22 @@ class _CancelOrderPopUp extends StatefulWidget {
   final Function onConfirm;
   final Function onCancel;
 
-  _CancelOrderPopUp(
-      {@required this.onConfirm,
-      @required this.onCancel}); //@required this.width, @required this.height})
+  _CancelOrderPopUp({@required this.onConfirm, @required this.onCancel})
+      : super(
+          key: _key,
+        ); //@required this.width, @required this.height})
 
   // : super(key: key);
-  final _CancelOrderPopUpStateRevised state = _CancelOrderPopUpStateRevised();
+  static GlobalKey<_CancelOrderPopUpStateRevised> _key =
+      GlobalKey<_CancelOrderPopUpStateRevised>();
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _CancelOrderPopUpStateRevised();
   }
 
   void show() {
     // state.cancelOrderConfirmationShown = true;
-    // state.outerspaceShown = true;
+    // state.outerSpaceShown = true;
     refresh();
   }
 
@@ -1202,13 +1226,14 @@ class _OrderConfirmation extends StatefulWidget {
   final Function onExit;
 
   _OrderConfirmation({Key key, @required this.onConfirm, @required this.onExit})
-      : super(key: key);
+      : super(key: _key);
 
-  final _OrderConfirmationStateRevised state = _OrderConfirmationStateRevised();
+  static GlobalKey<_OrderConfirmationStateRevised> _key =
+      GlobalKey<_OrderConfirmationStateRevised>();
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _OrderConfirmationStateRevised();
   }
 
   // void show() {

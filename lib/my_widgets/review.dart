@@ -3,33 +3,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating/flutter_rating.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/user/home.dart';
 
-class ReviewWidget extends StatelessWidget {
-  static TextEditingController _commentController;
+class ReviewWidget extends StatefulWidget {
+  // static TextEditingController _commentController;
   final User user;
   final String itemId;
-  static var actionButton;
-  static Review _review;
-  final bool driver;
-  static bool _isDriverMode;
-  static String _driverId;
+  final bool isDriver;
+  final bool fromNotification;
+  final String driverId;
+  final String userId;
+  final comment;
+  final orderId;
 
+  static GlobalKey<ReviewWidgetState> _key = GlobalKey<ReviewWidgetState>();
   ReviewWidget({
     @required this.user,
     @required this.itemId,
-    this.driver = false,
-    comment = "",
-    driverId = "",
-  }) {
-    actionButton = _ActionButton(
-      user: user,
-      itemId: itemId,
-    );
-    _isDriverMode = driver;
-    _commentController = TextEditingController();
-    _commentController.text = comment;
-    _review = null;
-    _driverId = driverId;
+    this.fromNotification = false,
+    this.isDriver = false,
+    this.driverId = "",
+    this.userId = "",
+    this.comment = "",
+    @required this.orderId,
+  }) : super(key: _key) {
+    // _commentController = TextEditingController();
+    // _commentController.text = comment;
   }
 
   // @override
@@ -45,149 +44,201 @@ class ReviewWidget extends StatelessWidget {
   //   _commentController = null;
   // }
 
+  setActionButtonState() {
+    _ActionButton._key?.currentState?.rebuild();
+  }
+
+  @override
+  State<StatefulWidget> createState() {
+    return ReviewWidgetState();
+  }
+}
+
+class ReviewWidgetState extends State<ReviewWidget> {
+  Review review;
+  Driver driver;
+  bool update = false;
+  double rating;
+
+  var commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    commentController.text = widget.comment;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Review>(
-        future: !ReviewWidget._isDriverMode
-            ? initReview()
-            : Future.delayed(
-                Duration(seconds: 0),
-                () {
-                  return null;
-                },
-              ),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-          if (snapshot.connectionState == ConnectionState.none &&
-              snapshot.data == null) {
-            Utils.showSnackBarError(context, 'Network Error');
-            return Center(
-              child: InkWell(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(Icons.replay),
-                    Text('\ntab to refresh'),
-                  ],
-                ),
-                onTap: () {
-                  (context as Element).markNeedsBuild();
-                },
-              ),
-            );
-          }
-          return Scaffold(
-            appBar: AppBar(
-              actions: <Widget>[
-                actionButton,
-              ],
-              title: Text('Review'),
-              centerTitle: true,
-            ),
-            body: SingleChildScrollView(
-              child: Form(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Card(
-                      child: Padding(
-                          padding: EdgeInsets.only(
-                            top: 10,
-                            bottom: 10,
-                          ),
-                          child: _StarWidget(
-                            rating:
-                                _isDriverMode ? 0 : _StarWidgetState._rating,
-                            parent: this,
-                          )),
-                    ),
-                    SizedBox(
-                      height: 20,
-                    ),
-                    Card(
-                      elevation: 6,
-                      child: Container(
-                        margin: EdgeInsets.all(8),
-                        padding: EdgeInsets.all(10),
-                        decoration:
-                            ShapeDecoration(shape: RoundedRectangleBorder()),
-                        child: TextFormField(
-                          minLines: 7,
-                          maxLines: 7,
-                          decoration: InputDecoration(
-                            hintText: 'Write a Review',
-                            border: InputBorder.none,
-                          ),
-                          controller: _commentController,
-                          style: Theme.of(context).textTheme.subtitle,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 10,
-                    ),
-                    Text(
-                      '     * Your review means a lot to us and it helps people.',
-                      style: Theme.of(context).textTheme.caption,
-                    ),
-                  ],
-                ),
-              ),
+    return WillPopScope(
+      onWillPop: () async {
+        if (widget.fromNotification) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) {
+                return UserHomeRoute();
+              },
+              settings: RouteSettings(name: UserHomeRoute.NAME),
             ),
           );
-        });
+          return false;
+        }
+        return true;
+      },
+      child: FutureBuilder<Review>(
+          future: !widget.isDriver ? initReview() : initDriver(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            if (snapshot.connectionState == ConnectionState.none &&
+                snapshot.data == null) {
+              Utils.showSnackBarError(context, 'Network Error');
+              return Center(
+                child: InkWell(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(Icons.replay),
+                      Text('\ntab to refresh'),
+                    ],
+                  ),
+                  onTap: () {
+                    (context as Element).markNeedsBuild();
+                  },
+                ),
+              );
+            }
+            return Scaffold(
+              appBar: AppBar(
+                actions: <Widget>[
+                  _ActionButton(
+                    orderId: widget.orderId,
+                    user: widget.user,
+                    itemId: widget.itemId,
+                  ),
+                ],
+                title: Text('Review'),
+                centerTitle: true,
+              ),
+              body: SingleChildScrollView(
+                child: Form(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Card(
+                        child: Padding(
+                            padding: EdgeInsets.only(
+                              top: 10.0,
+                              bottom: 10.0,
+                            ),
+                            child: _StarWidget(
+                              update: update,
+                              rating: widget.isDriver ? 0.0 : rating,
+                            )),
+                      ),
+                      SizedBox(
+                        height: 20,
+                      ),
+                      Card(
+                        elevation: 6,
+                        child: Container(
+                          margin: EdgeInsets.all(8),
+                          padding: EdgeInsets.all(10),
+                          decoration:
+                              ShapeDecoration(shape: RoundedRectangleBorder()),
+                          child: TextFormField(
+                            minLines: 7,
+                            maxLines: 7,
+                            decoration: InputDecoration(
+                              hintText: 'Write a Review',
+                              border: InputBorder.none,
+                            ),
+                            controller: commentController,
+                            style: Theme.of(context).textTheme.subtitle,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                        '     * Your review means a lot to us and it helps people.',
+                        style: Theme.of(context).textTheme.caption,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+    );
   }
 
   Future<Review> initReview() async {
-    var reviewData =
-        await Firestore.instance.collection('reviews').document(itemId).get();
+    var reviewData = await Firestore.instance
+        .collection('reviews')
+        .document(widget.itemId)
+        .get();
     if (reviewData == null ||
         reviewData.data == null ||
         reviewData.data.isEmpty) {
-      _StarWidgetState._update = false;
+      update = false;
+      rating = 0.0;
       return null;
     }
 
-    Review review = Review.fromMap(Map.from(reviewData.data[user.userId]));
-    _commentController.text = review.reviewDescription;
-    _StarWidgetState._rating = review.rating;
-    _StarWidgetState._update = true;
-    ReviewWidget._review = review;
+    Review review =
+        Review.fromMap(Map.from(reviewData.data[widget.user.userId]));
+    commentController.text = review.reviewDescription;
+    rating = review.rating;
+    update = true;
+    this.review = review;
     return review;
   }
 
-  setActionButtonState() {
-    actionButton.setState();
+  Future<Review> initDriver() async {
+    final data = await Firestore.instance
+        .collection('drivers')
+        .document(widget.driverId)
+        .get();
+    if (data != null) {
+      driver = Driver.fromMap(data.data);
+    }
+    return null;
   }
 }
 
 class _ActionButton extends StatefulWidget {
   final user;
   final itemId;
+  final orderId;
 
-  final state = _ActionButtonState();
+  static GlobalKey<_ActionButtonState> _key = GlobalKey<_ActionButtonState>();
 
-  _ActionButton({Key key, @required this.user, @required this.itemId})
-      : super(key: key);
+  _ActionButton(
+      {@required this.user, @required this.itemId, @required this.orderId})
+      : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _ActionButtonState();
   }
 
   setState() {
-    state.rebuild();
+    _key?.currentState?.rebuild();
   }
 }
 
 class _ActionButtonState extends State<_ActionButton> {
   rebuild() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -197,15 +248,25 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    bool isDriver =
+        (ReviewWidget._key?.currentWidget as ReviewWidget)?.isDriver;
+    String userId = widget.user.userId;
+    String driverId =
+        (ReviewWidget._key?.currentWidget as ReviewWidget)?.driverId;
+    Driver driver = ReviewWidget._key?.currentState?.driver;
+    Review myReview = ReviewWidget._key?.currentState?.review;
+
     return FlatButton(
       child: Text(
-        ReviewWidget._isDriverMode
-            ? _StarWidgetState._rating == null || _StarWidgetState._rating == 0
+        isDriver
+            ? _StarWidget._key?.currentState?.rating == null ||
+                    _StarWidget._key?.currentState?.rating == 0
                 ? 'Cancel'
                 : 'Done'
-            : !_StarWidgetState._update
-                ? _StarWidgetState._rating == null ||
-                        _StarWidgetState._rating == 0
+            : !((_StarWidget._key?.currentWidget as _StarWidget)?.update ??
+                    false)
+                ? _StarWidget._key?.currentState?.rating == null ||
+                        _StarWidget._key?.currentState?.rating == 0
                     ? 'Cancel'
                     : 'Done'
                 : 'Update',
@@ -214,38 +275,65 @@ class _ActionButtonState extends State<_ActionButton> {
           color: Colors.blue.shade600,
         ),
       ),
-      onPressed: () {
-        if (ReviewWidget._isDriverMode) {
+      onPressed: () async {
+        var commentController =
+            ReviewWidget._key?.currentState?.commentController;
+        final rating = _StarWidget._key?.currentState?.rating;
+        final update = (_StarWidget._key?.currentWidget as _StarWidget).update;
+        if (rating == null || rating <= 0) {
+          Navigator.pop(context, false);
+        }
+        if (isDriver) {
           DateTime lastUpdated = DateTime.now();
           ReviewForDriver review = ReviewForDriver(
-            userId: widget.user.userId,
+            orderId: widget.orderId,
+            userId: userId,
             createdOn: lastUpdated,
-            driverid: ReviewWidget._driverId,
-            rating: _StarWidgetState._rating,
-            reviewDescription: ReviewWidget._commentController.text,
-            reviewedBy: widget.user.fullname,
+            driverId: driverId,
+            rating: rating,
+            reviewDescription: commentController?.text,
+            reviewedBy: Session.data['user'].fullName,
             lastUpdated: lastUpdated,
           );
-
-          Firestore.instance
-              .collection('drivers')
-              .document(ReviewWidget._driverId)
-              .collection('reviews')
-              .add(
-            {"${widget.user.userId}": review.toMap()},
-          );
+          Utils.showLoadingDialog(context);
+          try {
+            Firestore.instance
+                .collection('drivers')
+                .document(driverId)
+                .collection('reviews')
+                .add(
+                  review.toMap(),
+                );
+            Firestore.instance.collection('drivers').document(driverId).setData(
+              {
+                'rating': ((driver.rating ?? 0) + rating) /
+                    ((driver.totalReviews ?? 0) + 1),
+                'totalReviews': ((driver.totalReviews ?? 0) + 1),
+              },
+              merge: true,
+            );
+            Firestore.instance
+                .collection('users')
+                .document(userId)
+                .collection('notifications')
+                .document(widget.orderId)
+                .updateData({
+              'rated': true,
+            });
+          } on dynamic catch (_) {
+            print(_.toString());
+          }
+          Navigator.pop(context);
           Navigator.of(context).pop(true);
-        } else if (!_StarWidgetState._update &&
-            _StarWidgetState._rating != null &&
-            _StarWidgetState._rating > 0) {
+        } else if (!update && rating != null && rating > 0) {
           DateTime lastUpdated = DateTime.now();
           Review review = Review(
             userId: widget.user.userId,
             createdOn: lastUpdated,
             itemId: widget.itemId,
-            rating: _StarWidgetState._rating,
-            reviewDescription: ReviewWidget._commentController.text,
-            reviewedBy: widget.user.fullname,
+            rating: rating,
+            reviewDescription: commentController?.text,
+            reviewedBy: widget.user.fullName,
             lastUpdated: lastUpdated,
           );
 
@@ -257,17 +345,17 @@ class _ActionButtonState extends State<_ActionButton> {
             merge: true,
           );
           Navigator.of(context).pop(true);
-        } else if (_StarWidgetState._rating != null &&
-            _StarWidgetState._rating > 0) {
-          ReviewWidget._review.lastUpdated = DateTime.now();
-          ReviewWidget._review.reviewDescription =
-              ReviewWidget._commentController.text;
-          ReviewWidget._review.rating = _StarWidgetState._rating;
+        } else if (rating != null && rating > 0) {
+          myReview.lastUpdated = DateTime.now();
+          myReview.reviewDescription = commentController?.text;
+          myReview.rating = rating;
           Firestore.instance
               .collection('reviews')
               .document(widget.itemId)
-              .setData({widget.user.userId: ReviewWidget._review.toMap()},
-                  merge: true);
+              .setData(
+            {widget.user.userId: myReview.toMap()},
+            merge: true,
+          );
           Navigator.of(context).pop(true);
         } else {
           Navigator.of(context).pop(false);
@@ -279,9 +367,12 @@ class _ActionButtonState extends State<_ActionButton> {
 
 class _StarWidget extends StatefulWidget {
   final rating;
-  final ReviewWidget parent;
-
-  const _StarWidget({Key key, this.rating, this.parent}) : super(key: key);
+  final bool update;
+  static GlobalKey<_StarWidgetState> _key = GlobalKey<_StarWidgetState>();
+  _StarWidget({
+    this.rating,
+    this.update = false,
+  }) : super(key: _key);
 
   @override
   State<StatefulWidget> createState() {
@@ -290,18 +381,12 @@ class _StarWidget extends StatefulWidget {
 }
 
 class _StarWidgetState extends State<_StarWidget> {
-  static double _rating;
-  static bool _update = false;
-
-  _StarWidgetState(rating) {
-    _rating = rating;
-  }
+  double rating;
+  _StarWidgetState(this.rating);
 
   @override
   void dispose() {
     super.dispose();
-    _rating = null;
-    _update = false;
   }
 
   @override
@@ -316,7 +401,7 @@ class _StarWidgetState extends State<_StarWidget> {
           height: 40,
           width: 40,
           child: Text(
-            _rating != null ? '${_rating.toStringAsFixed(1)}' : "0.0",
+            rating != null ? '${rating.toStringAsFixed(1)}' : "0.0",
             style: Theme.of(context).textTheme.title,
           ),
         ),
@@ -324,12 +409,12 @@ class _StarWidgetState extends State<_StarWidget> {
           width: 20,
         ),
         StarRating(
-            rating: _StarWidgetState._rating ?? 0.0,
+            rating: rating ?? 0.0,
             size: 30,
             starCount: 5,
             onRatingChanged: (value) {
-              setState(() => _StarWidgetState._rating = value);
-              widget.parent.setActionButtonState();
+              setState(() => rating = value);
+              _ActionButton._key.currentState.rebuild();
             }),
       ],
     );

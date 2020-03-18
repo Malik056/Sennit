@@ -13,7 +13,7 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/user/generic_tracking_screen.dart';
 
-enum SourcePage { addressSelectionFrom, addressSelectionDestination, recieveIt }
+enum SourcePage { addressSelectionFrom, addressSelectionDestination, receiveIt }
 
 class SelectFromAddressRoute extends StatelessWidget {
   final Address lastUsedAddress;
@@ -49,7 +49,7 @@ class AddressAddingRoute extends StatelessWidget {
         actions: <Widget>[
           FlatButton(
             onPressed: () {
-              sourcePage == SourcePage.recieveIt
+              sourcePage == SourcePage.receiveIt
                   ? Navigator.of(context).pop(_fromAddress)
                   : sourcePage == SourcePage.addressSelectionDestination
                       ? _toAddress != null
@@ -111,7 +111,7 @@ class AddressAddingBody extends StatefulWidget {
 
 class AddressAddingState extends State<AddressAddingBody> {
   Color defaultColor = Color.fromARGB(0xff, 0x5d, 0x5d, 0x5d);
-  Color defaultHeighlightedColor = Color.fromARGB(0xff, 0x5d, 0x5d, 0x5d);
+  Color defaultHighlightedColor = Color.fromARGB(0xff, 0x5d, 0x5d, 0x5d);
   Color defaultBtnBackgroundColor = Colors.white;
   double btnPaddingTop;
   double btnPaddingBottom;
@@ -122,7 +122,7 @@ class AddressAddingState extends State<AddressAddingBody> {
   bool dateSelected = false;
   bool customAddress = true;
 
-  Color defaultHeighlightedColorDOB = Color.fromARGB(255, 57, 59, 82);
+  Color defaultHighlightedColorDOB = Color.fromARGB(255, 57, 59, 82);
   String dateText;
 
   bool tapped = false;
@@ -137,7 +137,7 @@ class AddressAddingState extends State<AddressAddingBody> {
     // dateInitialText = 'Tap to select';
     // dateText = dateInitialText;
     super.initState();
-    // defaultHeighlightedColorDOB = Theme.of(context).accentColor;
+    // defaultHighlightedColorDOB = Theme.of(context).accentColor;
   }
 
   @override
@@ -253,7 +253,7 @@ class AddressAddingState extends State<AddressAddingBody> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    '  Saved Addreses',
+                    '  Saved Addresses',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).accentColor,
@@ -266,11 +266,12 @@ class AddressAddingState extends State<AddressAddingBody> {
                     subtitle: Text('${user.homeLocationAddress}'),
                     onTap: () async {
                       Address selectedAddress =
-                          (await Geocoder.local.findAddressesFromCoordinates(
+                          (await Geocoder.google(await Utils.getAPIKey())
+                              .findAddressesFromCoordinates(
                         Coordinates(user.homeLocationLatLng.latitude,
                             user.homeLocationLatLng.longitude),
                       ))[0];
-                      widget.sourcePage == SourcePage.recieveIt
+                      widget.sourcePage == SourcePage.receiveIt
                           ? Navigator.of(context).pop()
                           : widget.sourcePage ==
                                   SourcePage.addressSelectionDestination
@@ -297,12 +298,13 @@ class AddressAddingState extends State<AddressAddingBody> {
                           title: Text('Office'),
                           subtitle: Text(user.officeLocationAddress),
                           onTap: () async {
-                            Address selectedAddress = (await Geocoder.local
-                                .findAddressesFromCoordinates(
+                            Address selectedAddress =
+                                (await Geocoder.google(await Utils.getAPIKey())
+                                    .findAddressesFromCoordinates(
                               Coordinates(user.officeLocationLatLng.latitude,
                                   user.officeLocationLatLng.longitude),
                             ))[0];
-                            widget.sourcePage == SourcePage.recieveIt
+                            widget.sourcePage == SourcePage.receiveIt
                                 ? Navigator.of(context).pop()
                                 : widget.sourcePage ==
                                         SourcePage.addressSelectionDestination
@@ -359,13 +361,15 @@ class AddressAddingState extends State<AddressAddingBody> {
                               leading: Icon(Icons.history),
                               subtitle: Text(locationHistory[index].address),
                               onTap: () async {
-                                Address selectedAddress = (await Geocoder.local
-                                    .findAddressesFromCoordinates(
+                                Address selectedAddress =
+                                    (await Geocoder.google(
+                                            await Utils.getAPIKey())
+                                        .findAddressesFromCoordinates(
                                   Coordinates(
                                       locationHistory[index].latLng.latitude,
                                       locationHistory[index].latLng.longitude),
                                 ))[0];
-                                widget.sourcePage == SourcePage.recieveIt
+                                widget.sourcePage == SourcePage.receiveIt
                                     ? Navigator.of(context).pop()
                                     : widget.sourcePage ==
                                             SourcePage
@@ -566,14 +570,14 @@ class SendItCartRoute extends StatelessWidget {
                   );
 
                   await Firestore.instance
-                      .collection("userOrders")
+                      .collection("users")
                       .document(Session.data['user'].userId)
+                      .collection('orders')
+                      .document(_.documentID)
                       .setData(
-                    {
-                      orderId: orderData,
-                    },
-                    merge: true,
-                  );
+                        orderData,
+                        merge: true,
+                      );
 
                   //   await Firestore.instance
                   //       .collection("verificationCodes")
@@ -696,7 +700,7 @@ class SendItCartRoute extends StatelessWidget {
 
     // Initialize and get the transaction result
     RaveResult response = await RavePayManager()
-        .initialize(context: context, initializer: initializer);
+        .prompt(context: context, initializer: initializer);
     print(response.message);
 
     return <String, dynamic>{
@@ -821,8 +825,9 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._fromAddress = (await Geocoder.local
-                            .findAddressesFromCoordinates(coordinates))[0];
+                        SendItCartRoute._fromAddress =
+                            (await Geocoder.google(await Utils.getAPIKey())
+                                .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },
@@ -985,8 +990,9 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._toAddress = (await Geocoder.local
-                            .findAddressesFromCoordinates(coordinates))[0];
+                        SendItCartRoute._toAddress =
+                            (await Geocoder.google(await Utils.getAPIKey())
+                                .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },

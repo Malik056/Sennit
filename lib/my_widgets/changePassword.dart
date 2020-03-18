@@ -35,7 +35,7 @@ class ChangePasswordRoute extends StatelessWidget {
                     controller: _controller,
                     validator: (value) {
                       if (value.length < 6) {
-                        return "Password should be atleast 6 characters";
+                        return "Password should be at least 6 characters";
                       }
                       return null;
                     },
@@ -84,7 +84,7 @@ class ChangePasswordRoute extends StatelessWidget {
                             // Navigator.popUntil(
                             //   context,
                             //   ModalRoute.withName(
-                            //     MyApp.recieveItRoute,
+                            //     MyApp.receiveItRoute,
                             //   ),
                             // );
                             Navigator.pop(context);
