@@ -42,8 +42,8 @@ android {
         minSdkVersion 16
         targetSdkVersion 28
         multiDexEnabled true
-        versionCode 16//flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionCode 18//flutterVersionCode.toInteger()
+        versionName "2.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
