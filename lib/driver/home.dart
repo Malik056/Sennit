@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/driver/active_order.dart';
@@ -11,7 +12,7 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/receive_it_order_navigation.dart';
 import 'package:sennit/my_widgets/sennit_order_navigation.dart';
-import 'package:sennit/user/recieveIt.dart' as receiveIt;
+import 'package:sennit/user/receiveit.dart' as receiveIt;
 
 class Delivery {
   final LatLng pickUp;
@@ -77,14 +78,12 @@ class _HomeScreenState extends State<HomeScreenDriver>
           appBar: AppBar(
             centerTitle: true,
             actions: <Widget>[
-              FlatButton(
-                child: Text(
-                  'Signout',
-                  style: Theme.of(context)
-                      .textTheme
-                      .subhead
-                      .copyWith(color: Theme.of(context).primaryColor),
-                ),
+              IconButton(
+                icon: Icon(FontAwesomeIcons.signOutAlt),
+                // style: Theme.of(context)
+                //     .textTheme
+                //     .subhead
+                //     .copyWith(color: Theme.of(context).primaryColor),
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
                   Session.data..removeWhere((key, value) => true);
@@ -261,19 +260,22 @@ class _NotificationPageState extends State<_NotificationPage> {
             Driver driver = Session.data['driver'];
 
             for (int index = 0; index < documents.length; index++) {
-              documents[index].data.update("orderId", (value) {
-                return documents[index].documentID;
-              }, ifAbsent: () {
-                return documents[index].documentID;
-              });
-              if ((documents[index].data['status'] as String).toUpperCase() !=
-                      'PENDING' &&
-                  documents[index].data['driverId'] != driver.driverId) {
+              var orderData = documents[index].data;
+              orderData.update(
+                'orderId',
+                (old) {
+                  return documents[index].documentID;
+                },
+                ifAbsent: () => documents[index].documentID,
+              );
+              print(orderData);
+              if ((orderData['status'] as String).toUpperCase() != 'PENDING' &&
+                  orderData['driverId'] != driver.driverId) {
                 // return null;
-              } else if (documents[index].data.containsKey("numberOfBoxes")) {
-                tiles.add(SennitNotificationTile(data: documents[index].data));
+              } else if (orderData.containsKey("numberOfBoxes")) {
+                tiles.add(SennitNotificationTile(data: orderData));
               } else {
-                tiles.add(ReceiveItNotificationTile(documents[index].data));
+                tiles.add(ReceiveItNotificationTile(orderData));
               }
             }
 
@@ -386,7 +388,7 @@ class SennitNotificationTile extends StatelessWidget {
                           height: 6.0,
                         ),
                         Text(
-                          "${data['price']}R",
+                          "${(data['price'] as num).toDouble().toStringAsFixed(2)}R",
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -532,6 +534,7 @@ class SennitNotificationTile extends StatelessWidget {
                     builder: (context) {
                       return SennitOrderNavigationRoute(
                         data: data,
+                        verificationCode: data['otp'],
                       );
                     },
                     maintainState: false,
@@ -559,7 +562,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Text(
-                'Recieve it',
+                'Receive it',
                 style: Theme.of(context).textTheme.display1,
               ),
               SizedBox(
@@ -822,11 +825,12 @@ class ReceiveItNotificationTile extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) {
-              return RecieveItOrderNavigationRoute(
+              return ReceiveItOrderNavigationRoute(
                 data: data,
+                verificationCode: data['otp'],
               );
             },
-            settings: RouteSettings(name: RecieveItOrderNavigationRoute.NAME),
+            settings: RouteSettings(name: ReceiveItOrderNavigationRoute.NAME),
           ),
         );
       },
@@ -837,7 +841,8 @@ class ReceiveItNotificationTile extends StatelessWidget {
       List<dynamic> pickups, String destLatlng) async {
     List<String> temp = List();
     LatLng destLatLngFromString = Utils.latLngFromString(destLatlng);
-    final futureDestination = Geocoder.local.findAddressesFromCoordinates(
+    final futureDestination =
+        Geocoder.google(await Utils.getAPIKey()).findAddressesFromCoordinates(
       Coordinates(
         destLatLngFromString.latitude,
         destLatLngFromString.longitude,
@@ -852,8 +857,9 @@ class ReceiveItNotificationTile extends StatelessWidget {
     final destination = (await futureDestination)[0].addressLine;
     if (temp.length == 1) {
       LatLng latLng = Utils.latLngFromString(temp[0]);
-      final locationInfo = await Geocoder.local.findAddressesFromCoordinates(
-          Coordinates(latLng.latitude, latLng.longitude));
+      final locationInfo = await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(latLng.latitude, latLng.longitude));
       return {
         'pickup': locationInfo[0].addressLine,
         'destination': destination
@@ -892,7 +898,7 @@ class OrderItemRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Itmes'),
+        title: Text('Items'),
         centerTitle: true,
       ),
       body: FutureBuilder<List<StoreItem>>(
@@ -963,44 +969,52 @@ class _ProfilePage extends StatelessWidget {
             height: 10,
           ),
           Text(
-            '${driver.fullname}',
+            '${driver.fullName}',
             style: Theme.of(context).textTheme.subhead,
           ),
           SizedBox(
             height: 6,
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Tooltip(
-                child: Icon(
-                  Icons.star,
-                  color: Colors.grey,
-                  size: 14,
-                ),
-                message: "rating",
-              ),
-              Text(' ${driver.rating == 0 ? 'N/A' : driver.rating}'),
-              SizedBox(
-                width: 10,
-              ),
-              Container(
-                color: Colors.black,
-                width: 1,
-                child: Text(''),
-              ),
-              SizedBox(
-                width: 10,
-              ),
-              Tooltip(
-                child: Icon(
-                  Icons.person,
-                  size: 14,
-                ),
-                message: "rated by users",
-              ),
-              Text(' ${driver.totalReviews}'),
-            ],
+          FutureBuilder<Driver>(
+            future: refreshDriver(driver.driverId),
+            initialData: Session.data['driver'],
+            builder: (context, snapshot) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Tooltip(
+                    child: Icon(
+                      Icons.star,
+                      color: Colors.grey,
+                      size: 14,
+                    ),
+                    message: "rating",
+                  ),
+                  Text(
+                      ' ${(snapshot.data == null || snapshot.data.rating == 0) ? 'N/A' : snapshot.data.rating}'),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Container(
+                    color: Colors.black,
+                    width: 1,
+                    child: Text(''),
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  Tooltip(
+                    child: Icon(
+                      Icons.person,
+                      size: 14,
+                    ),
+                    message: "rated by users",
+                  ),
+                  Text(
+                      ' ${(snapshot.data == null || snapshot.data.rating == null) ? 0 : snapshot.data.totalReviews}'),
+                ],
+              );
+            },
           ),
           SizedBox(
             height: 40,
@@ -1014,11 +1028,12 @@ class _ProfilePage extends StatelessWidget {
           SizedBox(
             height: 20,
           ),
-          FutureBuilder<DocumentSnapshot>(
+          FutureBuilder<QuerySnapshot>(
               future: Firestore.instance
-                  .collection("driverReviews")
+                  .collection("drivers")
                   .document(driver.driverId)
-                  .get(),
+                  .collection('reviews')
+                  .getDocuments(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -1026,8 +1041,8 @@ class _ProfilePage extends StatelessWidget {
                   );
                 }
                 return Column(
-                  children: snapshot.data.exists
-                      ? getReviews(snapshot.data.data)
+                  children: snapshot.data.documents != null
+                      ? getReviews(snapshot.data.documents)
                       : [
                           Center(
                             child: Text(
@@ -1042,10 +1057,18 @@ class _ProfilePage extends StatelessWidget {
     );
   }
 
-  List<Widget> getReviews(Map<String, dynamic> data) {
+  Future<Driver> refreshDriver(String driverId) async {
+    final data =
+        await Firestore.instance.collection('drivers').document(driverId).get();
+    Driver driver = Driver.fromMap(data.data);
+    Session.data.update('driver', (old) => driver, ifAbsent: () => driver);
+    return driver;
+  }
+
+  List<Widget> getReviews(List<DocumentSnapshot> data) {
     List<Widget> reviews = List();
-    List<String> keys = data.keys;
-    if (keys.length <= 0) {
+    // List<String> keys = data.keys;
+    if (data.length <= 0) {
       return <Widget>[
         Center(
           child: Text('No Reviews Yet'),
@@ -1054,7 +1077,7 @@ class _ProfilePage extends StatelessWidget {
     }
     for (var i = 0; i < data.length; i++) {
       ReviewForDriver reviewForDriver = ReviewForDriver.fromMap(
-        data[keys[i]],
+        data[i].data,
       );
       Widget review = ListTile(
         title: Text('${reviewForDriver.reviewedBy}'),

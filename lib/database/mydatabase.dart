@@ -4,7 +4,7 @@ import 'package:sqflite/sqflite.dart';
 class Tables {
   static const String USER_TABLE = "USER_TABLE";
   static const String DRIVER_TABLE = "DRIVER_TABLE";
-  static const String ORDER_FROM_RECIEVE_IT_TABLE = "ORDER_FROM_RECIEVE_IT";
+  static const String ORDER_FROM_RECEIVE_IT_TABLE = "ORDER_FROM_RECEIVE_IT";
   static const String ORDER_FROM_SENNIT_TABLE = "ORDER_FROM_SENNIT_TABLE";
   // static const String USER_ORDER_TABLE = "USER_ORDER_TABLE";
   static const String USER_LOCATION_HISTORY_TABLE =
@@ -25,7 +25,7 @@ class Tables {
   // static const String ORDER_ITEM_FOR_SENNIT_TABLE =
   //     "ORDER_ITEM_FOR_SENNIT_TABLE";
   static const String ORDER_ITEM_FOR_RECEIVE_IT_TABLE =
-      "ORDER_ITEM_FOR_RECIEVE_IT_TABLE";
+      "ORDER_ITEM_FOR_RECEIVE_IT_TABLE";
   static const String ORDER_OTHER_CHARGES_TABLE = "ORDER_OTHER_CHARGES_TABLE";
 }
 
@@ -62,7 +62,7 @@ class DriverTableColumns {
   static const String BALANCE = "balance";
 }
 
-class OrderFromRecieveItTableColumns {
+class OrderFromReceiveItTableColumns {
   static const String STORE_NAME = "storeName";
   static const String STORE_ADDRESS = "storeLocationAddress";
   static const String STORE_LATLNG = "storeLatLng";
@@ -85,7 +85,7 @@ class OrderFromSennitTableColumns {
   static const String DROP_OFF_ADDRESS = "dropOffAddress";
   static const String SERVICE_CHARGES = "serviceCharges";
   static const String USER_ID = "userId";
-  static const String RECEIVER_NAME = "recieverName";
+  static const String RECEIVER_NAME = "receiverName";
   static const String RECEIVER_PHONE = "receiverPhone";
   static const String RECEIVER_EMAIL = "receiverEmail";
   static const String DRIVER_ID = "driverId";
@@ -97,7 +97,7 @@ class OrderFromSennitTableColumns {
 
 // class OrderItemForSennitTableColumns {
 //   static const String ORDER_ITEM_ID = "orderItemId";
-//   static const String PRICE = "pirce";
+//   static const String PRICE = "price";
 //   // static const String QUANTITY = "QUANTITY";
 //   static const String ORDER_ID = "orderId";
 //   // static const String ITEM_PROPERTY_ID = "ITEM_PROPERTY_ID";
@@ -208,7 +208,7 @@ class DatabaseHelper {
             Tables.ITEM_IMAGE_TABLE,
             Tables.ITEM_PROPERTY_TABLE,
             Tables.ITEM_TABLE,
-            Tables.ORDER_FROM_RECIEVE_IT_TABLE,
+            Tables.ORDER_FROM_RECEIVE_IT_TABLE,
             Tables.ORDER_FROM_SENNIT_TABLE,
             Tables.ORDER_ITEM_FOR_RECEIVE_IT_TABLE,
             Tables.ORDER_OTHER_CHARGES_TABLE,
@@ -298,17 +298,17 @@ class DatabaseHelper {
         " )");
 
     db.execute(
-        "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_FROM_RECIEVE_IT_TABLE} ( " +
-            "${OrderFromRecieveItTableColumns.ORDER_ID} TEXT PRIMARY KEY, " +
-            "${OrderFromRecieveItTableColumns.DRIVER_ID} TEXT, " +
-            "${OrderFromRecieveItTableColumns.USER_ID} TEXT, " +
-            "${OrderFromRecieveItTableColumns.DATE_ORDERED} TEXT, " +
-            "${OrderFromRecieveItTableColumns.DROP_OFF_LATLNG} TEXT, " +
-            "${OrderFromRecieveItTableColumns.DROP_OFF_ADDRESS} TEXT, " +
-            "${OrderFromRecieveItTableColumns.ORDER_PRICE} TEXT, " +
-            "${OrderFromRecieveItTableColumns.STORE_ADDRESS} TEXT, " +
-            "${OrderFromRecieveItTableColumns.STORE_LATLNG} TEXT, " +
-            "${OrderFromRecieveItTableColumns.STORE_NAME} TEXT" +
+        "CREATE TABLE IF NOT EXISTS ${Tables.ORDER_FROM_RECEIVE_IT_TABLE} ( " +
+            "${OrderFromReceiveItTableColumns.ORDER_ID} TEXT PRIMARY KEY, " +
+            "${OrderFromReceiveItTableColumns.DRIVER_ID} TEXT, " +
+            "${OrderFromReceiveItTableColumns.USER_ID} TEXT, " +
+            "${OrderFromReceiveItTableColumns.DATE_ORDERED} TEXT, " +
+            "${OrderFromReceiveItTableColumns.DROP_OFF_LATLNG} TEXT, " +
+            "${OrderFromReceiveItTableColumns.DROP_OFF_ADDRESS} TEXT, " +
+            "${OrderFromReceiveItTableColumns.ORDER_PRICE} TEXT, " +
+            "${OrderFromReceiveItTableColumns.STORE_ADDRESS} TEXT, " +
+            "${OrderFromReceiveItTableColumns.STORE_LATLNG} TEXT, " +
+            "${OrderFromReceiveItTableColumns.STORE_NAME} TEXT" +
             " )");
 
     db.execute(
@@ -316,7 +316,7 @@ class DatabaseHelper {
             "${OrderFromSennitTableColumns.ORDER_ID} TEXT PRIMARY KEY, " +
             "${OrderFromSennitTableColumns.DRIVER_ID} TEXT, " +
             "${OrderFromSennitTableColumns.USER_ID} TEXT, " +
-            "${OrderFromRecieveItTableColumns.DATE_ORDERED} TEXT, " +
+            "${OrderFromReceiveItTableColumns.DATE_ORDERED} TEXT, " +
             "${OrderFromSennitTableColumns.DROP_OFF_LATLNG} TEXT, " +
             "${OrderFromSennitTableColumns.DROP_OFF_ADDRESS} TEXT, " +
             "${OrderFromSennitTableColumns.ORDER_PRICE} TEXT, " +
@@ -385,7 +385,7 @@ class DatabaseHelper {
   static getCurrentUser() async {
     var currentUserId = getCurrentUserId();
     if (currentUserId != null) {
-      var usersAsListofMap = await _myDatabase.query(
+      var usersAsListOfMap = await _myDatabase.query(
         Tables.USER_TABLE,
         distinct: true,
         where: "ID = ?",
@@ -393,7 +393,7 @@ class DatabaseHelper {
           currentUserId,
         ],
       );
-      User user = User.fromMap((usersAsListofMap)[0]);
+      User user = User.fromMap((usersAsListOfMap)[0]);
       return user;
     } else {
       return null;
@@ -459,8 +459,8 @@ class DatabaseHelper {
     String cartId = await getUserCartId(userId);
     if (cartId != null) {
       var orders = await _myDatabase.query(
-        Tables.ORDER_FROM_RECIEVE_IT_TABLE,
-        where: "${OrderFromRecieveItTableColumns.ORDER_ID} = ?",
+        Tables.ORDER_FROM_RECEIVE_IT_TABLE,
+        where: "${OrderFromReceiveItTableColumns.ORDER_ID} = ?",
         whereArgs: [cartId],
       );
       if (orders == null || orders.length == 0) {

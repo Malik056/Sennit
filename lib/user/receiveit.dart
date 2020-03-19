@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:bot_toast/bot_toast.dart';
@@ -20,6 +21,7 @@ import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/changePassword.dart';
 import 'package:sennit/my_widgets/notification.dart';
+import 'package:sennit/my_widgets/pdf_viewer.dart';
 import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
@@ -31,10 +33,17 @@ class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
   static List<Widget> _tabs;
   final bool demo;
-
   final TabController tabController;
-
-  Future<Null> _authCheck;
+  static int currentTab = 0;
+  static Future<Null> _authCheck;
+  static List<String> titles = [
+    'Stores',
+    'Search',
+    'Notifications',
+    'Past Orders'
+  ];
+  // final StatefulText appBarTitle;
+  static const String NAME = "ReceiveIt";
 
   Future<void> initialize() async {
     if (_authCheck != null) {
@@ -54,6 +63,7 @@ class ReceiveItRoute extends StatelessWidget {
       });
     }
     if (demo) {
+      currentTab = 0;
       _authCheck = FirebaseAuth.instance.currentUser().then((value) {
         if (value == null) {
           FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -70,7 +80,7 @@ class ReceiveItRoute extends StatelessWidget {
           ..add(SearchWidget());
       });
     } else {
-      drawerNameController.text = ((Session.data['user']) as User).fullname;
+      drawerNameController.text = ((Session.data['user']) as User).fullName;
       _tabs
         ..add(
           StoresRoute(
@@ -82,22 +92,28 @@ class ReceiveItRoute extends StatelessWidget {
         ..add(PastOrdersRoute());
     }
   }
+
   @override
   Widget build(BuildContext context) {
     var user = Session.data['user'];
+    print('currentTab: $currentTab ${titles[currentTab]}');
     return Scaffold(
       appBar: AppBar(
-        title: Text('Stores'),
+        title: StatefulText(
+          title: titles[currentTab],
+        ),
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
+        leading: InkWell(
+          onTap: () {
             if (demo) {
               tabController?.animateTo(0);
             } else {
               Navigator.pop(context);
             }
           },
+          child: Icon(
+            Platform.isIOS ? CupertinoIcons.back : Icons.arrow_back,
+          ),
         ),
       ),
       endDrawer: !demo
@@ -106,7 +122,7 @@ class ReceiveItRoute extends StatelessWidget {
                 children: <Widget>[
                   UserAccountsDrawerHeader(
                     arrowColor: Colors.white,
-                    accountName: Text(user.fullname),
+                    accountName: Text(user.fullName),
                     accountEmail: Text("${user.email}"),
                     currentAccountPicture: user.profilePicture != null
                         ? CircleAvatar(
@@ -133,18 +149,24 @@ class ReceiveItRoute extends StatelessWidget {
                   Card(
                     child: ListTile(
                       title: Text('Privacy Policy'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) {
+                              return PDFViewerRoute();
+                            },
+                          ),
+                        );
+                      },
                     ),
                   ),
                   Card(
                     child: ListTile(
                       leading: Icon(Icons.exit_to_app),
                       title: Text('Logout'),
-                      onTap: () {
-                        // Navigator.of(context).popUntil((route) => route.isFirst);
-                        FirebaseAuth.instance.signOut();
-                        Session.data..removeWhere((key, value) => true);
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                            MyApp.startPage, (route) => false);
+                      onTap: () async {
+                        Utils.signOutUser(context);
                       },
                     ),
                   )
@@ -176,15 +198,64 @@ class ReceiveItRoute extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
-          return _Body();
+          return _Body(
+            onTabChange: (index) {
+              StatefulText._key?.currentState?.changeTitle(titles[index]);
+            },
+          );
         },
       ),
     );
   }
 }
 
+class StatefulText extends StatefulWidget {
+  StatefulText({
+    this.title,
+  }) : super(key: _key);
+  static GlobalKey<_StatefulTextState> _key = GlobalKey<_StatefulTextState>();
+  final title;
+
+  changeTitle(title) {
+    _key?.currentState?.changeTitle(title);
+  }
+
+  @override
+  _StatefulTextState createState() => _StatefulTextState();
+}
+
+class _StatefulTextState extends State<StatefulText> {
+  String title;
+
+  changeTitle(String title) {
+    this.title = title;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    title = widget.title;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(title);
+  }
+}
+
 class _Body extends StatefulWidget {
   // final List<Widget> tabs = [];
+  final Function(int) onTabChange;
+
+  const _Body({this.onTabChange});
   @override
   State<StatefulWidget> createState() {
     return _BodyState();
@@ -206,7 +277,7 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
     _controller = TabController(
       length: ReceiveItRoute._tabs.length,
       vsync: this,
-      initialIndex: 0,
+      initialIndex: ReceiveItRoute.currentTab,
     );
     _controller.addListener(_handleTabChange);
 
@@ -215,6 +286,8 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
 
   void _handleTabChange() {
     _BottomNavigationState._index = _controller.index;
+    ReceiveItRoute.currentTab = _controller.index;
+    widget.onTabChange(ReceiveItRoute.currentTab);
     try {
       _BottomNavigationState._bottomNavigationState.rebuild();
     } on dynamic catch (_) {
@@ -233,15 +306,18 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
 
 class _StatefulBottomNavigation extends StatefulWidget {
   final bool demo;
-  _StatefulBottomNavigation(this.demo) : state = _BottomNavigationState(demo);
-  final _BottomNavigationState state;
+  _StatefulBottomNavigation(this.demo) : super(key: _key);
+
+  static GlobalKey<_BottomNavigationState> _key =
+      GlobalKey<_BottomNavigationState>();
+
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _BottomNavigationState(demo);
   }
 
   setState() {
-    state?.rebuild();
+    _key?.currentState?.rebuild();
   }
 }
 
@@ -249,8 +325,8 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
   static int _index;
   final bool demo;
   static _BottomNavigationState _bottomNavigationState;
-
   _BottomNavigationState(this.demo);
+
   rebuild() {
     setState(() {});
   }
@@ -258,7 +334,7 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
   @override
   void initState() {
     _bottomNavigationState = this;
-    _index = 0;
+    _index = ReceiveItRoute.currentTab;
     super.initState();
   }
 
@@ -402,7 +478,7 @@ class StoresRouteState extends State<StoresRoute> {
   Address selectedAddress;
   static List<Store> stores;
   StoresRouteState(this.selectedAddress) {
-    getStroesWidget();
+    getStoresWidget();
   }
 
   // Future<Widget> storeWidget;
@@ -413,7 +489,7 @@ class StoresRouteState extends State<StoresRoute> {
 
   // void appBarTap() {
   //   Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-  //     return AddressAddingRoute(SourcePage.recieveIt, selectedAddress);
+  //     return AddressAddingRoute(SourcePage.receiveIt, selectedAddress);
   //   })).then((value) {
   //     setState(() {
   //       selectedAddress = value;
@@ -478,7 +554,7 @@ class StoresRouteState extends State<StoresRoute> {
     return;
   }
 
-  void getStroesWidget() async {
+  void getStoresWidget() async {
     await initialize();
     _body = stores.length <= 0
         ? Center(child: Text('No Stores Available Near You '))
@@ -512,7 +588,9 @@ class StoresRouteState extends State<StoresRoute> {
             ),
           );
     try {
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on dynamic catch (_) {
       print(_);
       stores.clear();
@@ -581,7 +659,7 @@ class StoreItem extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        store.storeMotto,
+                        store.storeMotto ?? '',
                         style: TextStyle(fontSize: 16, color: Colors.black),
                       ),
                     ],
@@ -1068,17 +1146,18 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
 }
 
 class ItemDetailsRoute extends StatefulWidget {
+  static GlobalKey<ItemDetailsRouteState> _key =
+      GlobalKey<ItemDetailsRouteState>();
   static model.StoreItem _item;
   ItemDetailsRoute({
-    Key key,
     @required model.StoreItem item,
-  }) : super(key: key) {
+  }) : super(key: _key) {
     _item = item;
   }
-  final state = ItemDetailsRouteState();
+
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return ItemDetailsRouteState();
   }
 }
 
@@ -1173,6 +1252,7 @@ class _FloatingMenuState extends State<FloatingMenu> {
             await Navigator.of(context)
                 .push(MaterialPageRoute(builder: (context) {
               return ReviewWidget(
+                orderId: "",
                 user: Session.data['user'],
                 itemId: widget.itemId,
               );
@@ -1208,16 +1288,17 @@ class _FloatingMenuState extends State<FloatingMenu> {
 class _ItemDetailsBody extends StatefulWidget {
   // final ItemDetails itemDetails;
   final model.StoreItem item;
-  final itemDetailsBodyState = _ItemDetailsBodyState();
+  static GlobalKey<_ItemDetailsBodyState> _key =
+      GlobalKey<_ItemDetailsBodyState>();
 
-  _ItemDetailsBody({this.item});
+  _ItemDetailsBody({this.item}) : super(key: _key);
   @override
   State<StatefulWidget> createState() {
-    return itemDetailsBodyState;
+    return _ItemDetailsBodyState();
   }
 
   void setState() {
-    itemDetailsBodyState.reBuild();
+    _key?.currentState?.reBuild();
   }
 
   Widget _getProgressBar() => Column(
@@ -1323,80 +1404,9 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                           );
                         },
                       ),
-                      // dotSize: 4.0,
-                      // dotSpacing: 15.0,
-                      // dotColor: Theme.of(context).primaryColor,
-                      // showIndicator: false,
-                      // dotBgColor: Colors.white54,
-                      // dotIncreasedColor: Theme.of(context).primaryColor,
-                      // moveIndicatorFromBottom: 180.0,
-                      // noRadiusForIndicator: false,
                     ),
-                    Container(
-                        // decoration: BoxDecoration(
-                        //   gradient: LinearGradient(
-                        //     stops: [0, 0.7, 0.8, 1],
-                        //     begin: Alignment.topCenter,
-                        //     end: Alignment.bottomCenter,
-                        //     colors: [
-                        //       Colors.transparent,
-                        //       Colors.transparent,
-                        //       Colors.white54,
-                        //       Colors.white,
-                        //     ],
-                        //   ),
-                        // ),
-                        ),
                   ],
                 ),
-                //Stack(
-                //   fit: StackFit.expand,
-                //   children: [
-                //     CarouselSlider(
-                //       autoPlay: autoplay,
-                //       initialPage: 0,
-                //       scrollDirection: Axis.horizontal,
-                //       // viewportFraction: 1.0,
-                //       enlargeCenterPage: true,
-                //       height: 250.0,
-                //       scrollPhysics: BouncingScrollPhysics(),
-                //       enableInfiniteScroll: true,
-                //       pauseAutoPlayOnTouch: Duration(seconds: 4),
-                //       autoPlayInterval: Duration(seconds: 2),
-                //       items:
-                //           List.generate(widget.item.images.length, (index) {
-                //         return Container(
-                //           width: MediaQuery.of(context).size.width,
-                //           margin: EdgeInsets.symmetric(horizontal: 5.0),
-                //           decoration: BoxDecoration(
-                //             image: DecorationImage(
-                //               image: NetworkImage(widget.item.images[index]),
-                //               fit: BoxFit.fitHeight,
-                //             ),
-                //           ),
-                //         );
-                //       }),
-                //     ),
-                //     Container(
-                //       decoration: BoxDecoration(
-                //           gradient: LinearGradient(
-                //               stops: [0, 0.6, 1],
-                //               begin: Alignment.topCenter,
-                //               end: Alignment.bottomCenter,
-                //               colors: [
-                //                 Colors.transparent,
-                //                 Colors.white10,
-                //                 Colors.white,
-                //               ])),
-                //     ),
-                //   ],
-                // ),
-                // title: Text(
-                //   widget.item.itemName,
-                //   style: Theme.of(context).textTheme.title,
-                // ),
-                // centerTitle: true,
-                // collapseMode: CollapseMode.pin,
               ),
               // bottom: TabBar(
               //     controller: _tabController,
@@ -2103,7 +2113,7 @@ class ShoppingCartRoute extends StatelessWidget {
       key: _key,
       appBar: AppBar(
         actions: <Widget>[
-          !demo
+          (demo == null || !demo)
               ? FlatButton(
                   onPressed: () async {
                     Utils.showLoadingDialog(context);
@@ -2246,6 +2256,7 @@ class ShoppingCartRoute extends StatelessWidget {
                     var response = await post(
                       url,
                     );
+                    // final response = Response('', 200);
 
                     if (response.statusCode == 200 ||
                         response.statusCode == 201 ||
@@ -2258,30 +2269,18 @@ class ShoppingCartRoute extends StatelessWidget {
                           .add(orderData)
                           .catchError((error) {})
                           .then((data) async {
-                        // Firestore.instance
-                        //     .collection("notifications")
-                        //     .document(user.userId)
-                        //     .setData({
-                        //   "${DateTime.now().millisecondsSinceEpoch}": {
-                        //     "price": order.price,
-                        //     "destination": Utils.latLngToString(order.destination),
-                        //     "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
-                        //     "items": items.map((x) => x.itemName),
-                        //     "sleevesRequired": null,
-                        //   }
-                        // });
                         orderData.update('orderId', (old) => data.documentID,
                             ifAbsent: () => data.documentID);
 
                         await Firestore.instance
-                            .collection("userOrders")
+                            .collection("users")
                             .document(user.userId)
+                            .collection('orders')
+                            .document(data.documentID)
                             .setData(
-                          {
-                            data.documentID: orderData,
-                          },
-                          merge: true,
-                        );
+                              orderData,
+                              merge: true,
+                            );
                         // await Firestore.instance
                         //     .collection("verificationCodes")
                         //     .document(data.documentID)
@@ -2362,7 +2361,7 @@ class ShoppingCartRoute extends StatelessWidget {
         // backgroundColor: Theme.of(context).accentColor,
       ),
       body: body,
-      bottomSheet: demo
+      bottomSheet: (demo != null && demo)
           ? BottomAppBar(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2402,7 +2401,7 @@ class ShoppingCartRoute extends StatelessWidget {
                         child: RaisedButton(
                           color: Colors.white,
                           onPressed: () {
-                            Navigator.pushNamed(context, MyApp.userSignin);
+                            Navigator.pushNamed(context, MyApp.userSignIn);
                           },
                           child: Text(
                             'SignIn',
@@ -2455,7 +2454,7 @@ class ShoppingCartRoute extends StatelessWidget {
 
     // Initialize and get the transaction result
     RaveResult response = await RavePayManager()
-        .initialize(context: context, initializer: initializer);
+        .prompt(context: context, initializer: initializer);
     print(response.message);
 
     return <String, dynamic>{
@@ -2467,13 +2466,11 @@ class ShoppingCartRoute extends StatelessWidget {
 
 class ShoppingCartRouteBody extends StatefulWidget {
   final bool demo;
-  final ShoppingCartRouteState state = ShoppingCartRouteState();
-
   ShoppingCartRouteBody({Key key, @required this.demo}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return ShoppingCartRouteState();
   }
 }
 
@@ -2496,9 +2493,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   List<bool> isAnimationVisibleList = [];
   List<bool> isItemDeleteConfirmationVisibleList = [];
-  // bool isItemDeleteConfirmationVisible = false;
-
-  // var isAnimationVisible = false;
 
   List<bool> isButtonActiveList = [];
 
@@ -2514,7 +2508,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   @override
   void initState() {
     super.initState();
-    if (!widget.demo) {
+    if (demo == null || !widget.demo) {
       User user = Session.data['user'];
       _emailController.text = user.email;
       _phoneNumberController.text = user.phoneNumber;
@@ -2591,7 +2585,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                           result.latLng.longitude,
                         );
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
-                          await Utils.getAPIKey(context: context),
+                          await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
@@ -2812,6 +2806,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   Map<String, double> itemsData;
   static double totalDeliveryCharges = 0;
   static double totalPrice = 0;
+  List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
   // List<double> quantities;
 
   // var count = [0, 0, 0, 0];
@@ -2840,7 +2835,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     }
     totalDeliveryCharges = 0;
     totalPrice = 0;
-    List<double> deliveryCharges = [];
+    // List<double> deliveryCharges = [];
     // for (int i = 0; i < items.length; i++) {
     //   isAnimationVisibleList.add(false);
     //   isItemDeleteConfirmationVisibleList.add(false);
@@ -2866,6 +2861,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: List<Widget>.generate(items.length, (index) {
+                globalKeysForCartItem.add(GlobalKey<CartItemState>());
                 // model.StoreItem item = items[index];
                 totalPrice +=
                     items[index].price * itemsData[items[index].itemId];
@@ -2906,6 +2902,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                 return Stack(
                   children: <Widget>[
                     CartItem(
+                      key: globalKeysForCartItem[index],
                       onDelete: () {
                         isAnimationVisibleList[index] = true;
                         Future.delayed(Duration(milliseconds: 100)).then(
@@ -3053,12 +3050,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               double>.from(
                                                             cart.itemsData,
                                                           );
-                                                          // var quantities = List.from(cart.quantities);
-                                                          // itemsData.removeWhere(
-                                                          //   (Map<String, double> e) {
-                                                          //     return e.containsKey(ItemDetailsRoute._item.itemId);
-                                                          //   },
-                                                          // );
 
                                                           itemsData.removeWhere(
                                                             (key, value) =>
@@ -3096,8 +3087,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                             });
                                                           }).then((_) {
                                                             cart.items.remove(
-                                                              ItemDetailsRoute
-                                                                  ._item.itemId,
+                                                              items[index]
+                                                                  .itemId,
                                                             );
                                                             cart.itemsData
                                                                 .removeWhere(
@@ -3195,7 +3186,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     margin: EdgeInsets.all(8),
                   ),
                   Text(
-                    'Total\n$totalDeliveryCharges R',
+                    'Total\n${totalDeliveryCharges.toStringAsFixed(2)} R',
                     style: Theme.of(context).textTheme.subhead,
                     textAlign: TextAlign.center,
                   ),
@@ -3301,12 +3292,15 @@ class CartItem extends StatefulWidget {
   final int itemIndex;
   final Function(int, int) onQuantityChange;
   final _quantityFocusNode = FocusNode();
+  final GlobalKey<CartItemState> key;
   CartItem(
-      {this.item,
+      {this.key,
+      this.item,
       this.controller,
       this.itemIndex,
       @required this.onQuantityChange,
-      @required this.onDelete}) {
+      @required this.onDelete})
+      : super(key: key) {
     UserCart cart = Session.data['cart'];
     controller.removeListener(() {});
     controller.addListener(() {
@@ -3329,15 +3323,13 @@ class CartItem extends StatefulWidget {
       if (controller.text == '') {
         controller.text = '0';
       }
-      state?.refresh();
+      key?.currentState?.refresh();
     });
   }
 
-  final state = CartItemState();
-
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return CartItemState();
   }
 }
 

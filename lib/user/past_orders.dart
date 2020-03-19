@@ -2,16 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
-import 'package:sennit/my_widgets/orderdetails.dart';
+import 'package:sennit/my_widgets/order_details.dart';
 
 class PastOrdersRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot>(
+    return FutureBuilder<QuerySnapshot>(
       future: Firestore.instance
-          .collection("userOrders")
+          .collection("users")
           .document((Session.data['user'] as User).userId)
-          .get(),
+          .collection('orders')
+          .getDocuments(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -19,20 +20,20 @@ class PastOrdersRoute extends StatelessWidget {
           );
         } else if (snapshot.data == null ||
             !snapshot.hasData ||
-            snapshot.data.data == null ||
-            snapshot.data.data.isEmpty) {
+            snapshot.data.documents == null ||
+            snapshot.data.documents.isEmpty) {
           return Center(
             child: Text('No Past Orders Yet'),
           );
         } else {
-          final keys = snapshot.data.data.keys.toList();
+          final documents = snapshot.data.documents;
           return SingleChildScrollView(
             physics: BouncingScrollPhysics(),
             child: Column(
               children: List.generate(
-                keys.length,
+                documents.length,
                 (index) {
-                  return OrderTile(data: snapshot.data.data[keys[index]]);
+                  return OrderTile(data: documents[index].data);
                 },
               ),
             ),
@@ -367,7 +368,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Expanded(
 //                           child: Text(
-//                             'Reciever Email: ',
+//                             'Receiver Email: ',
 //                             style: Theme.of(context).textTheme.subhead,
 //                           ),
 //                         ),
@@ -379,7 +380,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                         ),
 //                         Expanded(
 //                           child: Text(
-//                             'Reciever Phone: ',
+//                             'Receiver Phone: ',
 //                             style: Theme.of(context).textTheme.subhead,
 //                           ),
 //                         ),
@@ -482,13 +483,13 @@ class PastOrdersRoute extends StatelessWidget {
 //             SizedBox(
 //               height: 4,
 //             ),
-//             snapshot.data['sleevedRequred'] == null
-//                 ? Text('# of itmes: ${(snapshot.data['items'] as List).length}')
+//             snapshot.data['sleevedRequired'] == null
+//                 ? Text('# of items: ${(snapshot.data['items'] as List).length}')
 //                 : Text('# of boxes: ${snapshot.data['numberOfBoxes']}'),
 //             SizedBox(
 //               height: 4,
 //             ),
-//             snapshot.data['sleevedRequred'] == null
+//             snapshot.data['sleevedRequired'] == null
 //                 ? Text('${listToString(snapshot.data['items'])}')
 //                 : Text('Box Size: ${snapshot.data['boxSize']}'),
 //             SizedBox(

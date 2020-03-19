@@ -20,7 +20,9 @@ class NotificationWidget extends StatelessWidget {
           return Center(
             child: CircularProgressIndicator(),
           );
-        } else if (!snapshot.data.exists || snapshot.data.data.isEmpty || snapshot.data.data.keys.length <= 0) {
+        } else if (!snapshot.data.exists ||
+            snapshot.data.data.isEmpty ||
+            snapshot.data.data.keys.length <= 0) {
           return Center(
             child: Text('No Notifications'),
           );
@@ -35,9 +37,7 @@ class NotificationWidget extends StatelessWidget {
                     title: Text('Your Order is on its way'),
                     subtitle: Text(
                         'Contents: ${snapshot.data.data[keys[index]]['contents']}'),
-                    onTap: () {
-                      String orderId = notification['orderId'];
-                    },
+                    onTap: () {},
                   )
                 : ListTile(
                     title: Text('Your Order has Been Delivered'),
@@ -46,9 +46,10 @@ class NotificationWidget extends StatelessWidget {
                       Navigator.push(context, MaterialPageRoute(
                         builder: (context) {
                           return ReviewWidget(
+                            orderId: notification['orderId'],
                             user: user,
                             itemId: "",
-                            driver: true,
+                            isDriver: true,
                             driverId: notification['driverId'],
                           );
                         },

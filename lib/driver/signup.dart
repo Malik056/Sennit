@@ -1,10 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
-import 'package:intl/intl.dart';
-// import 'package:place_picker/place_picker.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
@@ -45,7 +42,7 @@ class DriverSignUpRouteBody extends StatefulWidget {
 class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
   Driver driver = Driver();
   Color defaultColor = Colors.white;
-  Color defaultHeighlightedColor = Colors.white;
+  Color defaultHighlightedColor = Colors.white;
   Color defaultBtnBackgroundColor = Colors.white;
   double btnPaddingTop;
   double btnPaddingBottom;
@@ -422,11 +419,11 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         // ],
                         // ),
                         highlightColor: defaultColor,
-                        onHighlightChanged: (isHeighlighted) {
-                          if (isHeighlighted) {
-                            defaultHeighlightedColor = Colors.white;
+                        onHighlightChanged: (isHighlighted) {
+                          if (isHighlighted) {
+                            defaultHighlightedColor = Colors.white;
                           } else {
-                            defaultHeighlightedColor = defaultColor;
+                            defaultHighlightedColor = defaultColor;
                           }
                           setState(() {});
                         },

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
-		1843590B2408A26F00861B17 /* MapboxMobileEvents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1843590A2408A26F00861B17 /* MapboxMobileEvents.framework */; };
 		1843590F2409F51300861B17 /* ic_launcher_foreground-1.png in Resources */ = {isa = PBXBuildFile; fileRef = 1843590C2409F51300861B17 /* ic_launcher_foreground-1.png */; };
 		184359102409F51300861B17 /* ic_launcher_foreground-2.png in Resources */ = {isa = PBXBuildFile; fileRef = 1843590D2409F51300861B17 /* ic_launcher_foreground-2.png */; };
 		184359112409F51300861B17 /* ic_launcher_foreground.png in Resources */ = {isa = PBXBuildFile; fileRef = 1843590E2409F51300861B17 /* ic_launcher_foreground.png */; };
@@ -40,6 +39,7 @@
 		184359452409F53600861B17 /* 180.png in Resources */ = {isa = PBXBuildFile; fileRef = 1843592B2409F53600861B17 /* 180.png */; };
 		184DF5B0240B86EB003B1CDF /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 184DF5AF240B86EB003B1CDF /* GoogleService-Info.plist */; };
 		184DF5B2240B86FA003B1CDF /* key.plist in Resources */ = {isa = PBXBuildFile; fileRef = 184DF5B1240B86FA003B1CDF /* key.plist */; };
+		18C1407D242195C600E6D529 /* MapboxMobileEvents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18C1407C242195C600E6D529 /* MapboxMobileEvents.framework */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3B80C3941E831B6300D905FE /* App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B80C3931E831B6300D905FE /* App.framework */; };
 		3B80C3951E831B6300D905FE /* App.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 3B80C3931E831B6300D905FE /* App.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -105,6 +105,7 @@
 		184DF5AF240B86EB003B1CDF /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		184DF5B1240B86FA003B1CDF /* key.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = key.plist; path = Runner/key.plist; sourceTree = "<group>"; };
 		18B9118A2415BCAF000553D1 /* MapboxMobileEvents.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = MapboxMobileEvents.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		18C1407C242195C600E6D529 /* MapboxMobileEvents.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = MapboxMobileEvents.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3B80C3931E831B6300D905FE /* App.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = App.framework; path = Flutter/App.framework; sourceTree = "<group>"; };
 		70660135720BEB2928A4ACC8 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
@@ -128,7 +129,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1843590B2408A26F00861B17 /* MapboxMobileEvents.framework in Frameworks */,
+				18C1407D242195C600E6D529 /* MapboxMobileEvents.framework in Frameworks */,
 				9705A1C61CF904A100538489 /* Flutter.framework in Frameworks */,
 				3B80C3941E831B6300D905FE /* App.framework in Frameworks */,
 				F45C47D50B9600178F6DB0C5 /* Pods_Runner.framework in Frameworks */,
@@ -151,6 +152,7 @@
 		1E510F8CEFDB7B7F504EF917 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				18C1407C242195C600E6D529 /* MapboxMobileEvents.framework */,
 				18B9118A2415BCAF000553D1 /* MapboxMobileEvents.framework */,
 				1843590A2408A26F00861B17 /* MapboxMobileEvents.framework */,
 				E4DD61A179A2A36076F0DEB2 /* Pods_Runner.framework */,
@@ -260,7 +262,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				C5D4B4AE5BF7FB1F61E260B7 /* [CP] Embed Pods Frameworks */,
-				672D6E64DB2E12C7CB630B2F /* [CP] Copy Pods Resources */,
+				ED0F7DEF627C4E701D29EC5C /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -388,21 +390,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" thin";
 		};
-		672D6E64DB2E12C7CB630B2F /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -430,6 +417,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		ED0F7DEF627C4E701D29EC5C /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */

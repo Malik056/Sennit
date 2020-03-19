@@ -1,6 +1,7 @@
 import 'package:argon_buttons_flutter/argon_buttons_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../main.dart';
 
@@ -28,7 +29,7 @@ class VerifyEmailRoute extends StatelessWidget {
         centerTitle: true,
         actions: <Widget>[
           FlatButton(
-            child: Text('SignOut'),
+            child: Icon(FontAwesomeIcons.signOutAlt),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Session.data..removeWhere((key, value) => true);

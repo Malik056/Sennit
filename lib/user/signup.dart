@@ -46,7 +46,7 @@ class UserSignUpRouteBody extends StatefulWidget {
 class UserSignUpRouteState extends State<UserSignUpRouteBody> {
   User user = User();
   Color defaultColor = Colors.white;
-  Color defaultHeighlightedColor = Colors.white;
+  Color defaultHighlightedColor = Colors.white;
   Color defaultBtnBackgroundColor = Colors.white;
   double btnPaddingTop;
   double btnPaddingBottom;
@@ -196,7 +196,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                     // //       color: Theme.of(context).primaryColor,
                     // //       fontWeight: FontWeight.bold),
                     // // ),
-                    //TODO:Date OF Birth code from here
+                    //TODO: Date Of Birth code from here
                     // Text(
                     //   'Date of Birth: ',
                     //   style: TextStyle(color: dateOfBirthHeadingColor),
@@ -424,11 +424,11 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         // ],
                         // ),
                         highlightColor: defaultColor,
-                        onHighlightChanged: (isHeighlighted) {
-                          if (isHeighlighted) {
-                            defaultHeighlightedColor = Colors.white;
+                        onHighlightChanged: (isHighlighted) {
+                          if (isHighlighted) {
+                            defaultHighlightedColor = Colors.white;
                           } else {
-                            defaultHeighlightedColor = defaultColor;
+                            defaultHighlightedColor = defaultColor;
                           }
                           setState(() {});
                         },
