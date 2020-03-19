@@ -63,28 +63,31 @@ class UserNotificationWidget extends StatelessWidget {
                             Navigator.pop(context);
                           }
                           if (!data.data['rated']) {
-                            bool result = await Navigator.push(
+                            // bool result =
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ReviewWidget(
-                                  user: null,
+                                  user: Session.data['user'],
                                   itemId: null,
                                   isDriver: true,
                                   driverId: data.data['driverId'],
                                   orderId: data.data['orderId'],
+                                  fromNotification: true,
+                                  userId: data.data['userId'],
                                 ),
                               ),
                             );
-                            if (result != null && result) {
-                              Firestore.instance
-                                  .collection('users')
-                                  .document(Session.data['user'].userId)
-                                  .collection('notifications')
-                                  .document(data.documentID)
-                                  .updateData({
-                                'rated': true,
-                              });
-                            }
+                            // if (result != null && result) {
+                            //   Firestore.instance
+                            //       .collection('users')
+                            //       .document(Session.data['user'].userId)
+                            //       .collection('notifications')
+                            //       .document(data.documentID)
+                            //       .updateData({
+                            //     'rated': true,
+                            //   });
+                            // }
                           }
                         },
                         splashColor:
