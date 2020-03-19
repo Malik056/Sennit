@@ -5,7 +5,6 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -589,7 +588,9 @@ class StoresRouteState extends State<StoresRoute> {
             ),
           );
     try {
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on dynamic catch (_) {
       print(_);
       stores.clear();
@@ -2192,15 +2193,15 @@ class ShoppingCartRoute extends StatelessWidget {
                       return;
                     }
 
-                    // Map<String, dynamic> result = await performTransaction(
-                    //     context,
-                    //     ShoppingCartRouteState.totalPrice +
-                    //         ShoppingCartRouteState.totalDeliveryCharges);
+                    Map<String, dynamic> result = await performTransaction(
+                        context,
+                        ShoppingCartRouteState.totalPrice +
+                            ShoppingCartRouteState.totalDeliveryCharges);
 
-                    Map<String, dynamic> result = {
-                      'status': RaveStatus.success,
-                      'errorMessage': 'someMessage'
-                    };
+                    // Map<String, dynamic> result = {
+                    //   'status': RaveStatus.success,
+                    //   'errorMessage': 'someMessage'
+                    // };
 
                     if (result['status'] == RaveStatus.cancelled) {
                       Utils.showSnackBarWarningUsingKey(
@@ -2252,10 +2253,10 @@ class ShoppingCartRoute extends StatelessWidget {
                     String otp = randomAlphaNumeric(6).toUpperCase();
                     var url =
                         "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                    // var response = await post(
-                    //   url,
-                    // );
-                    final response = Response('', 200);
+                    var response = await post(
+                      url,
+                    );
+                    // final response = Response('', 200);
 
                     if (response.statusCode == 200 ||
                         response.statusCode == 201 ||
@@ -2268,18 +2269,6 @@ class ShoppingCartRoute extends StatelessWidget {
                           .add(orderData)
                           .catchError((error) {})
                           .then((data) async {
-                        // Firestore.instance
-                        //     .collection("notifications")
-                        //     .document(user.userId)
-                        //     .setData({
-                        //   "${DateTime.now().millisecondsSinceEpoch}": {
-                        //     "price": order.price,
-                        //     "destination": Utils.latLngToString(order.destination),
-                        //     "pickup": order.pickups.map((x) => Utils.latLngToString(x)),
-                        //     "items": items.map((x) => x.itemName),
-                        //     "sleevesRequired": null,
-                        //   }
-                        // });
                         orderData.update('orderId', (old) => data.documentID,
                             ifAbsent: () => data.documentID);
 

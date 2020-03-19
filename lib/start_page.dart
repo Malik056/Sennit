@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/my_widgets/pdf_viewer.dart';
 import 'package:sennit/partner_store/login.dart';
 import 'package:sennit/user/receiveit.dart';
 
@@ -141,10 +142,39 @@ class MyStartPageState extends State<MyStartPage>
         title: Text('Sennit'),
         centerTitle: true,
         actions: <Widget>[
-          FlatButton(
-            child: Text('Explore'),
+          // IconButton(
+          //   padding: EdgeInsets.all(0),
+
+          // icon:
+          // InkWell(
+          // child:
+          IconButton(
+            icon: Icon(Icons.explore, color: Theme.of(context).primaryColor),
+            tooltip: 'Explore',
             onPressed: () {
               widget.onExplorePressed();
+            },
+          ),
+          //   color: Theme.of(context).primaryColor,
+          //   onPressed: () {
+          //     widget.onExplorePressed();
+          //   },
+          // ),
+          PopupMenuButton(
+            itemBuilder: (context) {
+              return [
+                PopupMenuItem(
+                  child: Text('Privacy Policy'),
+                  value: 1,
+                ),
+              ];
+            },
+            onSelected: (value) {
+              if (value == 1) {
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) {
+                  return PDFViewerRoute();
+                }));
+              }
             },
           ),
         ],

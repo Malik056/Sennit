@@ -901,7 +901,9 @@ class BottomBarIcon extends StatefulWidget {
 
 class _BottomBarIconState extends State<BottomBarIcon> {
   void refresh() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   bool isShown = false;

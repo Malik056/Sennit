@@ -219,7 +219,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       // DatabaseHelper.getDatabase().close();
-      setState(() {});
+      // setState(() {});
     }
   }
 

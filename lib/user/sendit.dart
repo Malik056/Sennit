@@ -478,14 +478,14 @@ class SendItCartRoute extends StatelessWidget {
               SendItCartRouteState.receiverEmailController.text =
                   SendItCartRouteState.receiverEmailController.text.trim();
 
-              // Map<String, dynamic> result = await performTransaction(
-              //   context,
-              //   SendItCartRouteState.totalCharges,
-              // );
-              Map<String, dynamic> result = {
-                'status': RaveStatus.success,
-                'errorMessage': "All Good",
-              };
+              Map<String, dynamic> result = await performTransaction(
+                context,
+                SendItCartRouteState.totalCharges,
+              );
+              // Map<String, dynamic> result = {
+              //   'status': RaveStatus.success,
+              //   'errorMessage': "All Good",
+              // };
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
@@ -561,7 +561,7 @@ class SendItCartRoute extends StatelessWidget {
                     .collection("postedOrders")
                     .add(orderData)
                     .then((_) async {
-                  final orderId = _.documentID;
+                  // final orderId = _.documentID;
                   // sennitOrder.orderId = orderId;
                   orderData.update(
                     'orderId',
