@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/my_widgets/pdf_viewer.dart';
 import 'package:sennit/partner_store/login.dart';
-import 'package:sennit/user/recieveIt.dart';
+import 'package:sennit/user/receiveit.dart';
 
 class StartPage extends StatefulWidget {
   @override
@@ -13,13 +14,26 @@ class StartPage extends StatefulWidget {
   }
 }
 
-class StartPageState extends State<StartPage> with TickerProviderStateMixin {
+class StartPageState extends State<StartPage>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _willExit = false;
   TabController _tabController;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    print('stateChanged');
+    if (state == AppLifecycleState.resumed) {
+      // DatabaseHelper.getDatabase().close();
+      try {
+        setState(() {});
+      } catch (_) {}
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // translate.addStatusListener((status) {
     //   if (status == AnimationStatus.completed) {
     //     controller.repeat(reverse: true);
@@ -58,7 +72,11 @@ class StartPageState extends State<StartPage> with TickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-                MyStartPage(),
+                MyStartPage(
+                  onExplorePressed: () {
+                    _tabController.animateTo(1);
+                  },
+                ),
                 ReceiveItRoute(
                   tabController: _tabController,
                   demo: true,
@@ -73,7 +91,11 @@ class StartPageState extends State<StartPage> with TickerProviderStateMixin {
 }
 
 class MyStartPage extends StatefulWidget {
-  MyStartPage({Key key}) : super(key: key);
+  final Function onExplorePressed;
+  MyStartPage({
+    Key key,
+    @required this.onExplorePressed,
+  }) : super(key: key);
 
   @override
   MyStartPageState createState() => MyStartPageState();
@@ -83,6 +105,7 @@ class MyStartPageState extends State<MyStartPage>
     with SingleTickerProviderStateMixin {
   AnimationController controller;
   Animation<int> translate;
+  bool tutorialOn = true;
 
   @override
   void initState() {
@@ -97,12 +120,18 @@ class MyStartPageState extends State<MyStartPage>
         setState(() {});
       }
     });
-    controller.repeat(reverse: true);
+    // controller.repeat(reverse: true);
+    // Future.delayed(Duration(seconds: 4)).then((_) {
+    //   controller.dispose();
+    //   tutorialOn = false;
+    //   if (mounted) {
+    //     setState(() {});
+    //   }
+    // });
   }
 
   @override
   void dispose() {
-    controller.dispose();
     super.dispose();
   }
 
@@ -112,44 +141,83 @@ class MyStartPageState extends State<MyStartPage>
       appBar: AppBar(
         title: Text('Sennit'),
         centerTitle: true,
+        actions: <Widget>[
+          // IconButton(
+          //   padding: EdgeInsets.all(0),
+
+          // icon:
+          // InkWell(
+          // child:
+          IconButton(
+            icon: Icon(Icons.explore, color: Theme.of(context).primaryColor),
+            tooltip: 'Explore',
+            onPressed: () {
+              widget.onExplorePressed();
+            },
+          ),
+          //   color: Theme.of(context).primaryColor,
+          //   onPressed: () {
+          //     widget.onExplorePressed();
+          //   },
+          // ),
+          PopupMenuButton(
+            itemBuilder: (context) {
+              return [
+                PopupMenuItem(
+                  child: Text('Privacy Policy'),
+                  value: 1,
+                ),
+              ];
+            },
+            onSelected: (value) {
+              if (value == 1) {
+                Navigator.push(context, MaterialPageRoute(builder: (ctx) {
+                  return PDFViewerRoute();
+                }));
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
           child: Column(
         children: <Widget>[
-          SizedBox(
-            height: 10,
-          ),
-          SizedBox(
-            width: MediaQuery.of(context).size.width,
-            height: 40,
-            child: Stack(
-              children: <Widget>[
-                Positioned(
-                  right: controller.value * 20,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Text(
-                        'Swipe Right to Explore  ',
-                        style: Theme.of(context).textTheme.title.copyWith(
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                      Image.asset(
-                        'assets/images/right.png',
-                        width: MediaQuery.of(context).size.width * 0.08,
-                      ),
-                      SizedBox(
-                        width: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // SizedBox(
+          //   height: 10,
+          // ),
+          // SizedBox(
+          //   width: MediaQuery.of(context).size.width,
+          //   height: 40,
+          //   child: Stack(
+          //     children: <Widget>[
+          //       // tutorialOn
+          //       //     ? Positioned(
+          //       //         right: controller.value * 20,
+          //       //         child: Row(
+          //       //           mainAxisSize: MainAxisSize.min,
+          //       //           mainAxisAlignment: MainAxisAlignment.end,
+          //       //           crossAxisAlignment: CrossAxisAlignment.end,
+          //       //           children: <Widget>[
+          //       //             Text(
+          //       //               'Swipe Right to Explore  ',
+          //       //               style: Theme.of(context).textTheme.title.copyWith(
+          //       //                     fontWeight: FontWeight.normal,
+          //       //                   ),
+          //       //             ),
+          //       //             Image.asset(
+          //       //               'assets/images/right.png',
+          //       //               width: MediaQuery.of(context).size.width * 0.08,
+          //       //             ),
+          //       //             SizedBox(
+          //       //               width: 2,
+          //       //             ),
+          //       //           ],
+          //       //         ),
+          //       //       )
+          //       //     : Opacity(opacity: 0),
+          //     ],
+          //   ),
+          // ),
           Opacity(
             opacity: 0,
             child: Container(

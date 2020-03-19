@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:password/password.dart';
-import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/forgot_password.dart';
@@ -193,6 +192,7 @@ class _UserSignInState extends State<UserSignIn> {
                                     return;
                                   }
                                   User user = User.fromMap(userData.data);
+                                  user.userId = userId;
                                   Session.data.update(
                                     'user',
                                     (a) {
@@ -202,16 +202,16 @@ class _UserSignInState extends State<UserSignIn> {
                                       return user;
                                     },
                                   );
-                                  await DatabaseHelper.signInUser(userId);
-                                  List<UserLocationHistory>
-                                      userLocationHistory = await DatabaseHelper
-                                          .getUserLocationHistory();
-                                  Session.data.putIfAbsent(
-                                    "userLocationHistory",
-                                    () {
-                                      return userLocationHistory;
-                                    },
-                                  );
+                                  // await DatabaseHelper.signInUser(userId);
+                                  // List<UserLocationHistory>
+                                  //     userLocationHistory = await DatabaseHelper
+                                  //         .getUserLocationHistory();
+                                  // Session.data.putIfAbsent(
+                                  //   "userLocationHistory",
+                                  //   () {
+                                  //     return userLocationHistory;
+                                  //   },
+                                  // );
                                   MyApp.futureCart =
                                       initializeCart(user.userId);
                                   // Navigator.pop(context);

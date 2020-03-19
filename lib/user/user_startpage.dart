@@ -79,7 +79,7 @@ class UserStartPage extends StatelessWidget {
                       borderRadius:
                           BorderRadius.all(Radius.elliptical(100, 100))),
                   onPressed: () {
-                    Navigator.of(context).pushNamed(MyApp.userSignin);
+                    Navigator.of(context).pushNamed(MyApp.userSignIn);
                   },
                 ),
               ],

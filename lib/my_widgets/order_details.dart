@@ -18,7 +18,7 @@ class OrderTile extends StatelessWidget {
       child: ListTile(
         dense: true,
         isThreeLine: true,
-        onTap: () {
+        onTap: () async {
           if (!data.containsKey('numberOfSleevesNeeded') ||
               data['numberOfSleevesNeeded'] == null) {
             Navigator.push(
@@ -30,7 +30,7 @@ class OrderTile extends StatelessWidget {
               ),
             );
           } else {
-            Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(builder: (ctx) {
                 return SennitOrderDetailsRoute(
@@ -45,7 +45,7 @@ class OrderTile extends StatelessWidget {
           color: Theme.of(context).primaryColor,
         ),
         title: Text(
-          '${data['numberOfSleevesNeeded'] == null ? 'Recieve it' : 'Sennit'}',
+          '${data['numberOfSleevesNeeded'] == null ? 'Receive it' : 'Sennit'}',
           style: Theme.of(context).textTheme.title,
         ),
         subtitle: Text.rich(
@@ -76,7 +76,7 @@ class OrderTile extends StatelessWidget {
           ),
         ),
         trailing: Text(
-          'R${data['price']}',
+          'R${(data['price'] as double).toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.subhead,
         ),
       ),
@@ -142,7 +142,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '${data['senderHouse'] ?? "" + ((data['senderHouse'] != null && data['senderHouse'] != '') ? ', ' : '') + data['pickUpAddress']}',
+                      '${(data['senderHouse'] ?? "")}${((data['senderHouse'] != null && data['senderHouse'] != '') ? ', ' : '')}${data['pickUpAddress']}',
                       strutStyle: StrutStyle(height: strutHeight),
                     ),
                   ),
@@ -161,7 +161,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '${data['receiverHouse'] ?? "" + ((data['receiverHouse'] != null && data['receiverHouse'] != '') ? ', ' : '') + data['dropOffAddress']}',
+                      '${data['receiverHouse'] ?? ""}${((data['receiverHouse'] != null && data['receiverHouse'] != '') ? ', ' : '')}${data['dropOffAddress']}',
                       strutStyle: StrutStyle(height: strutHeight),
                     ),
                   ),
@@ -193,9 +193,26 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                     style: textTheme.subhead,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
+                  Expanded(
+                    child: Text(
+                      '${data['status']}',
+                      strutStyle: StrutStyle(height: strutHeight),
+                    ),
+                  ),
                   Text(
-                    '${data['status']}',
+                    'Date: ',
+                    style: textTheme.subhead,
                     strutStyle: StrutStyle(height: strutHeight),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '''${DateFormat(DateFormat.YEAR_ABBR_MONTH_DAY).format(
+                        DateTime.fromMillisecondsSinceEpoch(
+                          data['date'],
+                        ),
+                      )}''',
+                      strutStyle: StrutStyle(height: strutHeight),
+                    ),
                   ),
                 ],
               ),
@@ -227,28 +244,33 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                   SizedBox(
                     width: 10,
                   ),
-                  RaisedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OrderTracking(
-                            type: OrderTrackingType.SENNIT,
-                            data: Map<String, dynamic>.from(data),
+                  data['status'] != "Delivered"
+                      ? RaisedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => OrderTracking(
+                                  type: OrderTrackingType.SENNIT,
+                                  data: Map<String, dynamic>.from(data),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Track Your Order',
+                            style:
+                                Theme.of(context).textTheme.subtitle.copyWith(
+                                      color: Colors.white,
+                                    ),
                           ),
+                        )
+                      : Opacity(
+                          opacity: 0,
                         ),
-                      );
-                    },
-                    child: Text(
-                      'Track Your Order',
-                      style: Theme.of(context).textTheme.subtitle.copyWith(
-                            color: Colors.white,
-                          ),
-                    ),
-                  ),
                   Spacer(),
                   Text(
-                    'Total: R${data['price']}',
+                    'Total: R${(data['price'] as double).toStringAsFixed(2)}',
                     style: textTheme.title,
                   ),
                   SizedBox(
@@ -269,9 +291,9 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
 
   const ReceiveItOrderDetailsRoute({Key key, this.data}) : super(key: key);
 
-  Future<Address> _getAddressFromLatLng(LatLng latlng) {
+  Future<Address> _getAddressFromLatLng(LatLng latlng) async {
     Coordinates coordinates = Coordinates(latlng.latitude, latlng.longitude);
-    return Geocoder.local
+    return Geocoder.google(await Utils.getAPIKey())
         .findAddressesFromCoordinates(coordinates)
         .then((addresses) {
       return addresses[0];
@@ -351,7 +373,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                               );
                             }
                             return Text(
-                              '${data['house'] + ((data['house'] != null && data['house'] != '') ? ', ' : '') + snapshot.data.addressLine}',
+                              '${data['house'] ?? ''}${((data['house'] != null && data['house'] != '') ? ', ' : '')}${snapshot.data.addressLine}',
                               strutStyle: StrutStyle(
                                 height: strutHeight,
                               ),
@@ -530,28 +552,32 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                     SizedBox(
                       width: 10,
                     ),
-                    RaisedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => OrderTracking(
-                              type: OrderTrackingType.RECEIVE_IT,
-                              data: Map<String, dynamic>.from(data),
+                    (data['status'] as String).toUpperCase() !=
+                            'Delivered'.toUpperCase()
+                        ? RaisedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OrderTracking(
+                                    type: OrderTrackingType.RECEIVE_IT,
+                                    data: Map<String, dynamic>.from(data),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Track Your Order',
+                              style:
+                                  Theme.of(context).textTheme.subtitle.copyWith(
+                                        color: Colors.white,
+                                      ),
                             ),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Track Your Order',
-                        style: Theme.of(context).textTheme.subtitle.copyWith(
-                              color: Colors.white,
-                            ),
-                      ),
-                    ),
+                          )
+                        : Spacer(),
                     Spacer(),
                     Text(
-                      'Total: R${data['price']}',
+                      'Total: R${(data['price'] as double).toStringAsFixed(2)}',
                       style: textTheme.title,
                     ),
                     SizedBox(

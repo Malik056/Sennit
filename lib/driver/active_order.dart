@@ -23,7 +23,7 @@ class ActiveOrder extends StatelessWidget {
     ActiveOrder._itemName = itemNum;
   }
 
-  bool _seachLatLngInListOfStoreItems(List<StoreItem> items, LatLng latLng) {
+  bool _searchLatLngInListOfStoreItems(List<StoreItem> items, LatLng latLng) {
     for (StoreItem item in items) {
       if (item.latlng == latLng) {
         return true;
@@ -37,13 +37,12 @@ class ActiveOrder extends StatelessWidget {
     Marker markerPickup;
     if (_orderData.containsKey('numberOfBoxes')) {
       LatLng pLatLng;
-      if(_orderData.containsKey('pickUpLatLng')) {
+      if (_orderData.containsKey('pickUpLatLng')) {
         pLatLng = Utils.latLngFromString(_orderData['pickUpLatLng']);
-      }
-      else {
+      } else {
         pLatLng = _orderData['pickupLatLng'];
       }
-      LatLng starting = pLatLng;      
+      LatLng starting = pLatLng;
       Marker markerPickup = Marker(
         markerId: MarkerId("marker1"),
         infoWindow:
@@ -61,7 +60,6 @@ class ActiveOrder extends StatelessWidget {
             'assets/images/pickup.png'),
       );
 
-
       pickups.add(markerPickup);
     } else {
       List<StoreItem> items = _orderData['storeItems'];
@@ -71,7 +69,7 @@ class ActiveOrder extends StatelessWidget {
         bool found = false;
         int i = 0;
         for (List<StoreItem> storeItems in groupItems) {
-          if (_seachLatLngInListOfStoreItems(storeItems, item.latlng)) {
+          if (_searchLatLngInListOfStoreItems(storeItems, item.latlng)) {
             if (i == 0) {
               storeItems.add(item);
             }
@@ -141,15 +139,15 @@ class ActiveOrder extends StatelessWidget {
     Marker lastMarker = markers.elementAt(0);
     List<LatLng> route = [];
     for (int i = 1; i < markers.length; i++) {
-      List<LatLng> latlngs = await GoogleMapPolyline(
-              apiKey: await Utils.getAPIKey(context: context))
-          .getCoordinatesWithLocation(
+      List<LatLng> latLngs =
+          await GoogleMapPolyline(apiKey: await Utils.getAPIKey())
+              .getCoordinatesWithLocation(
         origin: lastMarker.position,
         destination: markers.elementAt(i).position,
         mode: RouteMode.driving,
       );
       lastMarker = markers.elementAt(i);
-      route.addAll(latlngs);
+      route.addAll(latLngs);
     }
 
     // List<LatLng> route = List();
@@ -298,17 +296,16 @@ class ActiveOrder extends StatelessWidget {
 class _ActiveOrderBody extends StatefulWidget {
   // final Delivery delivery;
   // ActiveOrder({@required this.delivery});
-
-  final state = _ActiveOrderState();
-
+  static GlobalKey<_ActiveOrderState> _key = GlobalKey<_ActiveOrderState>();
+  // final state = _ActiveOrderState();
+  _ActiveOrderBody() : super(key: _key);
   setWidgetState() {
-    // createState();
-    state.refresh();
+    _key?.currentState?.refresh();
   }
 
   @override
   State<StatefulWidget> createState() {
-    return state;
+    return _ActiveOrderState();
   }
 }
 
@@ -680,7 +677,6 @@ class _OrderConfirmationState extends State<_OrderConfirmation> {
                         onPressed: () {
                           ActiveOrder.orderConfirmed = true;
                           setState(() {});
-
                         },
                         color: Theme.of(context).primaryColor,
                         child: Text(

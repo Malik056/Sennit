@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
@@ -15,18 +17,20 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
 import 'package:location/location.dart';
+import 'package:path/path.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
 import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
+import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
-import 'package:sennit/user/recieveIt.dart';
+import 'package:sennit/user/receiveit.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
@@ -37,33 +41,44 @@ import 'user/user_startpage.dart';
 
 Future<void> locationInitializer() async {
   Location _location = Location();
-  bool locationPermission = await _location.requestPermission();
-  if (locationPermission) {
+  PermissionStatus locationPermission = await _location.requestPermission();
+  if (locationPermission == PermissionStatus.GRANTED) {
+    // == PermissionStatus.GRANTED) {
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);
     });
     final data = await MyApp._lastKnowLocation;
     MyApp._initialLocation = data;
-    MyApp._address = (await Geocoder.local.findAddressesFromCoordinates(
-        Coordinates(data.latitude, data.longitude)))[0];
+    MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+        .findAddressesFromCoordinates(
+            Coordinates(data.latitude, data.longitude)))[0];
   } else {
     SystemNavigator.pop();
   }
 }
 
+// Future<dynamic> myBackgroundMessageHandler(Map<String, dynamic> message) {
+//   if (message.containsKey('data')) {
+//     // Handle data message
+//     final dynamic data = message['data'];
+//   }
+
+//   if (message.containsKey('notification')) {
+//     // Handle notification message
+//     final dynamic notification = message['notification'];
+//   }
+
+//   // Or do other work.
+// }
+
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
-  _firebaseMessaging.requestNotificationPermissions();
-  _firebaseMessaging.configure(
-    onBackgroundMessage: (Map<String, dynamic> message) async {},
-    onResume: (Map<String, dynamic> message) async {},
-    onMessage: (Map<String, dynamic> message) async {},
-    onLaunch: (Map<String, dynamic> message) async {},
-  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await locationInitializer();
   await databaseInitializer();
+  Utils.getFCMServerKey();
+  Utils.getAPIKey();
+
   // await initializeDateFormatting('en_ZA');
   final user = await FirebaseAuth.instance.currentUser();
   if (user != null) {
@@ -131,14 +146,14 @@ databaseInitializer() async {
   await DatabaseHelper.iniitialize();
 }
 
-class MyApp extends StatelessWidget with WidgetsBindingObserver {
+class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String startPage = 'startPage';
   static String initialRoute = startPage;
   static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
   static const String userSignup = '$userStartPage/userSignup';
-  static const String userSignin = '$userStartPage/userSignin';
+  static const String userSignIn = '$userStartPage/userSignIn';
   static const String driverSignup = '$driverStartPage/driverSignup';
   static const String userStartPage = '$startPage/userStartPage';
   static const String driverStartPage = '$startPage/driverStartPage';
@@ -149,9 +164,9 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   static const String deliverToAddresses = 'sendItDestinationRoute';
   static const String addAddressFrom = 'addAddressFrom';
   static const String addAddressToForSennit = 'addAddressToSennit';
-  static const String addAddressToRecieveIt = 'addAddressToRecieveIt';
+  static const String addAddressToReceiveIt = 'addAddressToReceiveIt';
   static const String senditCartPage = 'sendItCartPage';
-  static const String recieveItRoute = 'recieveItRoute';
+  static const String receiveItRoute = 'receiveItRoute';
   static const String storeMainPage = 'storeMainPage';
   static const String partnerStoreHome = 'partnerStoreHome';
   static const String driverHome = 'driverHome';
@@ -174,20 +189,104 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
   MyApp() {
     WidgetsBinding.instance.addObserver(this);
   }
+  @override
+  State<StatefulWidget> createState() {
+    return MyAppState();
+  }
+}
+
+FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+class MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    var initializationSettingsAndroid =
+        new AndroidInitializationSettings('logo');
+    var initializationSettingsIOS = new IOSInitializationSettings();
+    var initializationSettings = new InitializationSettings(
+        initializationSettingsAndroid, initializationSettingsIOS);
+    flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onSelectNotification: onSelectNotification,
+    );
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.detached) {
-      DatabaseHelper.getDatabase().close();
+    if (state == AppLifecycleState.resumed) {
+      // DatabaseHelper.getDatabase().close();
+      // setState(() {});
     }
   }
 
+  Future<dynamic> onSelectNotification(String payload) async {
+    flutterLocalNotificationsPlugin.cancelAll();
+    Map<String, dynamic> payloadMap = json.decode(payload);
+    Map<String, dynamic> data =
+        Platform.isIOS ? payloadMap : payloadMap['data'];
+    Firestore.instance
+        .collection('users')
+        .document(data['userId'])
+        .collection('notifications')
+        .document(data['orderId'])
+        .setData(
+      {
+        'seen': true,
+      },
+      merge: true,
+    );
+    // Navigator.popUntil(context, predicate)
+    navigatorKey.currentState.push(
+      MaterialPageRoute(
+        builder: (ctx) => ReviewWidget(
+          user: Session.data['user'],
+          itemId: null,
+          isDriver: true,
+          userId: data['userId'],
+          driverId: data['driverId'],
+          fromNotification: true,
+          orderId: data['orderId'],
+        ),
+      ),
+    );
+    // Navigator.push(
+    //   context,
+    // );
+  }
+
+  static Future showNotificationWithDefaultSound(
+      Map<String, dynamic> jsonData) async {
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'orderCompleteChannel',
+        'OrderComplete',
+        'When The Order is Delivered this channel will show the notifications',
+        importance: Importance.Max,
+        priority: Priority.High);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      jsonData['title'] ?? 'Order Delivered',
+      jsonData['message'] ?? 'Your Order has delivered',
+      platformChannelSpecifics,
+      payload: json.encode(
+        jsonData,
+      ),
+    );
+  }
+
+  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return BotToastInit(
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         localizationsDelegates: const [
           location_picker.S.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -199,48 +298,48 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
           Locale('ar', ''),
         ],
         navigatorObservers: [BotToastNavigatorObserver()],
-        initialRoute: initialRoute,
+        initialRoute: MyApp.initialRoute,
         routes: {
           // '/': (context) => StartPage(),
-          driverNavigationRoute: (context) => DeliveryTrackingRoute(
+          MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
                 OpenAs.NAVIGATION,
                 fromCoordinate: LatLng(31, 74),
                 toCoordinate: LatLng(40, 80),
                 myLocation: LatLng(42, 85),
               ),
-          startPage: (context) => StartPage(),
-          driverHome: (context) => HomeScreenDriver(),
-          userSignup: (context) => UserSignUpRoute(),
-          userSignin: (context) => UserSignInRoute(),
-          userStartPage: (context) => UserStartPage(),
-          driverSignup: (context) => DriverSignUpRoute(),
-          driverSignin: (context) => DriverSignInRoute(),
-          driverStartPage: (context) => DriverStartPage(),
-          userHome: (context) => UserHomeRoute(),
-          verifyEmailRoute: (context) => VerifyEmailRoute(
+          MyApp.startPage: (context) => StartPage(),
+          MyApp.driverHome: (context) => HomeScreenDriver(),
+          MyApp.userSignup: (context) => UserSignUpRoute(),
+          MyApp.userSignIn: (context) => UserSignInRoute(),
+          MyApp.userStartPage: (context) => UserStartPage(),
+          MyApp.driverSignup: (context) => DriverSignUpRoute(),
+          MyApp.driverSignin: (context) => DriverSignInRoute(),
+          MyApp.driverStartPage: (context) => DriverStartPage(),
+          MyApp.userHome: (context) => UserHomeRoute(),
+          MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
                 context: context,
               ),
-          selectFromAddress: (context) =>
+          MyApp.selectFromAddress: (context) =>
               SelectFromAddressRoute(MyApp._address),
-          recieveItRoute: (context) => StoresRoute(
-                address: _address,
+          MyApp.receiveItRoute: (context) => StoresRoute(
+                address: MyApp._address,
               ),
-          storeMainPage: (context) => StoreMainPage(),
-          partnerStoreHome: (context) => OrderedItemsList(),
+          MyApp.storeMainPage: (context) => StoreMainPage(),
+          MyApp.partnerStoreHome: (context) => OrderedItemsList(),
           // activeOrderBody: (context) => ActiveOrder(),
-          searchPage: (context) => SearchWidget(),
-          notificationWidget: (context) => UserNotificationWidget(),
+          MyApp.searchPage: (context) => SearchWidget(),
+          MyApp.notificationWidget: (context) => UserNotificationWidget(),
           // sennitOrderRoute: (context) => SennitOrderRoute({}),
         },
         title: 'Sennit',
         theme: ThemeData(
           backgroundColor: Colors.white,
           fontFamily: 'ArchivoNarrow',
-          primaryColor: secondaryColor,
-          accentColor: secondaryColor,
+          primaryColor: widget.secondaryColor,
+          accentColor: widget.secondaryColor,
           // buttonColor: primaryColor,
           buttonTheme: ButtonThemeData(
-            buttonColor: secondaryColor,
+            buttonColor: widget.secondaryColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.all(
                 Radius.circular(6),
@@ -254,7 +353,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
           ),
           appBarTheme: AppBarTheme(
             iconTheme: IconThemeData(
-              color: secondaryColor,
+              color: widget.secondaryColor,
             ),
             color: Colors.white,
             textTheme: TextTheme(
@@ -262,26 +361,26 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
                 fontWeight: FontWeight.bold,
                 fontFamily: 'ArchivoNarrow',
                 fontSize: 22,
-                color: secondaryColor,
+                color: widget.secondaryColor,
               ),
             ),
           ),
           iconTheme: IconThemeData(
-            color: secondaryColor,
+            color: widget.secondaryColor,
           ),
           textTheme: TextTheme(
               title: TextStyle(
-                color: secondaryColor,
+                color: widget.secondaryColor,
                 fontSize: 22,
                 fontWeight: FontWeight.normal,
               ),
               headline: TextStyle(
-                color: secondaryColor,
+                color: widget.secondaryColor,
                 fontSize: 36,
                 fontWeight: FontWeight.bold,
               ),
               subhead: TextStyle(
-                color: secondaryColor,
+                color: widget.secondaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -306,7 +405,7 @@ class MyApp extends StatelessWidget with WidgetsBindingObserver {
               ),
               display1: TextStyle(
                 fontSize: 26,
-                color: secondaryColor,
+                color: widget.secondaryColor,
                 fontWeight: FontWeight.bold,
               )),
         ),
@@ -328,20 +427,23 @@ class UserSignUp {
 
 class Utils {
   static String _apiKey;
-  static Future<String> getAPIKey({@required BuildContext context}) async {
+  static String _fcmServerKey;
+  static Future<String> getAPIKey() async {
     if (_apiKey != null) {
       return _apiKey;
     }
-    showDialog(
-        context: context,
-        builder: (context) {
-          return CircularProgressIndicator();
-        });
     var key = json.decode(await rootBundle.loadString('assets/secret.json'));
     _apiKey = key['Maps'];
-
-    Navigator.pop(context);
     return _apiKey;
+  }
+
+  static Future<String> getFCMServerKey() async {
+    if (_fcmServerKey != null) {
+      return _fcmServerKey;
+    }
+    var key = json.decode(await rootBundle.loadString('assets/secret.json'));
+    _fcmServerKey = key['fcm_server_key'];
+    return _fcmServerKey;
   }
 
   static Future<Map<String, String>> getUserNameAndPassword(
@@ -362,7 +464,7 @@ class Utils {
     return {'email': name, 'password': password};
   }
 
-  static showWidgetInDialoge(context, Widget widget) {
+  static showWidgetInDialogue(context, Widget widget) {
     showDialog(
         context: context,
         builder: (context) {
@@ -535,7 +637,7 @@ class Utils {
 
   static showPlacePicker(BuildContext context,
       {@required LatLng initialLocation}) async {
-    String apiKey = await getAPIKey(context: context);
+    String apiKey = await getAPIKey();
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
         Map<String, LocationResult>.from((await Navigator.of(context).push(
@@ -583,10 +685,10 @@ class Utils {
     if (latlng == null) {
       return null;
     }
-    List<String> splittedValues = latlng.split(',');
-    double lattitude = double.parse(splittedValues[0]);
-    double longitude = double.parse(splittedValues[1]);
-    return LatLng(lattitude, longitude);
+    List<String> splitedValues = latlng.split(',');
+    double latitude = double.parse(splitedValues[0]);
+    double longitude = double.parse(splitedValues[1]);
+    return LatLng(latitude, longitude);
   }
 
   static String genderToString(Gender gender) {
@@ -671,6 +773,27 @@ class Utils {
       }
     }
     return true;
+  }
+
+  static Future signOutUser(context) async {
+    Utils.showLoadingDialog(context);
+    // Navigator.of(context).popUntil((route) => route.isFirst);
+    FirebaseMessaging fcm = FirebaseMessaging();
+    User user = Session.data['user'];
+    Future unRegisteringTokens = Firestore.instance
+        .collection('users')
+        .document(user.userId)
+        .collection('tokens')
+        .document(await fcm.getToken())
+        .delete()
+        .timeout(Duration(seconds: 12), onTimeout: () {
+      Navigator.pop(context);
+    });
+    await unRegisteringTokens;
+    await FirebaseAuth.instance.signOut();
+    Session.data..removeWhere((key, value) => true);
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
   }
 }
 

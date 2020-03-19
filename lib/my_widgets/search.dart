@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart' as model;
-import 'package:sennit/user/recieveIt.dart';
+import 'package:sennit/user/receiveit.dart';
 
 class SearchWidget extends StatefulWidget {
   @override
