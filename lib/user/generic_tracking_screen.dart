@@ -1182,7 +1182,7 @@ class MySolidBottomSheetState extends State<MySolidBottomSheet> {
       },
       // enableDrag: true,
       // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
-      maxHeight: 280,
+      maxHeight: 380,
       elevation: 8.0,
       draggableBody: true,
       toggleVisibilityOnTap: true,
