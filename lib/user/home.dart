@@ -77,12 +77,13 @@ class UserHomeRoute extends StatelessWidget {
             InkWell(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: Icon(FontAwesomeIcons.signOutAlt),
+                child: Tooltip(
+                  child: Icon(FontAwesomeIcons.signOutAlt),
+                  message: "Sign out",
+                ),
               ),
               onTap: () async {
-                FirebaseAuth.instance.signOut();
-                Session.data..removeWhere((key, value) => true);
-                Navigator.pushReplacementNamed(context, MyApp.startPage);
+                Utils.signOutUser(context);
               },
             ),
           ],
@@ -160,8 +161,9 @@ class UserHomeState extends State<UserHomeBody> {
     );
   }
 
-  Future<dynamic> _onResume(data) async {
+  Future<dynamic> _onResume(payload) async {
     final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    final data = Platform.isIOS ? payload : payload['data'];
     if (uid == data['userId']) {
       await Firestore.instance.collection('users').document(uid).get().then(
         (userData) async {
@@ -207,8 +209,10 @@ class UserHomeState extends State<UserHomeBody> {
     }
   }
 
-  Future<dynamic> _onLaunch(data) async {
+  Future<dynamic> _onLaunch(payload) async {
     final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    final data = Platform.isIOS ? payload : payload['data'];
+    BotToast.showText(text: 'onLaunch: $data');
     if (uid == data['userId']) {
       Firestore.instance.collection('users').document(uid).get().then(
         (userData) async {

@@ -37,9 +37,7 @@ class NotificationWidget extends StatelessWidget {
                     title: Text('Your Order is on its way'),
                     subtitle: Text(
                         'Contents: ${snapshot.data.data[keys[index]]['contents']}'),
-                    onTap: () {
-                      String orderId = notification['orderId'];
-                    },
+                    onTap: () {},
                   )
                 : ListTile(
                     title: Text('Your Order has Been Delivered'),
@@ -48,6 +46,7 @@ class NotificationWidget extends StatelessWidget {
                       Navigator.push(context, MaterialPageRoute(
                         builder: (context) {
                           return ReviewWidget(
+                            orderId: notification['orderId'],
                             user: user,
                             itemId: "",
                             isDriver: true,

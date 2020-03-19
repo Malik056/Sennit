@@ -197,7 +197,7 @@ class AuthenticateAgainRoute extends StatelessWidget {
                             },
                           );
                           if (result.user != null) {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                 builder: (c) {

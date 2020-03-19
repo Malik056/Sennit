@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -16,6 +17,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
 import 'package:location/location.dart';
+import 'package:path/path.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
@@ -241,12 +243,13 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     navigatorKey.currentState.push(
       MaterialPageRoute(
         builder: (ctx) => ReviewWidget(
-          user: null,
+          user: Session.data['user'],
           itemId: null,
-          driver: true,
+          isDriver: true,
           userId: data['userId'],
           driverId: data['driverId'],
           fromNotification: true,
+          orderId: data['orderId'],
         ),
       ),
     );
@@ -770,6 +773,27 @@ class Utils {
       }
     }
     return true;
+  }
+
+  static Future signOutUser(context) async {
+    Utils.showLoadingDialog(context);
+    // Navigator.of(context).popUntil((route) => route.isFirst);
+    FirebaseMessaging fcm = FirebaseMessaging();
+    User user = Session.data['user'];
+    Future unRegisteringTokens = Firestore.instance
+        .collection('users')
+        .document(user.userId)
+        .collection('tokens')
+        .document(await fcm.getToken())
+        .delete()
+        .timeout(Duration(seconds: 12), onTimeout: () {
+      Navigator.pop(context);
+    });
+    await unRegisteringTokens;
+    await FirebaseAuth.instance.signOut();
+    Session.data..removeWhere((key, value) => true);
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
   }
 }
 

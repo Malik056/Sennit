@@ -434,35 +434,36 @@ class __BodyState extends State<_Body> {
           currentTimestamp: orderData['currentTimestamp'],
         );
       }
-
-      setState(() {
-        driverId = orderData.data['driverId'];
-        driverLicencePlateNumber = orderData.data['driverLicencePlateNumber'];
-        driverPhoneNumber = orderData.data['driverPhoneNumber'];
-        driverName = orderData.data['driverName'];
-        if (driverLatLng != null) {
-          widget.onDriverAvailable(driverLatLng);
-        }
-        driverMarker = Marker(
-          markerId: MarkerId('driverMarker'),
-          flat: true,
-          rotation: 90,
-          icon: driverIcon,
-          anchor: Offset(
-            0.5,
-            0.5,
-          ),
-          zIndex: 2,
-          draggable: false,
-          position: orderData.data['driverLatLng'] != null
-              ? Utils.latLngFromString(orderData.data['driverLatLng'])
-              : LatLng(0, 0),
-          visible: orderData.data.containsKey('driverId') &&
-                  orderData.data['driverId'] != null
-              ? true
-              : false,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          driverId = orderData.data['driverId'];
+          driverLicencePlateNumber = orderData.data['driverLicencePlateNumber'];
+          driverPhoneNumber = orderData.data['driverPhoneNumber'];
+          driverName = orderData.data['driverName'];
+          if (driverLatLng != null) {
+            widget.onDriverAvailable(driverLatLng);
+          }
+          driverMarker = Marker(
+            markerId: MarkerId('driverMarker'),
+            flat: true,
+            rotation: 90,
+            icon: driverIcon,
+            anchor: Offset(
+              0.5,
+              0.5,
+            ),
+            zIndex: 2,
+            draggable: false,
+            position: orderData.data['driverLatLng'] != null
+                ? Utils.latLngFromString(orderData.data['driverLatLng'])
+                : LatLng(0, 0),
+            visible: orderData.data.containsKey('driverId') &&
+                    orderData.data['driverId'] != null
+                ? true
+                : false,
+          );
+        });
+      }
     });
     return driverLatLng;
   }
@@ -625,22 +626,35 @@ class __BodyState extends State<_Body> {
                                           driverLatLng,
                                           Utils.getLastKnowLocation());
                                     },
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: <Widget>[
-                                        Icon(
-                                          Icons.location_on,
-                                          color: Theme.of(context).primaryColor,
+                                    child: Container(
+                                      height: 80,
+                                      padding: EdgeInsets.all(4),
+                                      decoration: ShapeDecoration(
+                                        shape: Border(
+                                          left: BorderSide(
+                                              color: Theme.of(context)
+                                                  .primaryColor,
+                                              width: 2),
                                         ),
-                                        Text(
-                                          'Go',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .subhead,
-                                        ),
-                                      ],
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.location_on,
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                          ),
+                                          Text(
+                                            'Go',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .subhead,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1623,6 +1637,14 @@ class _OrderTileState extends State<_OrderTile> {
                 ),
               ),
             ],
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Text(
+            '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'}
+              ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
+            style: Theme.of(context).textTheme.subhead.copyWith(fontSize: 20),
           ),
         ],
       ),

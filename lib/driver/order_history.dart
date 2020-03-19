@@ -33,7 +33,12 @@ class OrderHistory extends StatelessWidget {
               children: List.generate(
                 documents.length,
                 (index) {
-                  return OrderTile(data: snapshot.data.documents[index]);
+                  final data = snapshot.data.documents[index].data;
+                  data.update(('orderId'),
+                      (old) => snapshot.data.documents[index].documentID,
+                      ifAbsent: () =>
+                          snapshot.data.documents[index].documentID);
+                  return OrderTile(data: data);
                 },
               ),
             ),

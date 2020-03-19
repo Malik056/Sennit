@@ -5,6 +5,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +22,7 @@ import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/changePassword.dart';
 import 'package:sennit/my_widgets/notification.dart';
+import 'package:sennit/my_widgets/pdf_viewer.dart';
 import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
@@ -148,18 +150,24 @@ class ReceiveItRoute extends StatelessWidget {
                   Card(
                     child: ListTile(
                       title: Text('Privacy Policy'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) {
+                              return PDFViewerRoute();
+                            },
+                          ),
+                        );
+                      },
                     ),
                   ),
                   Card(
                     child: ListTile(
                       leading: Icon(Icons.exit_to_app),
                       title: Text('Logout'),
-                      onTap: () {
-                        // Navigator.of(context).popUntil((route) => route.isFirst);
-                        FirebaseAuth.instance.signOut();
-                        Session.data..removeWhere((key, value) => true);
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                            MyApp.startPage, (route) => false);
+                      onTap: () async {
+                        Utils.signOutUser(context);
                       },
                     ),
                   )
@@ -1243,7 +1251,7 @@ class _FloatingMenuState extends State<FloatingMenu> {
             await Navigator.of(context)
                 .push(MaterialPageRoute(builder: (context) {
               return ReviewWidget(
-                
+                orderId: "",
                 user: Session.data['user'],
                 itemId: widget.itemId,
               );
@@ -3053,7 +3061,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               double>.from(
                                                             cart.itemsData,
                                                           );
-                                                          
 
                                                           itemsData.removeWhere(
                                                             (key, value) =>

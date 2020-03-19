@@ -1633,6 +1633,15 @@ class _OrderTile extends StatelessWidget {
                   ),
                 ],
               ),
+              SizedBox(
+                height: 10,
+              ),
+              Text(
+                '''${(data['numberOfBoxes'] == null || data['numberOfBoxes'] <= 0) ? '' : '${data['numberOfBoxes']} Box(s)'}
+              ${(data['numberOfSleevesNeeded'] == null || data['numberOfSleevesNeeded'] <= 0) ? '' : '${(data['numberOfBoxes'] != null && data['numberOfBoxes'] > 0) ? ', ' : ''}${data['numberOfSleevesNeeded']} Sleeve(s)'}''',
+                style:
+                    Theme.of(context).textTheme.subhead.copyWith(fontSize: 18),
+              ),
             ],
           ),
         );

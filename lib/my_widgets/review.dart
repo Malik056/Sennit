@@ -304,15 +304,16 @@ class _ActionButtonState extends State<_ActionButton> {
                 .add(
                   review.toMap(),
                 );
+            int totalReviews = (driver.totalReviews ?? 0) + 1;
+            double newRating = (driver.rating ?? 0) + rating;
             Firestore.instance.collection('drivers').document(driverId).setData(
               {
-                'rating': ((driver.rating ?? 0) + rating) /
-                    ((driver.totalReviews ?? 0) + 1),
-                'totalReviews': ((driver.totalReviews ?? 0) + 1),
+                'rating': newRating / 2.0,
+                'totalReviews': totalReviews,
               },
               merge: true,
             );
-            Firestore.instance
+            await Firestore.instance
                 .collection('users')
                 .document(userId)
                 .collection('notifications')
