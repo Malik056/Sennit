@@ -40,3 +40,5 @@ lib/generated_plugin_registrant.dart
 /assets/secret.json
 /ios/Runner/key.plist
 android/app/src/main/res/values/api_keys_tokens.xml
+*.apk
+*.abb
