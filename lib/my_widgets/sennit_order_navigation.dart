@@ -134,42 +134,92 @@ class _SennitOrderNavigationRouteState
               onOrderConfirmed: () async {
                 Driver driver = Session.data['driver'];
                 _MyAppBar._key?.currentState?.showButton();
-                widget.data.update(('status'), (old) => 'Accepted',
-                    ifAbsent: () => 'Accepted');
-                widget.data.update(('driverId'), (old) => driver.driverId,
-                    ifAbsent: () => driver.driverId);
-                widget.data.update(('driverName'), (old) => driver.fullName,
-                    ifAbsent: () => driver.fullName);
-                widget.data.update(
-                    ('driverImage'), (old) => driver.profilePicture,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(
-                    ('driverPhoneNumber'), (old) => driver.phoneNumber,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(('driverLicencePlateNumber'),
+                // widget.data.update(('status'), (old) => 'Accepted',
+                //     ifAbsent: () => 'Accepted');
+                // widget.data.update(('driverId'), (old) => driver.driverId,
+                //     ifAbsent: () => driver.driverId);
+                // widget.data.update(('driverName'), (old) => driver.fullName,
+                //     ifAbsent: () => driver.fullName);
+                // widget.data.update(
+                //     ('driverImage'), (old) => driver.profilePicture,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(
+                //     ('driverPhoneNumber'), (old) => driver.phoneNumber,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(('driverLicencePlateNumber'),
+                //     (old) => driver.profilePicture,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(
+                //   'acceptedOn',
+                //   (old) => DateTime.now().millisecondsSinceEpoch,
+                //   ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+                // );
+
+                await Firestore.instance.runTransaction((trx) async {
+                  DocumentReference ref = Firestore.instance
+                      .collection('postedOrders')
+                      .document(widget.data['orderId']);
+                  DocumentReference userOrderRef = Firestore.instance
+                      .collection('users')
+                      .document(widget.data['userId'])
+                      .collection('orders')
+                      .document(widget.data['orderId']);
+                  final snapshot = await trx.get(ref);
+                  if ((snapshot.data['status'] as String).toLowerCase() ==
+                          'accepted' &&
+                      snapshot.data['driverId'] != driver.driverId) {
+                    Navigator.pop(context);
+                    Utils.showInfoDialog(
+                        'Sorry! Order has already been taken by another driver');
+                  }
+                  Map<String, dynamic> data =
+                      Map<String, dynamic>.from(snapshot.data);
+                  data.update('status', (old) => 'Accepted',
+                      ifAbsent: () => 'Accepted');
+                  data.update(('driverId'), (old) => driver.driverId,
+                      ifAbsent: () => driver.driverId);
+                  data.update(('driverName'), (old) => driver.fullName,
+                      ifAbsent: () => driver.fullName);
+                  data.update(('driverImage'), (old) => driver.profilePicture,
+                      ifAbsent: () => driver.profilePicture);
+                  data.update(
+                      ('driverPhoneNumber'), (old) => driver.phoneNumber,
+                      ifAbsent: () => driver.profilePicture);
+                  data.update(
+                    ('driverLicencePlateNumber'),
                     (old) => driver.profilePicture,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(
-                  'acceptedOn',
-                  (old) => DateTime.now().millisecondsSinceEpoch,
-                  ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
-                );
-                await Firestore.instance
-                    .collection('postedOrders')
-                    .document(widget.data['orderId'])
-                    .setData(
-                      widget.data,
-                      merge: true,
-                    );
-                await Firestore.instance
-                    .collection('users')
-                    .document(widget.data['userId'])
-                    .collection('orders')
-                    .document(widget.data['orderId'])
-                    .setData(
-                      widget.data,
-                      merge: true,
-                    );
+                    ifAbsent: () => driver.profilePicture,
+                  );
+                  data.update(
+                    'acceptedOn',
+                    (old) => DateTime.now().millisecondsSinceEpoch,
+                    ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+                  );
+
+                  widget.data.clear();
+                  widget.data.addAll(data);
+                  final postedOrderUpdate = trx.set(ref, data);
+                  final userOrderUpdate = trx.set(userOrderRef, data);
+                  await userOrderUpdate;
+                  await postedOrderUpdate;
+                });
+
+                // await Firestore.instance
+                //     .collection('postedOrders')
+                //     .document(widget.data['orderId'])
+                //     .setData(
+                //       widget.data,
+                //       merge: true,
+                //     );
+                // await Firestore.instance
+                //     .collection('users')
+                //     .document(widget.data['userId'])
+                //     .collection('orders')
+                //     .document(widget.data['orderId'])
+                //     .setData(
+                //       widget.data,
+                //       merge: true,
+                //     );
                 Location location = Location();
                 await location.changeSettings(
                   distanceFilter: 50,
