@@ -10,13 +10,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geocoder/geocoder.dart';
+// import 'package:geocoder/geocoder.dart' as geocoder;
 import 'package:geocoder/model.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
 import 'package:location/location.dart';
+import 'package:location/location.dart' as location;
 import 'package:path/path.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
@@ -44,9 +47,20 @@ Future<void> locationInitializer() async {
   PermissionStatus locationPermission = await _location.requestPermission();
   if (locationPermission == PermissionStatus.GRANTED) {
     // == PermissionStatus.GRANTED) {
-    MyApp._lastKnowLocation = _location.getLocation().then((data) {
-      return LatLng(data.latitude, data.longitude);
+    final locator = Geolocator();
+    MyApp._lastKnowLocation = locator.getLastKnownPosition().then((position) {
+      if (position == null) {
+        return _location.getLocation().then((locationData) {
+          return LatLng(locationData.latitude, locationData.longitude);
+        });
+      } else {
+        return LatLng(position.latitude, position.longitude);
+      }
     });
+
+    // MyApp._lastKnowLocation = _location.getLocation().then((data) {
+    //   return LatLng(data.latitude, data.longitude);
+    // });
     final data = await MyApp._lastKnowLocation;
     MyApp._initialLocation = data;
     MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
@@ -176,8 +190,8 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String notificationWidget = 'notificationWidget';
   static const String sennitOrderRoute = 'sennitOrderRoute';
 
-  final Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
-  final Color primaryColor = Color.fromARGB(255, 87, 89, 152);
+  static const Color secondaryColor = Color.fromARGB(255, 57, 59, 82);
+  static const Color primaryColor = Color.fromARGB(255, 87, 89, 152);
   static Color disabledPrimaryColor =
       Color.fromARGB(255, 87 + 40, 89 + 40, 152 + 40);
   static Address _address;
@@ -335,11 +349,11 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
         theme: ThemeData(
           backgroundColor: Colors.white,
           fontFamily: 'ArchivoNarrow',
-          primaryColor: widget.secondaryColor,
-          accentColor: widget.secondaryColor,
+          primaryColor: MyApp.secondaryColor,
+          accentColor: MyApp.secondaryColor,
           // buttonColor: primaryColor,
           buttonTheme: ButtonThemeData(
-            buttonColor: widget.secondaryColor,
+            buttonColor: MyApp.secondaryColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.all(
                 Radius.circular(6),
@@ -353,7 +367,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ),
           appBarTheme: AppBarTheme(
             iconTheme: IconThemeData(
-              color: widget.secondaryColor,
+              color: MyApp.secondaryColor,
             ),
             color: Colors.white,
             textTheme: TextTheme(
@@ -361,26 +375,26 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 fontWeight: FontWeight.bold,
                 fontFamily: 'ArchivoNarrow',
                 fontSize: 22,
-                color: widget.secondaryColor,
+                color: MyApp.secondaryColor,
               ),
             ),
           ),
           iconTheme: IconThemeData(
-            color: widget.secondaryColor,
+            color: MyApp.secondaryColor,
           ),
           textTheme: TextTheme(
               title: TextStyle(
-                color: widget.secondaryColor,
+                color: MyApp.secondaryColor,
                 fontSize: 22,
                 fontWeight: FontWeight.normal,
               ),
               headline: TextStyle(
-                color: widget.secondaryColor,
+                color: MyApp.secondaryColor,
                 fontSize: 36,
                 fontWeight: FontWeight.bold,
               ),
               subhead: TextStyle(
-                color: widget.secondaryColor,
+                color: MyApp.secondaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -405,7 +419,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ),
               display1: TextStyle(
                 fontSize: 26,
-                color: widget.secondaryColor,
+                color: MyApp.secondaryColor,
                 fontWeight: FontWeight.bold,
               )),
         ),
@@ -616,6 +630,50 @@ class Utils {
     });
   }
 
+  static void showInfoDialog(String message) {
+    BotToast.showEnhancedWidget(toastBuilder: (a) {
+      return Center(
+        child: Container(
+          width: 300,
+          height: 230,
+          padding: EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 10),
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Spacer(),
+                Icon(
+                  Icons.info,
+                  color: MyApp.primaryColor,
+                  size: 36,
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  '$message',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 87, 89, 152),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Spacer(),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+    Future.delayed(Duration(seconds: 2), () {
+      BotToast.cleanAll();
+    });
+  }
+
   static double calculateDistance(LatLng latlng1, LatLng latlng2) {
     var p = 0.017453292519943295;
     var c = cos;
@@ -661,7 +719,8 @@ class Utils {
   }
 
   static Future<LatLng> getMyLocation(
-      {LocationAccuracy accuracy = LocationAccuracy.BALANCED}) async {
+      {location.LocationAccuracy accuracy =
+          location.LocationAccuracy.BALANCED}) async {
     final _location = Location()..changeSettings(accuracy: accuracy);
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);

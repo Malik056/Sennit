@@ -494,7 +494,7 @@ class SendItCartRoute extends StatelessWidget {
                 Utils.showSnackBarErrorUsingKey(_key, result['errorMessage']);
                 return;
               } else {
-                Utils.showSnackBarSuccessUsingKey(_key, 'Payment Succesfull');
+                Utils.showSnackBarSuccessUsingKey(_key, 'Payment Successful');
               }
 
               Utils.showLoadingDialog(context);
@@ -547,6 +547,9 @@ class SendItCartRoute extends StatelessWidget {
               var response2 = await post(
                 url2,
               );
+              // final response = Response('', 200);
+              // final response2 = Response('', 200);
+
               if ((response.statusCode == 200 ||
                       response.statusCode == 201 ||
                       response.statusCode == 202) &&

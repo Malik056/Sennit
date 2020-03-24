@@ -247,7 +247,7 @@ class _StatefulTextState extends State<StatefulText> {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title);
+    return Text(title ?? '');
   }
 }
 
@@ -2194,9 +2194,10 @@ class ShoppingCartRoute extends StatelessWidget {
                     }
 
                     Map<String, dynamic> result = await performTransaction(
-                        context,
-                        ShoppingCartRouteState.totalPrice +
-                            ShoppingCartRouteState.totalDeliveryCharges);
+                      context,
+                      ShoppingCartRouteState.totalPrice +
+                          ShoppingCartRouteState.totalDeliveryCharges,
+                    );
 
                     // Map<String, dynamic> result = {
                     //   'status': RaveStatus.success,
