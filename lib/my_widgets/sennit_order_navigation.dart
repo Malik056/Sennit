@@ -42,6 +42,7 @@ class SennitOrderNavigationRoute extends StatefulWidget {
 class _SennitOrderNavigationRouteState
     extends State<SennitOrderNavigationRoute> {
   StreamSubscription<LocationData> _driverLocationSubscription;
+  StreamSubscription<DocumentSnapshot> documentStream;
   double _lastTimestamp;
   double _lastDistance;
   double _currentDistance;
@@ -50,12 +51,25 @@ class _SennitOrderNavigationRouteState
   @override
   void initState() {
     super.initState();
+    documentStream = Firestore.instance
+        .collection('postedOrders')
+        .document(widget.data['orderId'])
+        .snapshots()
+        .listen((data) async {
+      String uid = (await FirebaseAuth.instance.currentUser()).uid;
+      if ((data['status'] as String).toLowerCase() == 'accepted' &&
+          data['driverId'] != uid) {
+        Navigator.pop(context);
+        Utils.showInfoDialog('Order has picked by another driver');
+      }
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
-    _driverLocationSubscription.cancel();
+    _driverLocationSubscription?.cancel();
+    documentStream?.cancel();
   }
 
   @override
@@ -174,6 +188,8 @@ class _SennitOrderNavigationRouteState
                   }
                   Map<String, dynamic> data =
                       Map<String, dynamic>.from(snapshot.data);
+                  data.update('orderId', (old) => snapshot.documentID,
+                      ifAbsent: () => snapshot.documentID);
                   data.update('status', (old) => 'Accepted',
                       ifAbsent: () => 'Accepted');
                   data.update(('driverId'), (old) => driver.driverId,
@@ -198,11 +214,19 @@ class _SennitOrderNavigationRouteState
 
                   widget.data.clear();
                   widget.data.addAll(data);
-                  final postedOrderUpdate = trx.set(ref, data);
-                  final userOrderUpdate = trx.set(userOrderRef, data);
-                  await userOrderUpdate;
-                  await postedOrderUpdate;
+                  try {
+                    final postedOrderUpdate = trx.set(ref, data);
+                    final userOrderUpdate = trx.set(userOrderRef, data);
+                    await userOrderUpdate;
+                    await postedOrderUpdate;
+                  } catch (ex) {
+                    print(ex);
+                    Utils.showInfoDialog(
+                        'The Order has already picked by other driver');
+                    documentStream.cancel();
+                  }
                 });
+                documentStream?.cancel();
 
                 // await Firestore.instance
                 //     .collection('postedOrders')
@@ -689,7 +713,7 @@ class _BodyState extends State<_Body> {
     // setState(() {});
   }
 
-  Widget getMap() {
+  Widget getMap() {        
     return _MapWidget(
       dropOff: Utils.latLngFromString(widget.data['dropOffLatLng']),
       pickup: Utils.latLngFromString(widget.data['pickUpLatLng']),
@@ -938,7 +962,9 @@ class _PopupsState extends State<_Popups> {
       onConfirm: () async {
         isOrderConfirmationVisible = false;
         await widget.onOrderConfirmed();
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       },
       onExit: () {
         isOrderConfirmationVisible = false;
@@ -1297,6 +1323,23 @@ class _OrderConfirmation extends StatefulWidget {
 }
 
 class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
+  onPressAcceptOrder() async {
+    Utils.showLoadingDialog(context);
+    // orderConfirmed = true;
+    await widget.onConfirm();
+    Navigator.pop(context);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if ((_Body._key.currentWidget as _Body).data['driverId'] != null) {
+        onPressAcceptOrder();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1360,10 +1403,7 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
                     //   ),
                     // ),
                     onPressed: () async {
-                      Utils.showLoadingDialog(context);
-                      // orderConfirmed = true;
-                      await widget.onConfirm();
-                      Navigator.pop(context);
+                      await onPressAcceptOrder();
                     },
                     color: Theme.of(context).primaryColor,
                     child: Text(

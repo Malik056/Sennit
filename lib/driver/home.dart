@@ -10,8 +10,7 @@ import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/order_history.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
-import 'package:sennit/my_widgets/receive_it_order_navigation.dart';
-import 'package:sennit/my_widgets/sennit_order_navigation.dart';
+import 'package:sennit/my_widgets/generic_order_navigation.dart';
 import 'package:sennit/user/receiveit.dart' as receiveIt;
 
 class Delivery {
@@ -31,6 +30,7 @@ class Delivery {
 }
 
 class HomeScreenDriver extends StatefulWidget {
+  static const String NAME = "HOME_SCREEN_DRIVER";
   HomeScreenDriver();
 
   @override
@@ -174,10 +174,20 @@ class _NotificationPage extends StatefulWidget {
   State<StatefulWidget> createState() {
     return _NotificationPageState();
   }
+}
 
-  initializeDriver() async {
+class _NotificationPageState extends State<_NotificationPage> {
+  Future<dynamic> initialize;
+
+  @override
+  void initState() {
+    super.initState();
+    initialize = initializeDriver(context);
+  }
+
+  initializeDriver(context) async {
     if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
-      FirebaseAuth.instance.currentUser().then((user) {
+      await FirebaseAuth.instance.currentUser().then((user) {
         String driverId = user.uid;
         Firestore.instance
             .collection('drivers')
@@ -190,14 +200,36 @@ class _NotificationPage extends StatefulWidget {
       });
       // Firestore.instance.collection('drivers').
     }
+    await Firestore.instance
+        .collection('drivers')
+        .document(Session.data['driver'].driverId)
+        .collection('acceptedOrders')
+        .getDocuments()
+        .then((snapshot) {
+      if (snapshot != null &&
+          (snapshot.documents != null && snapshot.documents.length > 0)) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              return OrderNavigationRoute(
+                alreadyAccepted: true,
+                data: snapshot.documents[0].data,
+                verificationCode: snapshot.documents[0].data['otp'],
+              );
+            },
+            settings: RouteSettings(name: OrderNavigationRoute.NAME),
+            maintainState: false,
+          ),
+        );
+      }
+    });
   }
-}
 
-class _NotificationPageState extends State<_NotificationPage> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: widget.initializeDriver(),
+      future: initialize,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -532,14 +564,14 @@ class SennitNotificationTile extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) {
-                      return SennitOrderNavigationRoute(
+                      return OrderNavigationRoute(
+                        alreadyAccepted: false,
                         data: data,
                         verificationCode: data['otp'],
                       );
                     },
                     maintainState: false,
-                    settings:
-                        RouteSettings(name: SennitOrderNavigationRoute.NAME),
+                    settings: RouteSettings(name: OrderNavigationRoute.NAME),
                   ));
             },
           )
@@ -825,12 +857,14 @@ class ReceiveItNotificationTile extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) {
-              return ReceiveItOrderNavigationRoute(
+              return OrderNavigationRoute(
+                alreadyAccepted: false,
                 data: data,
                 verificationCode: data['otp'],
               );
             },
-            settings: RouteSettings(name: ReceiveItOrderNavigationRoute.NAME),
+            settings: RouteSettings(name: OrderNavigationRoute.NAME),
+            maintainState: false,
           ),
         );
       },
@@ -857,6 +891,9 @@ class ReceiveItNotificationTile extends StatelessWidget {
     final destination = (await futureDestination)[0].addressLine;
     if (temp.length == 1) {
       LatLng latLng = Utils.latLngFromString(temp[0]);
+      if (latLng == null) {
+        return null;
+      }
       final locationInfo = await Geocoder.google(await Utils.getAPIKey())
           .findAddressesFromCoordinates(
               Coordinates(latLng.latitude, latLng.longitude));
