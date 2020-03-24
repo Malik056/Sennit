@@ -42,6 +42,7 @@ class SennitOrderNavigationRoute extends StatefulWidget {
 class _SennitOrderNavigationRouteState
     extends State<SennitOrderNavigationRoute> {
   StreamSubscription<LocationData> _driverLocationSubscription;
+  StreamSubscription<DocumentSnapshot> documentStream;
   double _lastTimestamp;
   double _lastDistance;
   double _currentDistance;
@@ -50,12 +51,25 @@ class _SennitOrderNavigationRouteState
   @override
   void initState() {
     super.initState();
+    documentStream = Firestore.instance
+        .collection('postedOrders')
+        .document(widget.data['orderId'])
+        .snapshots()
+        .listen((data) async {
+      String uid = (await FirebaseAuth.instance.currentUser()).uid;
+      if ((data['status'] as String).toLowerCase() == 'accepted' &&
+          data['driverId'] != uid) {
+        Navigator.pop(context);
+        Utils.showInfoDialog('Order has picked by another driver');
+      }
+    });
   }
 
   @override
   void dispose() {
     super.dispose();
-    _driverLocationSubscription.cancel();
+    _driverLocationSubscription?.cancel();
+    documentStream?.cancel();
   }
 
   @override
@@ -134,42 +148,102 @@ class _SennitOrderNavigationRouteState
               onOrderConfirmed: () async {
                 Driver driver = Session.data['driver'];
                 _MyAppBar._key?.currentState?.showButton();
-                widget.data.update(('status'), (old) => 'Accepted',
-                    ifAbsent: () => 'Accepted');
-                widget.data.update(('driverId'), (old) => driver.driverId,
-                    ifAbsent: () => driver.driverId);
-                widget.data.update(('driverName'), (old) => driver.fullName,
-                    ifAbsent: () => driver.fullName);
-                widget.data.update(
-                    ('driverImage'), (old) => driver.profilePicture,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(
-                    ('driverPhoneNumber'), (old) => driver.phoneNumber,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(('driverLicencePlateNumber'),
+                // widget.data.update(('status'), (old) => 'Accepted',
+                //     ifAbsent: () => 'Accepted');
+                // widget.data.update(('driverId'), (old) => driver.driverId,
+                //     ifAbsent: () => driver.driverId);
+                // widget.data.update(('driverName'), (old) => driver.fullName,
+                //     ifAbsent: () => driver.fullName);
+                // widget.data.update(
+                //     ('driverImage'), (old) => driver.profilePicture,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(
+                //     ('driverPhoneNumber'), (old) => driver.phoneNumber,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(('driverLicencePlateNumber'),
+                //     (old) => driver.profilePicture,
+                //     ifAbsent: () => driver.profilePicture);
+                // widget.data.update(
+                //   'acceptedOn',
+                //   (old) => DateTime.now().millisecondsSinceEpoch,
+                //   ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+                // );
+
+                await Firestore.instance.runTransaction((trx) async {
+                  DocumentReference ref = Firestore.instance
+                      .collection('postedOrders')
+                      .document(widget.data['orderId']);
+                  DocumentReference userOrderRef = Firestore.instance
+                      .collection('users')
+                      .document(widget.data['userId'])
+                      .collection('orders')
+                      .document(widget.data['orderId']);
+                  final snapshot = await trx.get(ref);
+                  if ((snapshot.data['status'] as String).toLowerCase() ==
+                          'accepted' &&
+                      snapshot.data['driverId'] != driver.driverId) {
+                    Navigator.pop(context);
+                    Utils.showInfoDialog(
+                        'Sorry! Order has already been taken by another driver');
+                  }
+                  Map<String, dynamic> data =
+                      Map<String, dynamic>.from(snapshot.data);
+                  data.update('orderId', (old) => snapshot.documentID,
+                      ifAbsent: () => snapshot.documentID);
+                  data.update('status', (old) => 'Accepted',
+                      ifAbsent: () => 'Accepted');
+                  data.update(('driverId'), (old) => driver.driverId,
+                      ifAbsent: () => driver.driverId);
+                  data.update(('driverName'), (old) => driver.fullName,
+                      ifAbsent: () => driver.fullName);
+                  data.update(('driverImage'), (old) => driver.profilePicture,
+                      ifAbsent: () => driver.profilePicture);
+                  data.update(
+                      ('driverPhoneNumber'), (old) => driver.phoneNumber,
+                      ifAbsent: () => driver.profilePicture);
+                  data.update(
+                    ('driverLicencePlateNumber'),
                     (old) => driver.profilePicture,
-                    ifAbsent: () => driver.profilePicture);
-                widget.data.update(
-                  'acceptedOn',
-                  (old) => DateTime.now().millisecondsSinceEpoch,
-                  ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
-                );
-                await Firestore.instance
-                    .collection('postedOrders')
-                    .document(widget.data['orderId'])
-                    .setData(
-                      widget.data,
-                      merge: true,
-                    );
-                await Firestore.instance
-                    .collection('users')
-                    .document(widget.data['userId'])
-                    .collection('orders')
-                    .document(widget.data['orderId'])
-                    .setData(
-                      widget.data,
-                      merge: true,
-                    );
+                    ifAbsent: () => driver.profilePicture,
+                  );
+                  data.update(
+                    'acceptedOn',
+                    (old) => DateTime.now().millisecondsSinceEpoch,
+                    ifAbsent: () => DateTime.now().millisecondsSinceEpoch,
+                  );
+
+                  widget.data.clear();
+                  widget.data.addAll(data);
+                  try {
+                    final postedOrderUpdate = trx.set(ref, data);
+                    final userOrderUpdate = trx.set(userOrderRef, data);
+                    await userOrderUpdate;
+                    await postedOrderUpdate;
+                  } catch (ex) {
+                    print(ex);
+                    Utils.showInfoDialog(
+                        'The Order has already picked by other driver');
+                    documentStream.cancel();
+                  }
+                });
+                documentStream?.cancel();
+
+                // await Firestore.instance
+                //     .collection('postedOrders')
+                //     .document(widget.data['orderId'])
+                //     .setData(
+                //       widget.data,
+                //       merge: true,
+                //     );
+                // await Firestore.instance
+                //     .collection('users')
+                //     .document(widget.data['userId'])
+                //     .collection('orders')
+                //     .document(widget.data['orderId'])
+                //     .setData(
+                //       widget.data,
+                //       merge: true,
+                //     );
                 Location location = Location();
                 await location.changeSettings(
                   distanceFilter: 50,
@@ -639,7 +713,7 @@ class _BodyState extends State<_Body> {
     // setState(() {});
   }
 
-  Widget getMap() {
+  Widget getMap() {        
     return _MapWidget(
       dropOff: Utils.latLngFromString(widget.data['dropOffLatLng']),
       pickup: Utils.latLngFromString(widget.data['pickUpLatLng']),
@@ -888,7 +962,9 @@ class _PopupsState extends State<_Popups> {
       onConfirm: () async {
         isOrderConfirmationVisible = false;
         await widget.onOrderConfirmed();
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       },
       onExit: () {
         isOrderConfirmationVisible = false;
@@ -1247,6 +1323,23 @@ class _OrderConfirmation extends StatefulWidget {
 }
 
 class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
+  onPressAcceptOrder() async {
+    Utils.showLoadingDialog(context);
+    // orderConfirmed = true;
+    await widget.onConfirm();
+    Navigator.pop(context);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if ((_Body._key.currentWidget as _Body).data['driverId'] != null) {
+        onPressAcceptOrder();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1310,10 +1403,7 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
                     //   ),
                     // ),
                     onPressed: () async {
-                      Utils.showLoadingDialog(context);
-                      // orderConfirmed = true;
-                      await widget.onConfirm();
-                      Navigator.pop(context);
+                      await onPressAcceptOrder();
                     },
                     color: Theme.of(context).primaryColor,
                     child: Text(
