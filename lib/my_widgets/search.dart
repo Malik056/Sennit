@@ -13,13 +13,26 @@ class SearchWidget extends StatefulWidget {
   }
 }
 
-class SearchWidgetState extends State<SearchWidget> {
+class SearchWidgetState extends State<SearchWidget> with SingleTickerProviderStateMixin {
+
+  TabController controller;
+  List<model.StoreItem> items;
+  List<model.Store> stores;
+
+  @override
+  void initState() { 
+    super.initState();
+    controller = TabController(length: 2, vsync: this);
+  }
+
   Future<List<model.StoreItem>> initialize() async {
+
     List<model.StoreItem> items = [];
     LatLng myLatLng = (await Utils.getMyLocation());
 
     QuerySnapshot snapshot =
         await Firestore.instance.collection('items').getDocuments();
+
     for (DocumentSnapshot snapshot in snapshot.documents) {
       if (Utils.calculateDistance(
             myLatLng,
@@ -34,7 +47,6 @@ class SearchWidgetState extends State<SearchWidget> {
     return items;
   }
 
-  List<model.StoreItem> items;
   Future<List<model.StoreItem>> search(String query) async {
     List<model.StoreItem> filtered = [];
     final storeItems = items;
@@ -44,6 +56,17 @@ class SearchWidgetState extends State<SearchWidget> {
       }
     }
     return filtered;
+  }
+
+  Future<model.Store> searchStore(String query) async {
+    // List<model.StoreItem> filtered = [];
+    // final storeItems = items;
+    // for (model.StoreItem item in storeItems) {
+    //   if (item.itemName.toLowerCase().contains(query.toLowerCase())) {
+    //     filtered.add(item);
+    //   }
+    // }
+    // return filtered;
   }
 
   @override
@@ -87,7 +110,20 @@ class SearchWidgetState extends State<SearchWidget> {
                   ));
                 }
                 items = snapshot.data;
-                return SearchBar<model.StoreItem>(
+                return Column(
+                  children: <Widget>[
+                    TabBar(
+                      controller: ,
+                      tabs: <Widget>[
+
+                      ],
+                    ),
+                    TabBarView(children: [
+
+                    ]),
+                  ],
+                );
+                SearchBar<model.StoreItem>(
                   onSearch: search,
                   hintText: "Search",
                   emptyWidget: Center(
