@@ -1,9 +1,10 @@
+import 'dart:math';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sennit/driver/active_order.dart';
@@ -11,6 +12,7 @@ import 'package:sennit/driver/order_history.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/generic_order_navigation.dart';
+import 'package:sennit/start_page.dart';
 import 'package:sennit/user/receiveit.dart' as receiveIt;
 
 class Delivery {
@@ -42,11 +44,60 @@ class HomeScreenDriver extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreenDriver>
     with TickerProviderStateMixin {
   TabController controller;
+  Future<dynamic> initialize;
+  List<String> titles = ['Orders', 'History', 'Profile'];
   int index = 0;
+  Driver driver;
+
+  initializeDriver(context) async {
+    await Utils.getMyLocation();
+    if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
+      await FirebaseAuth.instance.currentUser().then((user) {
+        String driverId = user.uid;
+        Firestore.instance
+            .collection('drivers')
+            .document(driverId)
+            .get()
+            .then((dataSnapshot) {
+          Driver driver = Driver.fromMap(dataSnapshot.data);
+          Session.data.update('driver', (d) => driver, ifAbsent: () => driver);
+          this.driver = driver;
+        });
+      });
+      // Firestore.instance.collection('drivers').
+    }
+    driver = Session.data['driver'];
+    await Firestore.instance
+        .collection('drivers')
+        .document(Session.data['driver'].driverId)
+        .collection('acceptedOrders')
+        .getDocuments()
+        .then((snapshot) {
+      if (snapshot != null &&
+          (snapshot.documents != null && snapshot.documents.length > 0)) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              return OrderNavigationRoute(
+                alreadyAccepted: true,
+                data: snapshot.documents[0].data,
+                verificationCode: snapshot.documents[0].data['otp'],
+              );
+            },
+            settings: RouteSettings(name: OrderNavigationRoute.NAME),
+            maintainState: false,
+          ),
+        );
+      }
+    });
+    return;
+  }
 
   @override
   void initState() {
     super.initState();
+    initialize = initializeDriver(context);
     controller = TabController(length: 3, vsync: this);
     controller.addListener(() {
       setState(() {
@@ -72,98 +123,145 @@ class _HomeScreenState extends State<HomeScreenDriver>
         }
         return false;
       },
-      child: DefaultTabController(
-        length: 3,
-        child: Scaffold(
-          appBar: AppBar(
-            centerTitle: true,
-            actions: <Widget>[
-              IconButton(
-                icon: Icon(FontAwesomeIcons.signOutAlt),
-                // style: Theme.of(context)
-                //     .textTheme
-                //     .subhead
-                //     .copyWith(color: Theme.of(context).primaryColor),
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  Session.data..removeWhere((key, value) => true);
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, MyApp.startPage, (route) => false);
-                },
+      child: FutureBuilder<dynamic>(
+        future: initialize,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(titles[index]),
+                centerTitle: true,
+                actions: <Widget>[
+                  IconButton(
+                    icon: Icon(Icons.exit_to_app),
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => StartPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
-            title: Text(
-              controller.index == 0
-                  ? 'Notifications'
-                  : controller.index == 1 ? 'History' : 'Profile',
-            ),
-          ),
-          bottomNavigationBar: BottomAppBar(
-            elevation: 10,
-            child: TabBar(
-              labelColor: Theme.of(context).accentColor,
-              indicatorColor: Theme.of(context).accentColor,
-              indicator:
-                  // BoxDecoration(
-                  //   border: Border(
-                  //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
-                  //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
-                  //   ),
-                  // ),
-                  UnderlineTabIndicator(
-                insets: EdgeInsets.only(bottom: 47, left: 20, right: 20),
-                borderSide: BorderSide(
-                  color: Theme.of(context).accentColor,
-                  width: 2,
-                ),
+              body: Center(
+                child: CircularProgressIndicator(),
               ),
-              controller: controller,
-              tabs: [
-                Tab(
-                  icon: Icon(Icons.notifications),
-                  // child: Container(
-                  //   child: IconButton(
-                  //     icon: Center(
-                  //       child: Icon(Icons.notifications),
-                  //     ),
-                  //     onPressed: () {},
-                  //   ),
-                  //   decoration: BoxDecoration(
-                  //     border: Border(
-                  //         right: BorderSide(color: Theme.of(context).accentColor)),
-                  //   ),
-                  // ),
-                ),
-                Tab(
-                  icon: Icon(Icons.history),
-                  // child: Container(
-                  //   child: IconButton(
-                  //     icon: Center(
-                  //       child: Icon(Icons.history),
-                  //     ),
-                  //     onPressed: () {},
-                  //   ),
-                  //   decoration: BoxDecoration(
-                  //     border: Border(
-                  //         left: BorderSide(color: Theme.of(context).accentColor)),
-                  //   ),
-                  // ),
-                ),
-                Tab(
-                  icon: Icon(Icons.person),
+            );
+          }
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(titles[index]),
+              centerTitle: true,
+              actions: <Widget>[
+                IconButton(
+                  icon: Icon(Icons.exit_to_app),
+                  onPressed: () {
+                    FirebaseAuth.instance.signOut();
+                    try {
+                      Navigator.pop(
+                        context,
+                      );
+                    } catch (ex) {
+                      print(ex);
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => StartPage(),
+                        settings: RouteSettings(
+                          name: MyApp.startPage,
+                          isInitialRoute: true,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-          ),
-          body: TabBarView(
-            controller: controller,
-            children: <Widget>[
-              _NotificationPage(),
-              OrderHistory(),
-              _ProfilePage(),
-            ],
-          ),
-        ),
+            //TODO: fix this condition
+            bottomNavigationBar: !(driver.licencePlateNumber != null &&
+                    driver.licencePlateNumber.isNotEmpty)
+                ? BottomAppBar(
+                    elevation: 10,
+                    child: TabBar(
+                      labelColor: Theme.of(context).accentColor,
+                      indicatorColor: Theme.of(context).accentColor,
+                      indicator:
+                          // BoxDecoration(
+                          //   border: Border(
+                          //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
+                          //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
+                          //   ),
+                          // ),
+                          UnderlineTabIndicator(
+                        insets:
+                            EdgeInsets.only(bottom: 47, left: 20, right: 20),
+                        borderSide: BorderSide(
+                          color: Theme.of(context).accentColor,
+                          width: 2,
+                        ),
+                      ),
+                      controller: controller,
+                      tabs: [
+                        Tab(
+                          icon: Icon(Icons.notifications),
+                          // child: Container(
+                          //   child: IconButton(
+                          //     icon: Center(
+                          //       child: Icon(Icons.notifications),
+                          //     ),
+                          //     onPressed: () {},
+                          //   ),
+                          //   decoration: BoxDecoration(
+                          //     border: Border(
+                          //         right: BorderSide(color: Theme.of(context).accentColor)),
+                          //   ),
+                          // ),
+                        ),
+                        Tab(
+                          icon: Icon(Icons.history),
+                          // child: Container(
+                          //   child: IconButton(
+                          //     icon: Center(
+                          //       child: Icon(Icons.history),
+                          //     ),
+                          //     onPressed: () {},
+                          //   ),
+                          //   decoration: BoxDecoration(
+                          //     border: Border(
+                          //         left: BorderSide(color: Theme.of(context).accentColor)),
+                          //   ),
+                          // ),
+                        ),
+                        Tab(
+                          icon: Icon(Icons.person),
+                        ),
+                      ],
+                    ),
+                  )
+                : null,
+            body: true
+                // (driver.licencePlateNumber != null &&
+                //         driver.licencePlateNumber.isNotEmpty)
+                ? TabBarView(
+                    controller: controller,
+                    children: <Widget>[
+                      _NotificationPage(),
+                      OrderHistory(),
+                      _ProfilePage(),
+                    ],
+                  )
+                : Center(
+                    child: Text(
+                      'Your Vehicle is not Registered!\nPlease contact chasefick92@gmail.com',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.title,
+                    ),
+                  ),
+          );
+        },
       ),
     );
   }
@@ -177,159 +275,151 @@ class _NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<_NotificationPage> {
-  Future<dynamic> initialize;
+  // Future<dynamic> initialize;
 
   @override
   void initState() {
     super.initState();
-    initialize = initializeDriver(context);
-  }
-
-  initializeDriver(context) async {
-    if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
-      await FirebaseAuth.instance.currentUser().then((user) {
-        String driverId = user.uid;
-        Firestore.instance
-            .collection('drivers')
-            .document(driverId)
-            .get()
-            .then((dataSnapshot) {
-          Driver driver = Driver.fromMap(dataSnapshot.data);
-          Session.data.update('driver', (d) => driver, ifAbsent: () => driver);
-        });
-      });
-      // Firestore.instance.collection('drivers').
-    }
-    await Firestore.instance
-        .collection('drivers')
-        .document(Session.data['driver'].driverId)
-        .collection('acceptedOrders')
-        .getDocuments()
-        .then((snapshot) {
-      if (snapshot != null &&
-          (snapshot.documents != null && snapshot.documents.length > 0)) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) {
-              return OrderNavigationRoute(
-                alreadyAccepted: true,
-                data: snapshot.documents[0].data,
-                verificationCode: snapshot.documents[0].data['otp'],
-              );
-            },
-            settings: RouteSettings(name: OrderNavigationRoute.NAME),
-            maintainState: false,
-          ),
-        );
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: initialize,
+    return StreamBuilder<QuerySnapshot>(
+      stream: Firestore.instance.collection("postedOrders").snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
             child: CircularProgressIndicator(),
           );
         }
-        return StreamBuilder<QuerySnapshot>(
-          stream: Firestore.instance.collection("postedOrders").snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(Icons.replay),
-                    Text('An Error Occurred'),
-                  ],
-                ),
-              );
-            }
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(Icons.replay),
+                Text('An Error Occurred'),
+              ],
+            ),
+          );
+        }
 
-            if ((snapshot.connectionState == ConnectionState.active ||
-                    snapshot.connectionState == ConnectionState.done) &&
-                snapshot.data == null) {
-              return Center(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(Icons.replay),
-                    Text('Unable To Load'),
-                  ],
-                ),
-              );
-            }
+        if ((snapshot.connectionState == ConnectionState.active ||
+                snapshot.connectionState == ConnectionState.done) &&
+            snapshot.data == null) {
+          return Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Icon(Icons.replay),
+                Text('Unable To Load'),
+              ],
+            ),
+          );
+        }
 
-            if ((snapshot.connectionState == ConnectionState.active ||
-                    snapshot.connectionState == ConnectionState.done) &&
-                snapshot.data.documents.isEmpty) {
-              return Center(
-                child: Text(
-                  'No Notifications',
-                  style: Theme.of(context)
-                      .textTheme
-                      .title
-                      .copyWith(fontWeight: FontWeight.bold),
-                ),
-              );
-            }
+        if ((snapshot.connectionState == ConnectionState.active ||
+                snapshot.connectionState == ConnectionState.done) &&
+            snapshot.data.documents.isEmpty) {
+          return Center(
+            child: Text(
+              'No Notifications',
+              style: Theme.of(context)
+                  .textTheme
+                  .title
+                  .copyWith(fontWeight: FontWeight.bold),
+            ),
+          );
+        }
 
-            var documents = snapshot.data.documents;
-            List<Widget> tiles = [];
-
-            Driver driver = Session.data['driver'];
-
-            for (int index = 0; index < documents.length; index++) {
-              var orderData = documents[index].data;
-              orderData.update(
-                'orderId',
-                (old) {
-                  return documents[index].documentID;
-                },
-                ifAbsent: () => documents[index].documentID,
-              );
-              print(orderData);
-              if ((orderData['status'] as String).toUpperCase() != 'PENDING' &&
-                  orderData['driverId'] != driver.driverId) {
-                // return null;
-              } else if (orderData.containsKey("numberOfBoxes")) {
-                tiles.add(SennitNotificationTile(data: orderData));
-              } else {
-                tiles.add(ReceiveItNotificationTile(orderData));
+        List<DocumentSnapshot> allDocs =
+            List<DocumentSnapshot>.from(snapshot.data.documents);
+        List<DocumentSnapshot> documents = [];
+        allDocs.forEach((doc) {
+          LatLng pickup;
+          Map<String, dynamic> data = doc.data;
+          if (data.containsKey('numberOfBoxes')) {
+            pickup = Utils.latLngFromString(data['pickUpLatLng']);
+          } else {
+            double min = double.infinity;
+            for (String latlng in data['pickups']) {
+              LatLng pickupLatLng = Utils.latLngFromString(latlng);
+              double distance = Utils.calculateDistance(
+                  pickupLatLng, Utils.getLastKnowLocation());
+              if (distance < min) {
+                min = distance;
+                pickup = pickupLatLng;
               }
             }
+          }
+          if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
+              20) {
+            documents.add(doc);
+          }
+        });
+        List<Widget> tiles = [];
 
-            if (tiles.isEmpty) {
-              return Center(
-                child: Text(
-                  'No Notifications',
-                  style: Theme.of(context)
-                      .textTheme
-                      .title
-                      .copyWith(fontWeight: FontWeight.bold),
-                ),
-              );
-            }
+        Driver driver = Session.data['driver'];
+        LatLng currLatLng = Utils.getLastKnowLocation();
+        documents.sort((first, second) {
+          double firstDistance = 0;
+          double secondDistance = 0;
+          if (first.data.containsKey('dropOffLatLng')) {
+            firstDistance = Utils.calculateDistance(currLatLng,
+                Utils.latLngFromString(first.data['dropOffLatLng']));
+          } else {
+            firstDistance = Utils.calculateDistance(
+                currLatLng, Utils.latLngFromString(first.data['destination']));
+          }
+          if (second.data.containsKey('dropOffLatLng')) {
+            secondDistance = Utils.calculateDistance(currLatLng,
+                Utils.latLngFromString(second.data['dropOffLatLng']));
+          } else {
+            secondDistance = Utils.calculateDistance(
+                currLatLng, Utils.latLngFromString(second.data['destination']));
+          }
+          return firstDistance.compareTo(secondDistance);
+        });
 
-            return SingleChildScrollView(
-              physics: BouncingScrollPhysics(),
-              child: Column(
-                children: tiles,
-              ),
-            );
-          },
+        for (int index = 0; index < documents.length; index++) {
+          var orderData = documents[index].data;
+          orderData.update(
+            'orderId',
+            (old) {
+              return documents[index].documentID;
+            },
+            ifAbsent: () => documents[index].documentID,
+          );
+          print(orderData);
+          if ((orderData['status'] as String).toUpperCase() != 'PENDING' &&
+              orderData['driverId'] != driver.driverId) {
+            // return null;
+          } else if (orderData.containsKey("numberOfBoxes")) {
+            tiles.add(SennitNotificationTile(data: orderData));
+          } else {
+            tiles.add(ReceiveItNotificationTile(orderData));
+          }
+        }
+
+        if (tiles.isEmpty) {
+          return Center(
+            child: Text(
+              'No Notifications',
+              style: Theme.of(context)
+                  .textTheme
+                  .title
+                  .copyWith(fontWeight: FontWeight.bold),
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          child: Column(
+            children: tiles,
+          ),
         );
       },
     );
@@ -551,6 +641,26 @@ class SennitNotificationTile extends StatelessWidget {
             SizedBox(
               height: 10,
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Transform.rotate(
+                    angle: pi / 4,
+                    child: Icon(
+                      Icons.navigation,
+                      size: 16,
+                    ),
+                  ),
+                  Text(
+                      ' ${Utils.calculateDistance(Utils.latLngFromString(data['pickUpLatLng']), Utils.getLastKnowLocation()).toStringAsFixed(2)} Km '),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
           ],
         ),
       ),
@@ -581,6 +691,17 @@ class SennitNotificationTile extends StatelessWidget {
 
 class ReceiveItNotificationTile extends StatelessWidget {
   final data;
+  String getNearestPickup() {
+    double min = double.infinity;
+    for (String latlng in data['pickups']) {
+      double distance = Utils.calculateDistance(
+          Utils.latLngFromString(latlng), Utils.getLastKnowLocation());
+      if (distance < min) {
+        min = double.parse(distance.toStringAsFixed(2));
+      }
+    }
+    return '$min';
+  }
 
   ReceiveItNotificationTile(this.data);
 
@@ -844,6 +965,26 @@ class ReceiveItNotificationTile extends StatelessWidget {
               //     ),
               //   ],
               // ),
+              SizedBox(
+                height: 10,
+              ),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Transform.rotate(
+                      angle: pi / 4,
+                      child: Icon(
+                        Icons.navigation,
+                        size: 16,
+                      ),
+                    ),
+                    Text(' ${getNearestPickup()} Km '),
+                  ],
+                ),
+              ),
               SizedBox(
                 height: 10,
               ),
