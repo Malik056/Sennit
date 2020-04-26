@@ -1547,8 +1547,10 @@ class StoreItem {
   String storeAddress;
   double price;
   String description;
+  Map<String, String> specifications;
   String itemName;
   LatLng latlng;
+
   StoreItem({
     this.itemId,
     this.storeName,
@@ -1558,7 +1560,12 @@ class StoreItem {
     this.description,
     this.itemName,
     this.latlng,
-  });
+    this.specifications,
+  }) {
+    if (specifications == null) {
+      specifications = {};
+    }
+  }
 
   StoreItem copyWith({
     String itemId,
@@ -1569,6 +1576,7 @@ class StoreItem {
     String description,
     String itemName,
     LatLng latlng,
+    Map<String, String> specifications,
   }) {
     return StoreItem(
       itemId: itemId ?? this.itemId,
@@ -1579,6 +1587,7 @@ class StoreItem {
       description: description ?? this.description,
       itemName: itemName ?? this.itemName,
       latlng: latlng ?? this.latlng,
+      specifications: specifications ?? this.specifications,
     );
   }
 
@@ -1592,6 +1601,7 @@ class StoreItem {
       'description': description,
       'itemName': itemName,
       'latlng': Utils.latLngToString(latlng),
+      'specifications': specifications ?? {},
     };
   }
 
@@ -1611,6 +1621,7 @@ class StoreItem {
       description: map['description'],
       itemName: map['itemName'],
       latlng: Utils.latLngFromString(map['latlng']),
+      specifications: Map<String, String>.from(map['specifications']??{}),
     );
   }
 

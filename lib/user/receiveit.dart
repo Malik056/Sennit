@@ -14,7 +14,6 @@ import 'package:geocoder/geocoder.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
-// import 'package:place_picker/place_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/models/models.dart' as model;
@@ -31,6 +30,10 @@ import 'generic_tracking_screen.dart';
 
 class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
+  final GlobalKey<MySearchAppBarState> searchBarKey =
+      GlobalKey<MySearchAppBarState>();
+  final GlobalKey<StoresRouteState> storesRouteKey =
+      GlobalKey<StoresRouteState>();
   static List<Widget> _tabs;
   final bool demo;
   final TabController tabController;
@@ -74,6 +77,7 @@ class ReceiveItRoute extends StatelessWidget {
         _tabs
           ..add(
             StoresRoute(
+              key: storesRouteKey,
               address: null,
             ),
           )
@@ -84,6 +88,7 @@ class ReceiveItRoute extends StatelessWidget {
       _tabs
         ..add(
           StoresRoute(
+            key: storesRouteKey,
             address: null,
           ),
         )
@@ -98,11 +103,17 @@ class ReceiveItRoute extends StatelessWidget {
     var user = Session.data['user'];
     print('currentTab: $currentTab ${titles[currentTab]}');
     return Scaffold(
-      appBar: AppBar(
-        title: StatefulText(
-          title: titles[currentTab],
-        ),
+      appBar: MySearchAppBar(
+        titles[currentTab],
+        key: searchBarKey,
         centerTitle: true,
+        onQuery: (text) {
+          if (text == null || text.isEmpty) {
+            storesRouteKey.currentState.filterStores('');
+          } else {
+            storesRouteKey.currentState.filterStores(text);
+          }
+        },
         leading: InkWell(
           onTap: () {
             if (demo) {
@@ -200,7 +211,7 @@ class ReceiveItRoute extends StatelessWidget {
           }
           return _Body(
             onTabChange: (index) {
-              StatefulText._key?.currentState?.changeTitle(titles[index]);
+              searchBarKey?.currentState?.changeTitle(titles[index]);
             },
           );
         },
@@ -209,47 +220,188 @@ class ReceiveItRoute extends StatelessWidget {
   }
 }
 
-class StatefulText extends StatefulWidget {
-  StatefulText({
-    this.title,
-  }) : super(key: _key);
-  static GlobalKey<_StatefulTextState> _key = GlobalKey<_StatefulTextState>();
-  final title;
+class MySearchAppBar extends StatefulWidget with PreferredSizeWidget {
+  final String title;
+  final Widget leading;
+  final bool centerTitle;
+  final Function(String searchString) onQuery;
 
-  changeTitle(title) {
-    _key?.currentState?.changeTitle(title);
+  MySearchAppBar(
+    this.title, {
+    key,
+    this.leading,
+    this.centerTitle,
+    this.onQuery,
+  }) : super(key: key);
+
+  @override
+  State<StatefulWidget> createState() {
+    return MySearchAppBarState(title);
   }
 
   @override
-  _StatefulTextState createState() => _StatefulTextState();
+  Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }
 
-class _StatefulTextState extends State<StatefulText> {
+class MySearchAppBarState extends State<MySearchAppBar> {
   String title;
-
-  changeTitle(String title) {
-    this.title = title;
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
+  bool searchEnabled = true;
+  bool searchBarVisible = false;
+  double searchBarWidth = 0;
+  double searchBarHeight = 0;
+  TextEditingController _searchController;
+  String previousSearchString = '';
 
   @override
   void initState() {
     super.initState();
-    title = widget.title;
+    searchBarHeight = widget.preferredSize.height;
+    _searchController = TextEditingController();
   }
+
+  changeTitle(String title) {
+    this.title = title;
+    if (!title.toLowerCase().contains('stores')) {
+      disableSearch();
+    } else {
+      enableSearch();
+    }
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {});
+      });
+    }
+  }
+
+  disableSearch() {
+    if (!searchEnabled) return;
+    searchEnabled = false;
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {});
+      });
+    }
+  }
+
+  enableSearch() {
+    if (searchEnabled) return;
+    searchEnabled = true;
+    setState(() {});
+  }
+
+  showSearchBar() {
+    searchBarVisible = true;
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      searchBarWidth = MediaQuery.of(context).size.width;
+      setState(() {});
+    });
+  }
+
+  MySearchAppBarState(this.title);
 
   @override
   Widget build(BuildContext context) {
-    return Text(title ?? '');
+    return Stack(
+      fit: StackFit.expand,
+      alignment: Alignment.centerRight,
+      children: <Widget>[
+        AppBar(
+          title: Text(title),
+          centerTitle: widget.centerTitle ?? false,
+          leading: widget.leading,
+          actions: <Widget>[
+            searchEnabled
+                ? FlatButton(
+                    onPressed: () {
+                      this.showSearchBar();
+                    },
+                    child: Icon(Icons.search),
+                  )
+                : SizedBox(
+                    height: 0,
+                    width: 0,
+                  ),
+          ],
+        ),
+        Positioned(
+          right: 0,
+          top: MediaQuery.of(context).padding.top,
+          child: AnimatedContainer(
+            color: Colors.white,
+            width: searchBarWidth,
+            height: searchBarHeight,
+            duration: Duration(milliseconds: 500),
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) {
+                // if (_searchController.text.length >= 1) {
+                widget.onQuery(_searchController.text.trim());
+                // } else {
+                //   widget.onQuery('');
+                // }
+              },
+              decoration: InputDecoration(
+                hintText: 'Store Name',
+                suffixIcon: IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () {
+                    searchBarWidth = 0;
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
+
+// class StatefulText extends StatefulWidget {
+//   StatefulText({
+//     this.title,
+//   }) : super(key: _key);
+//   static GlobalKey<_StatefulTextState> _key = GlobalKey<_StatefulTextState>();
+//   final title;
+
+//   changeTitle(title) {
+//     _key?.currentState?.changeTitle(title);
+//   }
+
+//   @override
+//   _StatefulTextState createState() => _StatefulTextState();
+// }
+
+// class _StatefulTextState extends State<StatefulText> {
+//   String title;
+
+//   changeTitle(String title) {
+//     this.title = title;
+//     if (mounted) {
+//       setState(() {});
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     title = widget.title;
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Text(title ?? '');
+//   }
+// }
 
 class _Body extends StatefulWidget {
   // final List<Widget> tabs = [];
@@ -466,7 +618,7 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
 
 class StoresRoute extends StatefulWidget {
   final Address address;
-  StoresRoute({@required this.address});
+  StoresRoute({@required key, @required this.address}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -476,15 +628,30 @@ class StoresRoute extends StatefulWidget {
 
 class StoresRouteState extends State<StoresRoute> {
   Address selectedAddress;
-  static List<Store> stores;
-  StoresRouteState(this.selectedAddress) {
-    getStoresWidget();
+  List<Store> stores;
+  List<Store> filtered;
+
+  filterStores(String query) {
+    filtered.clear();
+    stores.forEach((store) {
+      if (store.storeName.toLowerCase().contains(query.toLowerCase())) {
+        filtered.add(store);
+      }
+    });
+    setState(() {});
   }
 
-  // Future<Widget> storeWidget;
+  StoresRouteState(this.selectedAddress);
+
+  bool initialized = false;
+  bool requestTimedOut = false;
+
   @override
   void initState() {
     super.initState();
+    initialized = false;
+    requestTimedOut = false;
+    getStoresWidget();
   }
 
   // void appBarTap() {
@@ -497,25 +664,110 @@ class StoresRouteState extends State<StoresRoute> {
   //   });
   // }
 
-  Widget _body;
-
   @override
   Widget build(BuildContext context) {
-    return _body ??
-        Container(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.height,
-          color: Colors.white.withAlpha(90),
-          child: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
+    return requestTimedOut
+        ? InkWell(
+            onTap: () {
+              initialized = false;
+              requestTimedOut = false;
+              initialize();
+              setState(() {});
+            },
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.replay),
+                  SizedBox(
+                    height: 2,
+                  ),
+                  Text('Reload'),
+                ],
+              ),
+            ),
+          )
+        : initialized
+            ? filtered.length <= 0
+                ? Center(child: Text('No Stores Available Near You '))
+                : SingleChildScrollView(
+                    physics: BouncingScrollPhysics(),
+                    child: Column(
+                      children: List.generate(
+                        filtered.length,
+                        (index) {
+                          return InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) {
+                                    return StoreMainPage(
+                                      store: filtered[index],
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 10),
+                              child: StoreItem(
+                                store: filtered[index],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )
+            : Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                color: Colors.white.withAlpha(90),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+  }
+
+  @override
+  setState(void Function() fn) {
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((duration) {
+        super.setState(fn);
+      });
+    }
   }
 
   Future<void> initialize() async {
     stores = [];
-    var querySnapshot =
-        await Firestore.instance.collection('stores').getDocuments();
+    filtered = [];
+    var querySnapshot = await Firestore.instance
+        .collection('stores')
+        .getDocuments(
+          source: Source.serverAndCache,
+        )
+        .timeout(
+      Duration(
+        seconds: 10,
+      ),
+      onTimeout: () async {
+        requestTimedOut = true;
+        print('Request Timed Out');
+        Utils.showSnackBarError(context, 'Request Timed out');
+        if (mounted) {
+          setState(() {});
+        }
+        return null;
+      },
+    ).catchError((_) async {
+      print(_);
+      Utils.showSnackBarError(
+        context,
+        _.toString(),
+      );
+    });
+    if (querySnapshot == null) return;
+    LatLng latlng = await Utils.getMyLocation();
     for (var documentSnapshot in querySnapshot.documents) {
       Store store;
       var storeId = documentSnapshot.documentID;
@@ -524,77 +776,36 @@ class StoresRouteState extends State<StoresRoute> {
         return storeId;
       });
       store = Store.fromMap(storeAsMap);
-      LatLng latlng = await Utils.getMyLocation();
 
       if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
         var itemIds = storeAsMap['items'];
-
+        List<Future<DocumentSnapshot>> requests = [];
         for (String itemId in itemIds) {
-          var item = await Firestore.instance
-              .collection('items')
-              .document(itemId)
-              .get();
+          var request =
+              Firestore.instance.collection('items').document(itemId).get();
+          requests.add(request);
+        }
+        for (var request in requests) {
+          var item = await request;
           model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
           store.storeItems.add(storeItem);
         }
         stores.add(store);
+        filtered.add(store);
       }
     }
-
-    // String cartId = await DatabaseHelper.getUserCartId(Session.data['user']);
-    // if (cartId == null) {
-    //   UserCart cart = UserCart();
-    //   cart.cartId = "order${DateTime.now().millisecondsSinceEpoch.toString()}";
-    //   cart.userId = Session.data["user"];
-    //   Session.data["cart"] = cart;
-    //   Database database = DatabaseHelper.getDatabase();
-    //   await database.insert(Tables.USER_CART_TABLE, cart.toMap());
-    //   return;
-    // }
     return;
   }
 
   void getStoresWidget() async {
     await initialize();
-    _body = stores.length <= 0
-        ? Center(child: Text('No Stores Available Near You '))
-        : SingleChildScrollView(
-            physics: BouncingScrollPhysics(),
-            child: Column(
-              children: List.generate(
-                stores.length,
-                (index) {
-                  return InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) {
-                            return StoreMainPage(
-                              store: stores[index],
-                            );
-                          },
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(bottom: 10),
-                      child: StoreItem(
-                        store: stores[index],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-    try {
-      if (mounted) {
-        setState(() {});
-      }
-    } on dynamic catch (_) {
-      print(_);
-      stores.clear();
-    }
+    // if (mounted) {
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    setState(() {
+      initialized = true;
+      // });
+    });
+    // }
   }
 }
 
@@ -811,6 +1022,7 @@ class StoreMainPage extends StatelessWidget {
                       style: Theme.of(context).textTheme.title,
                     ),
                     background: Stack(
+                      fit: StackFit.expand,
                       children: [
                         Image.network(
                           "${store.storeImage}",
@@ -1370,6 +1582,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                         widget.item.images.length,
                         (index) {
                           return Stack(
+                            fit: StackFit.expand,
                             children: <Widget>[
                               Container(
                                 width: MediaQuery.of(context).size.width,
@@ -1385,19 +1598,17 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                               ),
                               Container(
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    stops: [0, 0.15, 0.3, 0.8, 0.9, 1],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.white,
-                                      Colors.white24,
-                                      Colors.transparent,
-                                      Colors.transparent,
-                                      Colors.white24,
-                                      Colors.white,
-                                    ],
-                                  ),
+                                  // gradient: RadialGradient(
+                                  //   // begin: Alignment.topCenter,
+                                  //   // end: Alignment.bottomCenter,
+                                  //   colors: [
+                                  //     Colors.transparent,
+                                  //     Colors.white30,
+                                  //   ],
+                                  //   center: Alignment.center,
+                                  //   radius: .4,
+                                  //   tileMode: TileMode.clamp,
+                                  // ),
                                 ),
                               ),
                             ],
@@ -1445,90 +1656,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                 SizedBox(
                   height: 10,
                 ),
-                // Row(
-                //   // mainAxisSize: MainAxisSize.min,
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   children: <Widget>[
-                //     Icon(
-                //       Icons.thumb_up,
-                //       size: 14,
-                //     ),
-                //     SizedBox(
-                //       width: 5,
-                //     ),
-                //     Text(
-                //       '1234',
-                //       style: TextStyle(fontSize: 12),
-                //     ),
-                //     SizedBox(
-                //       width: 20,
-                //     ),
-                //     Container(
-                //       width: 1,
-                //       color: Colors.black,
-                //       child: Text(''),
-                //     ),
-                //     SizedBox(
-                //       width: 20,
-                //     ),
-                //     Icon(Icons.thumb_down, size: 12,),
-                //     SizedBox(
-                //       width: 5,
-                //     ),
-                //     Text(
-                //       '1234',
-                //       style: TextStyle(fontSize: 12),
-                //     )
-                //   ],
-                // ),
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                //   mainAxisSize: MainAxisSize.max,
-                //   children: <Widget>[
-                //     Spacer(),
-                //     // Center(
-                //     //   child:
-                //     Column(
-                //       crossAxisAlignment: CrossAxisAlignment.center,
-                //       mainAxisSize: MainAxisSize.min,
-                //       children: [
-                //         IconButton(
-                //           icon: Icon(
-                //             Icons.thumb_up,
-                //             size: 18,
-                //           ),
-                //           onPressed: () {},
-                //         ),
-                //         Text('1034'),
-                //       ],
-                //       // ),
-                //     ),
-                //     SizedBox(
-                //       width: 20,
-                //     ),
-                //     // Spacer(),
-                //     // Center(
-                //     //   child:
-                //     Column(
-                //       crossAxisAlignment: CrossAxisAlignment.center,
-                //       mainAxisSize: MainAxisSize.min,
-                //       children: [
-                //         IconButton(
-                //           icon: Icon(
-                //             Icons.thumb_down,
-                //             size: 18,
-                //           ),
-                //           onPressed: () {},
-                //         ),
-                //         Text('1034'),
-                //       ],
-                //     ),
-                //     // ),
-                //     Spacer(
-                //       flex: 8,
-                //     ),
-                //   ],
-                // ),
                 Expanded(
                   flex: 8,
                   child: TabBarView(
@@ -1566,54 +1693,44 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                           ),
                         ],
                       ),
-                      FutureBuilder(
-                        initialData: null,
-                        future: Firestore.instance
-                            .collection("specifications")
-                            .document(widget.item.itemId)
-                            .get(),
-                        builder: (
-                          context,
-                          AsyncSnapshot<DocumentSnapshot> asyncData,
-                        ) {
-                          if (asyncData.connectionState ==
-                              ConnectionState.done) {
-                            if (asyncData.data == null ||
-                                !asyncData.data.exists ||
-                                asyncData.data.data.length == 0) {
-                              return Center(
-                                  child: Text('No Specifications Available'));
-                            }
-                            return ListView.builder(
+                      (widget.item.specifications != null &&
+                              widget.item.specifications.length > 0)
+                          ? ListView.builder(
                               physics: BouncingScrollPhysics(),
                               itemBuilder: (context, index) {
-                                var key =
-                                    asyncData.data.data.keys.toList()[index];
+                                var key = widget.item.specifications.keys
+                                    .toList()[index];
                                 return Container(
-                                  margin: EdgeInsets.only(
-                                    top: index == 0 ? 20 : 10,
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      top: index == 0
+                                          ? BorderSide(width: 1)
+                                          : BorderSide.none,
+                                      bottom: BorderSide(width: 1),
+                                    ),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 20,
                                   ),
                                   child: Row(
                                     children: <Widget>[
-                                      SizedBox(
-                                        width: 20,
-                                      ),
+                                      Spacer(),
                                       Text(
                                         key,
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                           color: Theme.of(context).primaryColor,
                                         ),
                                       ),
-                                      SizedBox(
-                                        width: 15,
+                                      Spacer(
+                                        flex: 1,
                                       ),
                                       Expanded(
+                                        flex: 4,
                                         child: Container(
-                                          // color: Colors.pink,
                                           child: Text(
-                                            asyncData.data.data[key],
+                                            widget.item.specifications[key],
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .caption,
@@ -1625,27 +1742,11 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                   ),
                                 );
                               },
-                              itemCount: asyncData.data.data.keys.length,
-                            );
-                          } else if (asyncData.connectionState ==
-                              ConnectionState.waiting) {
-                            return widget._getProgressBar();
-                          } else {
-                            return Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Icon(Icons.replay),
-                                  SizedBox(
-                                    height: 6,
-                                  ),
-                                  Text('Unable to Load Data'),
-                                ],
-                              ),
-                            );
-                          }
-                        },
-                      ),
+                              itemCount: widget.item.specifications.keys.length,
+                            )
+                          : Center(
+                              child: Text("No Specifications Available"),
+                            ),
                       FutureBuilder(
                         initialData: null,
                         future: Firestore.instance
@@ -1922,169 +2023,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
       ),
     ];
   }
-
-  // Widget _getReviews() {
-  //   List<Widget> reviews = List();
-  //   for (var i = 0; i < 10; i++) {
-  //     Widget review2 = Card(
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.all(
-  //           Radius.circular(4),
-  //         ),
-  //       ),
-  //       child: Padding(
-  //         padding: EdgeInsets.only(
-  //           left: 8,
-  //           right: 8,
-  //           top: 16,
-  //           bottom: 8,
-  //         ),
-  //         child: Row(
-  //           children: [
-  //             Expanded(
-  //               child: Container(
-  //                 padding: EdgeInsets.only(right: 4),
-  //                 // decoration: ShapeDecoration(
-  //                 //   shape: Border(
-  //                 //     right: BorderSide(width: 1, color: Colors.black),
-  //                 //   ),
-  //                 // ),
-  //                 child: Column(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   crossAxisAlignment: CrossAxisAlignment.start,
-  //                   children: <Widget>[
-  //                     Text(
-  //                       'Some User $i',
-  //                       style: Theme.of(context).textTheme.subhead,
-  //                     ),
-  //                     // mainAxisSize: MainAxisSize.max,
-  //                     Text(
-  //                         'This is some medium length review. I want it to check how app looks.\n'),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //             SizedBox(
-  //               width: 12,
-  //             ),
-  //             Container(
-  //               margin: EdgeInsets.only(top: 10),
-  //               width: 1,
-  //               height: 80,
-  //               color: Colors.black,
-  //             ),
-  //             SizedBox(
-  //               width: 12,
-  //             ),
-  //             Column(
-  //               children: <Widget>[
-  //                 Icon(
-  //                   Icons.star,
-  //                   color: Colors.yellow,
-  //                 ),
-  //                 SizedBox(
-  //                   height: 2,
-  //                 ),
-  //                 Text('4.2'),
-  //               ],
-  //             ),
-  //             SizedBox(
-  //               width: 8,
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     );
-  //     Widget review = Card(
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.all(
-  //           Radius.circular(4),
-  //         ),
-  //       ),
-  //       child: Padding(
-  //         padding: EdgeInsets.only(
-  //           left: 8,
-  //           right: 8,
-  //           top: 16,
-  //           bottom: 8,
-  //         ),
-  //         child: Row(
-  //           children: [
-  //             Expanded(
-  //               child: Container(
-  //                 padding: EdgeInsets.only(right: 4),
-  //                 // decoration: ShapeDecoration(
-  //                 //   shape: Border(
-  //                 //     right: BorderSide(width: 1, color: Colors.black),
-  //                 //   ),
-  //                 // ),
-  //                 child: Column(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   crossAxisAlignment: CrossAxisAlignment.start,
-  //                   children: <Widget>[
-  //                     Text(
-  //                       'Some User $i',
-  //                       style: Theme.of(context).textTheme.subhead,
-  //                     ),
-  //                     // mainAxisSize: MainAxisSize.max,
-  //                     Text(
-  //                         'This is some medium length review. I want it to check how app looks. This is some medium length review. I want it to check how app looks. This is some medium length review. I want it to check how app looks.\n'),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //             SizedBox(
-  //               width: 12,
-  //             ),
-  //             Container(
-  //               margin: EdgeInsets.only(top: 10),
-  //               width: 1,
-  //               height: 80,
-  //               color: Colors.black,
-  //             ),
-  //             SizedBox(
-  //               width: 12,
-  //             ),
-  //             Column(
-  //               children: <Widget>[
-  //                 Icon(
-  //                   Icons.star,
-  //                   color: Colors.yellow,
-  //                 ),
-  //                 SizedBox(
-  //                   height: 2,
-  //                 ),
-  //                 Text('4.2'),
-  //               ],
-  //             ),
-  //             SizedBox(
-  //               width: 8,
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     );
-  //     reviews
-  //       ..add(review)
-  //       ..add(
-  //         SizedBox(
-  //           height: 10,
-  //         ),
-  //       )
-  //       ..add(review2)
-  //       ..add(
-  //         SizedBox(
-  //           height: 10,
-  //         ),
-  //       );
-  //     // ..add(review1);
-  //   }
-  //   reviews.add(SizedBox(height: 100));
-  //   return ListView(
-  //     children: reviews,
-  //   );
-  // }
-
 }
 
 class ShoppingCartRoute extends StatelessWidget {

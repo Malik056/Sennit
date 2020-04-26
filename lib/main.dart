@@ -20,7 +20,6 @@ import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
 import 'package:location/location.dart';
 import 'package:location/location.dart' as location;
-import 'package:path/path.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
@@ -180,7 +179,7 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String addAddressToForSennit = 'addAddressToSennit';
   static const String addAddressToReceiveIt = 'addAddressToReceiveIt';
   static const String senditCartPage = 'sendItCartPage';
-  static const String receiveItRoute = 'receiveItRoute';
+  // static const String receiveItRoute = 'receiveItRoute';
   static const String storeMainPage = 'storeMainPage';
   static const String partnerStoreHome = 'partnerStoreHome';
   static const String driverHome = 'driverHome';
@@ -335,9 +334,10 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ),
           MyApp.selectFromAddress: (context) =>
               SelectFromAddressRoute(MyApp._address),
-          MyApp.receiveItRoute: (context) => StoresRoute(
-                address: MyApp._address,
-              ),
+          // MyApp.receiveItRoute: (context) => StoresRoute(
+          //       key: GlobalKey<StoresRouteState>(),
+          //       address: MyApp._address,
+          //     ),
           MyApp.storeMainPage: (context) => StoreMainPage(),
           MyApp.partnerStoreHome: (context) => OrderedItemsList(),
           // activeOrderBody: (context) => ActiveOrder(),
@@ -804,7 +804,7 @@ class Utils {
   static void showLoadingDialog(BuildContext context) {
     showDialog(
         context: context,
-        barrierDismissible: false,
+        barrierDismissible: true,
         builder: (context) {
           return Center(
             child: CircularProgressIndicator(

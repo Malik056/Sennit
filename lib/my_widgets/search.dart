@@ -120,6 +120,18 @@ class SearchWidgetState extends State<SearchWidget> {
                   onItemFound: (model.StoreItem item, index) {
                     return GestureDetector(
                       child: MenuItem(item: item),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) {
+                              return ItemDetailsRoute(
+                                item: items[index],
+                              );
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 );

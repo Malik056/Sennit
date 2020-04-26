@@ -85,7 +85,10 @@ class VerifyEmailRoute extends StatelessWidget {
                       if ((await FirebaseAuth.instance.currentUser())
                           .isEmailVerified) {
                         if (Session.data['user'] == null) {
-                          Navigator.popAndPushNamed(context, MyApp.driverHome);
+                          Navigator.popAndPushNamed(
+                            context,
+                            MyApp.driverHome,
+                          );
                         } else {
                           Navigator.popAndPushNamed(context, MyApp.userHome);
                         }
