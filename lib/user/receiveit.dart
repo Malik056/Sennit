@@ -81,7 +81,9 @@ class ReceiveItRoute extends StatelessWidget {
               address: null,
             ),
           )
-          ..add(SearchWidget());
+          ..add(SearchWidget(
+            demo: demo,
+          ));
       });
     } else {
       drawerNameController.text = ((Session.data['user']) as User).fullName;
@@ -92,7 +94,9 @@ class ReceiveItRoute extends StatelessWidget {
             address: null,
           ),
         )
-        ..add(SearchWidget())
+        ..add(SearchWidget(
+          demo: demo,
+        ))
         ..add(UserNotificationWidget())
         ..add(PastOrdersRoute());
     }
@@ -904,7 +908,7 @@ class StoreItem extends StatelessWidget {
                                   child: FadeInImage.assetNetwork(
                                     placeholder: 'assets/images/logo.png',
                                     image:
-                                        '${store.storeItems[index].images[0]}',
+                                        '${(store.storeItems[index].images == null || store.storeItems[index].images.length == 0) ? '' : store.storeItems[index].images[0]}',
                                     height: 100,
                                     fit: BoxFit.contain,
                                   ),

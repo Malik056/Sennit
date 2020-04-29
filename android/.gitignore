@@ -6,3 +6,4 @@ gradle-wrapper.jar
 /local.properties
 */api_keys_tokens.xml
 GeneratedPluginRegistrant.java
+/android/app/release/app-release.aab

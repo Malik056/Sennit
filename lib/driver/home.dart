@@ -242,9 +242,8 @@ class _HomeScreenState extends State<HomeScreenDriver>
                     ),
                   )
                 : null,
-            body: true
-                // (driver.licencePlateNumber != null &&
-                //         driver.licencePlateNumber.isNotEmpty)
+            body: (driver.licencePlateNumber != null &&
+                    driver.licencePlateNumber.isNotEmpty)
                 ? TabBarView(
                     controller: controller,
                     children: <Widget>[
@@ -1137,10 +1136,14 @@ class _ProfilePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(80),
               ),
             ),
-            child: Icon(
-              Icons.account_circle,
-              color: Theme.of(context).primaryColor,
-              size: 160,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: FadeInImage.assetNetwork(
+                placeholder: 'assets/images/logo.png',
+                image: driver.profilePicture,
+                width: 200,
+                height: 200,
+              ),
             ),
           ),
           SizedBox(
