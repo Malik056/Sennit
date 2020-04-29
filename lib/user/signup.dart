@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
-import 'package:intl/intl.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
@@ -75,10 +73,10 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
     btnPaddingBottom = 10;
     btnPaddingLeft = 20;
     btnPaddingRight = 25;
-    dateInitialText = 'Tap to select';
-    dateText = dateInitialText;
-    dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
-    dateOfBirthTextColor = Colors.white;
+    // dateInitialText = 'Tap to select';
+    // dateText = dateInitialText;
+    // dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
+    // dateOfBirthTextColor = Colors.white;
 
     onSignUpError = (error) {
       pressed = false;

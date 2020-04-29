@@ -71,10 +71,10 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
     btnPaddingBottom = 10;
     btnPaddingLeft = 20;
     btnPaddingRight = 25;
-    dateInitialText = 'Tap to select';
-    dateText = dateInitialText;
-    dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
-    dateOfBirthTextColor = Colors.white;
+    // dateInitialText = 'Tap to select';
+    // dateText = dateInitialText;
+    // dateOfBirthHeadingColor = Color.fromARGB(255, 57, 59, 82);
+    // dateOfBirthTextColor = Colors.white;
 
     onSignUpError = (error) {
       pressed = false;
@@ -434,7 +434,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                             tapped = true;
                             var form = _formKey.currentState;
                             if (form.validate() &&
-                                dateInitialText != dateText &&
+                                // dateInitialText != dateText &&
                                 driver.homeLocationLatLng != null) {
                               driver.userCreatedOn = DateTime.now();
                               // user.userId =
@@ -479,12 +479,12 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                       // await DatabaseHelper.signInUser(
                                       //   user.userId,
                                       // );
-                                      Database database =
-                                          DatabaseHelper.getDatabase();
-                                      database.insert(
-                                        Tables.DRIVER_TABLE,
-                                        driver.toMap(),
-                                      );
+                                      // Database database =
+                                      //     DatabaseHelper.getDatabase();
+                                      // database.insert(
+                                      //   Tables.DRIVER_TABLE,
+                                      //   driver.toMap(),
+                                      // );
                                       Session.data.update('driver', (_) {
                                         return driver;
                                       }, ifAbsent: () {
@@ -537,15 +537,17 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                               } on dynamic catch (_) {
                                 onSignUpError();
                               }
-                            } else if (dateInitialText == dateText ||
-                                driver.homeLocationLatLng == null) {
+                            } else if (driver.homeLocationLatLng == null
+                                // ||
+                                // dateInitialText == dateText
+                                ) {
                               setState(() {
                                 pressed = false;
                                 Navigator.pop(context);
-                                if (dateInitialText == dateText) {
-                                  dateOfBirthHeadingColor = Colors.red;
-                                  dateOfBirthTextColor = Colors.red;
-                                } else {}
+                                // if (dateInitialText == dateText) {
+                                //   dateOfBirthHeadingColor = Colors.red;
+                                //   dateOfBirthTextColor = Colors.red;
+                                // } else {}
                               });
                             } else {
                               setState(() {
