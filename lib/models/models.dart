@@ -1621,7 +1621,7 @@ class StoreItem {
       description: map['description'],
       itemName: map['itemName'],
       latlng: Utils.latLngFromString(map['latlng']),
-      specifications: Map<String, String>.from(map['specifications']??{}),
+      specifications: Map<String, String>.from(map['specifications'] ?? {}),
     );
   }
 
@@ -1718,7 +1718,7 @@ class Store {
     return Store(
       storeId: map['storeId'],
       storeName: map['storeName'],
-      items: List<String>.from(map['items']),
+      items: List<String>.from(map['items'] ?? []),
       storeImage: map['storeImage'],
       storeMotto: map['storeMotto'],
       storeAddress: map['storeAddress'],

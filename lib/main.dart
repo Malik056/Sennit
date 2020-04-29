@@ -162,7 +162,7 @@ databaseInitializer() async {
 class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String startPage = 'startPage';
   static String initialRoute = startPage;
-  static const String searchPage = 'searchPage';
+  // static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
   static const String userSignup = '$userStartPage/userSignup';
@@ -341,7 +341,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           MyApp.storeMainPage: (context) => StoreMainPage(),
           MyApp.partnerStoreHome: (context) => OrderedItemsList(),
           // activeOrderBody: (context) => ActiveOrder(),
-          MyApp.searchPage: (context) => SearchWidget(),
+          // MyApp.searchPage: (context) => SearchWidget(demo: true,),
           MyApp.notificationWidget: (context) => UserNotificationWidget(),
           // sennitOrderRoute: (context) => SennitOrderRoute({}),
         },

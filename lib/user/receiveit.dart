@@ -81,7 +81,9 @@ class ReceiveItRoute extends StatelessWidget {
               address: null,
             ),
           )
-          ..add(SearchWidget());
+          ..add(SearchWidget(
+            demo: demo,
+          ));
       });
     } else {
       drawerNameController.text = ((Session.data['user']) as User).fullName;
@@ -92,7 +94,9 @@ class ReceiveItRoute extends StatelessWidget {
             address: null,
           ),
         )
-        ..add(SearchWidget())
+        ..add(SearchWidget(
+          demo: demo,
+        ))
         ..add(UserNotificationWidget())
         ..add(PastOrdersRoute());
     }
@@ -904,7 +908,7 @@ class StoreItem extends StatelessWidget {
                                   child: FadeInImage.assetNetwork(
                                     placeholder: 'assets/images/logo.png',
                                     image:
-                                        '${store.storeItems[index].images[0]}',
+                                        '${(store.storeItems[index].images == null || store.storeItems[index].images.length == 0) ? '' : store.storeItems[index].images[0]}',
                                     height: 100,
                                     fit: BoxFit.contain,
                                   ),
@@ -1488,7 +1492,6 @@ class _FloatingMenuState extends State<FloatingMenu> {
                 maintainState: false,
               ),
             );
-
             // setState(() {});
           },
         ),
@@ -1598,18 +1601,18 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                               ),
                               Container(
                                 decoration: BoxDecoration(
-                                  // gradient: RadialGradient(
-                                  //   // begin: Alignment.topCenter,
-                                  //   // end: Alignment.bottomCenter,
-                                  //   colors: [
-                                  //     Colors.transparent,
-                                  //     Colors.white30,
-                                  //   ],
-                                  //   center: Alignment.center,
-                                  //   radius: .4,
-                                  //   tileMode: TileMode.clamp,
-                                  // ),
-                                ),
+                                    // gradient: RadialGradient(
+                                    //   // begin: Alignment.topCenter,
+                                    //   // end: Alignment.bottomCenter,
+                                    //   colors: [
+                                    //     Colors.transparent,
+                                    //     Colors.white30,
+                                    //   ],
+                                    //   center: Alignment.center,
+                                    //   radius: .4,
+                                    //   tileMode: TileMode.clamp,
+                                    // ),
+                                    ),
                               ),
                             ],
                           );
