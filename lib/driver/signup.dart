@@ -457,7 +457,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                   if (firebaseUser == null) {
                                     SnackBar snackBar = SnackBar(
                                       content: Text(
-                                        'An Account with the same email already exists',
+                                        'An Account with the same email already exists.\nPlease Log in or Use Forget Password Option.',
                                         style: TextStyle(color: Colors.white),
                                       ),
                                       backgroundColor: Colors.yellow,
@@ -470,12 +470,25 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     driver.rating = 0;
                                     driver.totalReviews = 0;
                                     Map map = driver.toMap();
-                                    Firestore.instance
+                                    WriteBatch batch =
+                                        Firestore.instance.batch();
+                                    var driverRef = Firestore.instance
                                         .collection("drivers")
-                                        .document(driver.driverId)
-                                        .setData(map)
-                                        .timeout(Duration(seconds: 10))
-                                        .then((a) async {
+                                        .document(driver.driverId);
+                                    var userRef = Firestore.instance
+                                        .collection("drivers")
+                                        .document(driver.driverId);
+
+                                    batch.setData(driverRef, map);
+                                    batch.setData(userRef, map);
+                                    batch.commit().timeout(
+                                        Duration(seconds: 20), onTimeout: () {
+                                      Navigator.pop(context);
+                                      pressed = false;
+                                      firebaseUser.delete();
+                                      Utils.showSnackBarError(
+                                          context, 'Request Time out');
+                                    }).then((a) async {
                                       // await DatabaseHelper.signInUser(
                                       //   user.userId,
                                       // );
@@ -528,7 +541,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.sendEmailVerification();
+                                      firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });
@@ -536,6 +549,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 });
                               } on dynamic catch (_) {
                                 onSignUpError();
+                                FirebaseAuth.instance
+                                    .currentUser()
+                                    .then((user) => user?.delete());
                               }
                             } else if (driver.homeLocationLatLng == null
                                 // ||
