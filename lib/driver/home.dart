@@ -180,8 +180,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
                 ),
               ],
             ),
-            //TODO: fix this condition
-            bottomNavigationBar: !(driver.licencePlateNumber != null &&
+            bottomNavigationBar: (driver.licencePlateNumber != null &&
                     driver.licencePlateNumber.isNotEmpty)
                 ? BottomAppBar(
                     elevation: 10,
@@ -255,7 +254,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
                 : Center(
                     child: GestureDetector(
                       onTap: () async {
-                        Utils.showLoadingDialog(context);
+                        Utils.showLoadingDialog(context, false);
                         FirebaseUser user =
                             await FirebaseAuth.instance.currentUser();
                         if (user == null) {
@@ -273,13 +272,14 @@ class _HomeScreenState extends State<HomeScreenDriver>
                             return;
                           }).then((data) async {
                             Navigator.pop(context);
-                            if (driver == null) {
+                            if (!data.exists) {
                               await FirebaseAuth.instance.signOut();
                               Utils.showSnackBarWarning(
                                   context, 'Please Login Again');
                               Navigator.pushNamedAndRemoveUntil(
                                   context, MyApp.driverSignin, (c) => true);
                             } else {
+                              driver = Driver.fromMap(data.data);
                               Session.data.update('driver', (old) => driver,
                                   ifAbsent: () => driver);
                               setState(() {});

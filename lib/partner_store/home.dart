@@ -17,10 +17,10 @@ class OrderedItemsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Future<DocumentSnapshot> futureStoreData = Firestore.instance
-        .collection('stores')
-        .document(Session.data['partnerStore']['storeId'])
-        .get();
+    // Future<DocumentSnapshot> futureStoreData = Firestore.instance
+    //     .collection('stores')
+    //     .document(Session.data['partnerStore']['storeId'])
+    //     .get();
     return WillPopScope(
       onWillPop: () async {
         if (!_buttonPressed) {
@@ -94,7 +94,6 @@ class OrderedItemsList extends StatelessWidget {
                 final partnerStoreId = await FirebaseAuth.instance
                     .currentUser()
                     .then((user) => user.uid);
-
                 final data = await Firestore.instance
                     .collection("partnerStores")
                     .document(partnerStoreId)

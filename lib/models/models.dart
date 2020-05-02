@@ -404,7 +404,7 @@ class OrderFromReceiveIt {
       destination: destination ?? this.destination,
       userId: userId ?? this.userId,
       driverId: driverId ?? this.driverId,
-      price: price as num ?? this.price,
+      price: (price as num).toDouble() ?? this.price,
       date: orderDate ?? this.date,
       deliveryTime: deliveryTime ?? this.deliveryTime,
     );

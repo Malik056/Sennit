@@ -2,11 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
-import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
-import 'package:sqflite/sqlite_api.dart';
 
 class DriverSignUpRoute extends StatelessWidget {
   @override
@@ -470,13 +468,15 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     driver.rating = 0;
                                     driver.totalReviews = 0;
                                     Map map = driver.toMap();
+                                    map.putIfAbsent(
+                                        'userId', () => driver.driverId);
                                     WriteBatch batch =
                                         Firestore.instance.batch();
                                     var driverRef = Firestore.instance
                                         .collection("drivers")
                                         .document(driver.driverId);
                                     var userRef = Firestore.instance
-                                        .collection("drivers")
+                                        .collection("users")
                                         .document(driver.driverId);
 
                                     batch.setData(driverRef, map);
