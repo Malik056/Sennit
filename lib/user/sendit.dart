@@ -478,14 +478,15 @@ class SendItCartRoute extends StatelessWidget {
               SendItCartRouteState.receiverEmailController.text =
                   SendItCartRouteState.receiverEmailController.text.trim();
 
-              Map<String, dynamic> result = await performTransaction(
-                context,
-                SendItCartRouteState.totalCharges,
-              );
-              // Map<String, dynamic> result = {
-              //   'status': RaveStatus.success,
-              //   'errorMessage': "All Good",
-              // };
+              //TODO: reenable rave transaction
+              // Map<String, dynamic> result = await performTransaction(
+              //   context,
+              //   SendItCartRouteState.totalCharges,
+              // );
+              Map<String, dynamic> result = {
+                'status': RaveStatus.success,
+                'errorMessage': "All Good",
+              };
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
@@ -535,20 +536,20 @@ class SendItCartRoute extends StatelessWidget {
                   SendItCartRouteState.senderEmailController.text.trim();
               sennitOrder.senderPhone =
                   SendItCartRouteState.senderPhoneNumberController.text.trim();
-
               String otp = randomAlphaNumeric(6).toUpperCase();
-              var url =
-                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.senderPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
-              var response = await post(
-                url,
-              );
-              var url2 =
-                  "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.receiverPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
-              var response2 = await post(
-                url2,
-              );
-              // final response = Response('', 200);
-              // final response2 = Response('', 200);
+              //TODO: reenable otp message
+              // var url =
+              //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.senderPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              // var response = await post(
+              //   url,
+              // );
+              // var url2 =
+              //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${sennitOrder.receiverPhone}&msg=Hello Your Sennit OTP is \n$otp\n";
+              // var response2 = await post(
+              //   url2,
+              // );
+              final response = Response('', 200);
+              final response2 = Response('', 200);
 
               if ((response.statusCode == 200 ||
                       response.statusCode == 201 ||

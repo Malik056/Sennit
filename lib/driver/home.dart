@@ -180,8 +180,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
                 ),
               ],
             ),
-            //TODO: fix this condition
-            bottomNavigationBar: !(driver.licencePlateNumber != null &&
+            bottomNavigationBar: (driver.licencePlateNumber != null &&
                     driver.licencePlateNumber.isNotEmpty)
                 ? BottomAppBar(
                     elevation: 10,
@@ -253,10 +252,57 @@ class _HomeScreenState extends State<HomeScreenDriver>
                     ],
                   )
                 : Center(
-                    child: Text(
-                      'Your Vehicle is not Registered!\nPlease contact chasefick92@gmail.com',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.title,
+                    child: GestureDetector(
+                      onTap: () async {
+                        Utils.showLoadingDialog(context, false);
+                        FirebaseUser user =
+                            await FirebaseAuth.instance.currentUser();
+                        if (user == null) {
+                          Navigator.pop(context);
+                          Navigator.popAndPushNamed(context, MyApp.startPage);
+                        } else {
+                          Firestore.instance
+                              .collection('drivers')
+                              .document(user.uid)
+                              .get(source: Source.server)
+                              .timeout(Duration(seconds: 20), onTimeout: () {
+                            Utils.showSnackBarError(
+                                context, 'Request Timed out');
+                            Navigator.pop(context);
+                            return;
+                          }).then((data) async {
+                            Navigator.pop(context);
+                            if (!data.exists) {
+                              await FirebaseAuth.instance.signOut();
+                              Utils.showSnackBarWarning(
+                                  context, 'Please Login Again');
+                              Navigator.pushNamedAndRemoveUntil(
+                                  context, MyApp.driverSignin, (c) => true);
+                            } else {
+                              driver = Driver.fromMap(data.data);
+                              Session.data.update('driver', (old) => driver,
+                                  ifAbsent: () => driver);
+                              setState(() {});
+                            }
+                          });
+                        }
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            'Your Vehicle is not Registered!\nPlease contact chaseF@sennit.co.za.\n\nTap to Retry',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.title,
+                          ),
+                          SizedBox(height: 10),
+                          Icon(
+                            Icons.replay,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
           );
