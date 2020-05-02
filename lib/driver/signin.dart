@@ -401,8 +401,8 @@ class _DriverSignInState extends State<DriverSignIn> {
   final _formKey = GlobalKey<FormState>();
 
   void performSignin(
-      DocumentSnapshot userData, AuthResult result, String userId) {
-    Driver driver = Driver.fromMap(userData.data);
+      Map<String, dynamic> userData, AuthResult result, String userId) {
+    Driver driver = Driver.fromMap(userData);
     driver.driverId = userId;
     Session.data.update(
       'driver',
@@ -603,10 +603,15 @@ class _DriverSignInState extends State<DriverSignIn> {
                                           "Driver Doesn't exists. Please Signup again",
                                         );
                                       } else {
+                                        Map<String, dynamic> driverData =
+                                            Map<String, dynamic>.from(
+                                                data.data);
+                                        driverData.putIfAbsent(
+                                            'driverId', () => result.user.uid);
                                         Firestore.instance
                                             .collection('drivers')
                                             .document(result.user.uid)
-                                            .setData(data.data)
+                                            .setData(driverData)
                                             .timeout(
                                           Duration(seconds: 20),
                                           onTimeout: () {
@@ -618,7 +623,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                                           },
                                         ).then((_) {
                                           performSignin(
-                                            userData,
+                                            driverData,
                                             result,
                                             userId,
                                           );
@@ -627,7 +632,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                                     });
                                     return;
                                   }
-                                  performSignin(userData, result, userId);
+                                  performSignin(userData.data, result, userId);
                                 },
                               );
                             } else {

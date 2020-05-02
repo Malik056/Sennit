@@ -51,8 +51,8 @@ class _UserSignInState extends State<UserSignIn> {
   final _formKey = GlobalKey<FormState>();
 
   void performSignin(
-      DocumentSnapshot userData, AuthResult result, String userId) {
-    User user = User.fromMap(userData.data);
+      Map<String, dynamic> userData, AuthResult result, String userId) {
+    User user = User.fromMap(userData);
     user.userId = userId;
     Session.data.update(
       'user',
@@ -257,10 +257,16 @@ class _UserSignInState extends State<UserSignIn> {
                                           "User Doesn't exists. Please Signup again",
                                         );
                                       } else {
+                                        Map<String, dynamic> userDataNew =
+                                            Map<String, dynamic>.from(
+                                                data.data);
+                                        userDataNew.putIfAbsent(
+                                            'userId', () => userId);
+
                                         Firestore.instance
                                             .collection('users')
                                             .document(result.user.uid)
-                                            .setData(data.data)
+                                            .setData(userDataNew)
                                             .timeout(
                                           Duration(seconds: 20),
                                           onTimeout: () {
@@ -272,7 +278,7 @@ class _UserSignInState extends State<UserSignIn> {
                                           },
                                         ).then((_) {
                                           performSignin(
-                                            userData,
+                                            userDataNew,
                                             result,
                                             userId,
                                           );
@@ -281,7 +287,7 @@ class _UserSignInState extends State<UserSignIn> {
                                     });
                                     return;
                                   }
-                                  performSignin(userData, result, userId);
+                                  performSignin(userData.data, result, userId);
                                 },
                               );
                             } else {

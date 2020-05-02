@@ -258,7 +258,6 @@ class _HomeScreenState extends State<HomeScreenDriver>
                         Utils.showLoadingDialog(context);
                         FirebaseUser user =
                             await FirebaseAuth.instance.currentUser();
-                        Utils.showLoadingDialog(context);
                         if (user == null) {
                           Navigator.pop(context);
                           Navigator.popAndPushNamed(context, MyApp.startPage);
