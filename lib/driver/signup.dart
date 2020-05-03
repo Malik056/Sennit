@@ -2,11 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
-import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
-import 'package:sqflite/sqlite_api.dart';
 
 class DriverSignUpRoute extends StatelessWidget {
   @override
@@ -457,7 +455,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                   if (firebaseUser == null) {
                                     SnackBar snackBar = SnackBar(
                                       content: Text(
-                                        'An Account with the same email already exists',
+                                        'An Account with the same email already exists.\nPlease Log in or Use Forget Password Option.',
                                         style: TextStyle(color: Colors.white),
                                       ),
                                       backgroundColor: Colors.yellow,
@@ -470,12 +468,27 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     driver.rating = 0;
                                     driver.totalReviews = 0;
                                     Map map = driver.toMap();
-                                    Firestore.instance
+                                    map.putIfAbsent(
+                                        'userId', () => driver.driverId);
+                                    WriteBatch batch =
+                                        Firestore.instance.batch();
+                                    var driverRef = Firestore.instance
                                         .collection("drivers")
-                                        .document(driver.driverId)
-                                        .setData(map)
-                                        .timeout(Duration(seconds: 10))
-                                        .then((a) async {
+                                        .document(driver.driverId);
+                                    var userRef = Firestore.instance
+                                        .collection("users")
+                                        .document(driver.driverId);
+
+                                    batch.setData(driverRef, map);
+                                    batch.setData(userRef, map);
+                                    batch.commit().timeout(
+                                        Duration(seconds: 20), onTimeout: () {
+                                      Navigator.pop(context);
+                                      pressed = false;
+                                      firebaseUser.delete();
+                                      Utils.showSnackBarError(
+                                          context, 'Request Time out');
+                                    }).then((a) async {
                                       // await DatabaseHelper.signInUser(
                                       //   user.userId,
                                       // );
@@ -528,7 +541,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.sendEmailVerification();
+                                      firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });
@@ -536,6 +549,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 });
                               } on dynamic catch (_) {
                                 onSignUpError();
+                                FirebaseAuth.instance
+                                    .currentUser()
+                                    .then((user) => user?.delete());
                               }
                             } else if (driver.homeLocationLatLng == null
                                 // ||

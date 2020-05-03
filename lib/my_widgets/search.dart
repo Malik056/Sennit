@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flappy_search_bar/flappy_search_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart' as model;
 import 'package:sennit/user/receiveit.dart';
 

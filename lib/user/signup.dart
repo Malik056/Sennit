@@ -3,11 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 // import 'package:place_picker/place_picker.dart';
-import 'package:sennit/database/mydatabase.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
-import 'package:sqflite/sqlite_api.dart';
 
 class UserSignUpRoute extends StatelessWidget {
   @override
@@ -461,7 +459,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                   if (firebaseUser == null) {
                                     SnackBar snackBar = SnackBar(
                                       content: Text(
-                                        'An Account with the same email already exists',
+                                        'An Account with the same email already exists.\nPlease Log in or Use Forget Password Option.',
                                         style: TextStyle(color: Colors.white),
                                       ),
                                       backgroundColor: Colors.yellow,
@@ -472,21 +470,37 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                   } else {
                                     user.userId = firebaseUser.uid;
                                     Map map = user.toMap();
-                                    Firestore.instance
+                                    map.putIfAbsent(
+                                        'driverId', () => user.userId);
+                                    WriteBatch batch =
+                                        Firestore.instance.batch();
+                                    DocumentReference userRef = Firestore
+                                        .instance
                                         .collection("users")
-                                        .document(user.userId)
-                                        .setData(map)
-                                        .timeout(Duration(seconds: 10))
-                                        .then((a) async {
+                                        .document(user.userId);
+                                    DocumentReference driverRef = Firestore
+                                        .instance
+                                        .collection("drivers")
+                                        .document(user.userId);
+                                    batch.setData(userRef, map);
+                                    batch.setData(driverRef, map);
+                                    batch.commit().timeout(
+                                        Duration(seconds: 20), onTimeout: () {
+                                      Navigator.pop(context);
+                                      firebaseUser.delete();
+                                      pressed = false;
+                                      Utils.showSnackBarError(
+                                          context, 'Request Timeout');
+                                    }).then((a) async {
                                       // await DatabaseHelper.signInUser(
                                       //   user.userId,
                                       // );
-                                      Database database =
-                                          DatabaseHelper.getDatabase();
-                                      database.insert(
-                                        Tables.USER_TABLE,
-                                        user.toMap(),
-                                      );
+                                      // Database database =
+                                      //     DatabaseHelper.getDatabase();
+                                      // database.insert(
+                                      //   Tables.USER_TABLE,
+                                      //   user.toMap(),
+                                      // );
                                       Session.data.update('user', (ignored) {
                                         return user;
                                       }, ifAbsent: () {
@@ -526,7 +540,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.sendEmailVerification();
+                                      firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });

@@ -277,13 +277,9 @@ class Driver {
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth'] ?? 0),
       gender: Utils.getGenderFromString(map['gender']),
       rank: map['rank'],
-      rating: (map['rating'] as num).toDouble() ?? 0,
+      rating: (map['rating'] as num)?.toDouble() ?? 0,
       totalReviews: map['totalReviews'] ?? 0,
-      balance: map['balance'] != null
-          ? (map['balance'].runtimeType == int
-              ? (map['balance'] as int).toDouble()
-              : map['balance'])
-          : 0,
+      balance: (map['balance'] as num)?.toDouble() ?? 0,
     );
   }
 
@@ -408,7 +404,7 @@ class OrderFromReceiveIt {
       destination: destination ?? this.destination,
       userId: userId ?? this.userId,
       driverId: driverId ?? this.driverId,
-      price: price as num ?? this.price,
+      price: (price as num).toDouble() ?? this.price,
       date: orderDate ?? this.date,
       deliveryTime: deliveryTime ?? this.deliveryTime,
     );

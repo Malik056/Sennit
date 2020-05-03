@@ -50,7 +50,53 @@ class _UserSignInState extends State<UserSignIn> {
   String password = "";
   final _formKey = GlobalKey<FormState>();
 
+  void performSignin(
+      Map<String, dynamic> userData, AuthResult result, String userId) {
+    User user = User.fromMap(userData);
+    user.userId = userId;
+    Session.data.update(
+      'user',
+      (a) {
+        return user;
+      },
+      ifAbsent: () {
+        return user;
+      },
+    );
+    // await DatabaseHelper.signInUser(userId);
+    // List<UserLocationHistory>
+    //     userLocationHistory = await DatabaseHelper
+    //         .getUserLocationHistory();
+    // Session.data.putIfAbsent(
+    //   "userLocationHistory",
+    //   () {
+    //     return userLocationHistory;
+    //   },
+    // );
+    MyApp.futureCart = initializeCart(user.userId);
+    // Navigator.pop(context);
+    if (result.user.isEmailVerified) {
+      // Navigator.popUntil(
+      //     context, (route) => route.isFirst);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        MyApp.userHome,
+        (route) => false,
+      );
+    } else {
+      result.user.sendEmailVerification();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) {
+          return VerifyEmailRoute(
+            context: context,
+          );
+        }),
+      );
+    }
+  }
+
   bool signInButtonEnabled = true;
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -178,62 +224,70 @@ class _UserSignInState extends State<UserSignIn> {
                                   .collection('users')
                                   .document(userId)
                                   .get()
-                                  .then(
+                                  .timeout(Duration(seconds: 10),
+                                      onTimeout: () {
+                                Navigator.pop(context);
+                                Utils.showSnackBarError(
+                                    context, 'Request Timed out try again');
+                                setState(() {
+                                  signInButtonEnabled = false;
+                                });
+                                return null;
+                              }).then(
                                 (userData) async {
                                   if (userData == null ||
                                       !userData.exists ||
                                       userData.data == null ||
                                       userData.data.length <= 0) {
-                                    Navigator.pop(context);
-                                    Utils.showSnackBarError(
-                                      context,
-                                      "User not found",
-                                    );
+                                    Firestore.instance
+                                        .collection('drivers')
+                                        .document(userId)
+                                        .get()
+                                        .then((data) {
+                                      if (data == null ||
+                                          !data.exists ||
+                                          data.data == null ||
+                                          data.data.length <= 0) {
+                                        Navigator.pop(context);
+                                        result.user.delete();
+                                        signInButtonEnabled = true;
+                                        setState(() {});
+                                        Utils.showSnackBarError(
+                                          context,
+                                          "User Doesn't exists. Please Signup again",
+                                        );
+                                      } else {
+                                        Map<String, dynamic> userDataNew =
+                                            Map<String, dynamic>.from(
+                                                data.data);
+                                        userDataNew.putIfAbsent(
+                                            'userId', () => userId);
+
+                                        Firestore.instance
+                                            .collection('users')
+                                            .document(result.user.uid)
+                                            .setData(userDataNew)
+                                            .timeout(
+                                          Duration(seconds: 20),
+                                          onTimeout: () {
+                                            Navigator.pop(context);
+                                            signInButtonEnabled = true;
+                                            setState(() {});
+                                            Utils.showSnackBarError(context,
+                                                'Request Timed out please Try Again!');
+                                          },
+                                        ).then((_) {
+                                          performSignin(
+                                            userDataNew,
+                                            result,
+                                            userId,
+                                          );
+                                        });
+                                      }
+                                    });
                                     return;
                                   }
-                                  User user = User.fromMap(userData.data);
-                                  user.userId = userId;
-                                  Session.data.update(
-                                    'user',
-                                    (a) {
-                                      return user;
-                                    },
-                                    ifAbsent: () {
-                                      return user;
-                                    },
-                                  );
-                                  // await DatabaseHelper.signInUser(userId);
-                                  // List<UserLocationHistory>
-                                  //     userLocationHistory = await DatabaseHelper
-                                  //         .getUserLocationHistory();
-                                  // Session.data.putIfAbsent(
-                                  //   "userLocationHistory",
-                                  //   () {
-                                  //     return userLocationHistory;
-                                  //   },
-                                  // );
-                                  MyApp.futureCart =
-                                      initializeCart(user.userId);
-                                  // Navigator.pop(context);
-                                  if (result.user.isEmailVerified) {
-                                    // Navigator.popUntil(
-                                    //     context, (route) => route.isFirst);
-                                    Navigator.of(context)
-                                        .pushNamedAndRemoveUntil(
-                                      MyApp.userHome,
-                                      (route) => false,
-                                    );
-                                  } else {
-                                    result.user.sendEmailVerification();
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (context) {
-                                        return VerifyEmailRoute(
-                                          context: context,
-                                        );
-                                      }),
-                                    );
-                                  }
+                                  performSignin(userData.data, result, userId);
                                 },
                               );
                             } else {

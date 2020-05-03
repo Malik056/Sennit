@@ -27,7 +27,6 @@ import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/review.dart';
-import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
@@ -801,10 +800,10 @@ class Utils {
     }
   }
 
-  static void showLoadingDialog(BuildContext context) {
+  static void showLoadingDialog(BuildContext context, [bool dismissible]) {
     showDialog(
         context: context,
-        barrierDismissible: true,
+        barrierDismissible: dismissible ?? true,
         builder: (context) {
           return Center(
             child: CircularProgressIndicator(
