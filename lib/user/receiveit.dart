@@ -934,7 +934,7 @@ class StoreItem extends StatelessWidget {
                                         height: 4,
                                       ),
                                       Text(
-                                        "${store.storeItems[index].price}",
+                                        "R${store.storeItems[index].price.toInt()}",
                                         overflow: TextOverflow.ellipsis,
                                         maxLines: 1,
                                         style: TextStyle(fontSize: 20),
@@ -1210,7 +1210,7 @@ class MenuItem extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.only(right: 5),
                 child: Tooltip(
-                  message: ("${item.price}"),
+                  message: ("R${item.price.toInt()}"),
                   child: AutoSizeText(
                     'R${item.price.round()}',
                     overflow: TextOverflow.ellipsis,
@@ -1673,7 +1673,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
                               Text(
-                                'Price: ${widget.item.price}',
+                                'Price: R${widget.item.price.toInt()}',
                                 style: Theme.of(context).textTheme.title,
                               ),
                               SizedBox(
@@ -2133,17 +2133,16 @@ class ShoppingCartRoute extends StatelessWidget {
                       Navigator.pop(context);
                       return;
                     }
-//TODO: reenable payment
-                    // Map<String, dynamic> result = await performTransaction(
-                    //   context,
-                    //   ShoppingCartRouteState.totalPrice +
-                    //       ShoppingCartRouteState.totalDeliveryCharges,
-                    // );
+                    Map<String, dynamic> result = await performTransaction(
+                      context,
+                      ShoppingCartRouteState.totalPrice +
+                          ShoppingCartRouteState.totalDeliveryCharges,
+                    );
 
-                    Map<String, dynamic> result = {
-                      'status': RaveStatus.success,
-                      'errorMessage': 'someMessage'
-                    };
+                    // Map<String, dynamic> result = {
+                    //   'status': RaveStatus.success,
+                    //   'errorMessage': 'someMessage'
+                    // };
 
                     if (result['status'] == RaveStatus.cancelled) {
                       Utils.showSnackBarWarningUsingKey(
@@ -2193,13 +2192,12 @@ class ShoppingCartRoute extends StatelessWidget {
                       ShoppingCartRoute._toAddress.coordinates.longitude,
                     );
                     String otp = randomAlphaNumeric(6).toUpperCase();
-                    //TODO: reenable otp message
-                    // var url =
-                    //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                    // var response = await post(
-                    //   url,
-                    // );
-                    final response = Response('', 200);
+                    var url =
+                        "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                    var response = await post(
+                      url,
+                    );
+                    // final response = Response('', 200);
 
                     if (response.statusCode == 200 ||
                         response.statusCode == 201 ||
@@ -3440,7 +3438,7 @@ class CartItemState extends State<CartItem> {
                   ),
                   Align(
                     child: Text(
-                      'Price: R${widget.item.price.toStringAsFixed(1)} per Item',
+                      'Price: R${widget.item.price.toInt()} per Item',
                       style: Theme.of(context).textTheme.subhead,
                     ),
                     alignment: Alignment.bottomRight,
