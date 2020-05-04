@@ -478,8 +478,8 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                         ifAbsent: () => driver.profilePicture);
                     data.update(
                       ('driverLicencePlateNumber'),
-                      (old) => driver.profilePicture,
-                      ifAbsent: () => driver.profilePicture,
+                      (old) => driver.licencePlateNumber,
+                      ifAbsent: () => driver.licencePlateNumber,
                     );
 
                     data.update(

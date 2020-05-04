@@ -350,6 +350,7 @@ class __BodyState extends State<_Body> {
     driverLicencePlateNumber = widget.data['driverLicencePlateNumber'];
     driverPhoneNumber = widget.data['driverPhoneNumber'];
     driverName = widget.data['driverName'];
+    driverImage = widget.data['driverImage'];
 
     await Utils.getMyLocation();
     driverIcon = await BitmapDescriptor.fromAssetImage(
@@ -418,8 +419,7 @@ class __BodyState extends State<_Body> {
       if (orderData.data == null) {
         return;
       }
-      driverLatLng =
-          Utils.latLngFromString((orderData?.data ?? {})['driverLatLng']);
+      driverLatLng = Utils.latLngFromString((orderData.data)['driverLatLng']);
       await Future.delayed(Duration(seconds: 3));
       time = 0;
       if (driverLatLng != null && firstTime && _controller != null) {
@@ -440,6 +440,7 @@ class __BodyState extends State<_Body> {
           driverLicencePlateNumber = orderData.data['driverLicencePlateNumber'];
           driverPhoneNumber = orderData.data['driverPhoneNumber'];
           driverName = orderData.data['driverName'];
+          driverImage = orderData.data['driverImage'];
           if (driverLatLng != null) {
             widget.onDriverAvailable(driverLatLng);
           }
@@ -553,6 +554,8 @@ class __BodyState extends State<_Body> {
                                       : FadeInImage.assetNetwork(
                                           placeholder: 'assets/user.png',
                                           image: driverImage,
+                                          width: 80,
+                                          height: 80,
                                         ),
                                   title: Text(driverName),
                                   subtitle: Column(
