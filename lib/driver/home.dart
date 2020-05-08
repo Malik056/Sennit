@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   Driver driver;
 
   initializeDriver(context) async {
-    await Utils.getMyLocation();
+    Utils.getMyLocation();
     if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
       await FirebaseAuth.instance.currentUser().then((user) {
         String driverId = user.uid;

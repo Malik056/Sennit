@@ -200,7 +200,7 @@ class _SennitOrderNavigationRouteState
                       ifAbsent: () => driver.profilePicture);
                   data.update(
                       ('driverPhoneNumber'), (old) => driver.phoneNumber,
-                      ifAbsent: () => driver.profilePicture);
+                      ifAbsent: () => driver.phoneNumber);
                   data.update(
                     ('driverLicencePlateNumber'),
                     (old) => driver.licencePlateNumber,

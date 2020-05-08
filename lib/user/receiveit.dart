@@ -2133,16 +2133,16 @@ class ShoppingCartRoute extends StatelessWidget {
                       Navigator.pop(context);
                       return;
                     }
-                    Map<String, dynamic> result = await performTransaction(
-                      context,
-                      ShoppingCartRouteState.totalPrice +
-                          ShoppingCartRouteState.totalDeliveryCharges,
-                    );
+                    // Map<String, dynamic> result = await performTransaction(
+                    //   context,
+                    //   ShoppingCartRouteState.totalPrice +
+                    //       ShoppingCartRouteState.totalDeliveryCharges,
+                    // );
 
-                    // Map<String, dynamic> result = {
-                    //   'status': RaveStatus.success,
-                    //   'errorMessage': 'someMessage'
-                    // };
+                    Map<String, dynamic> result = {
+                      'status': RaveStatus.success,
+                      'errorMessage': 'someMessage'
+                    };
 
                     if (result['status'] == RaveStatus.cancelled) {
                       Utils.showSnackBarWarningUsingKey(
@@ -2192,12 +2192,12 @@ class ShoppingCartRoute extends StatelessWidget {
                       ShoppingCartRoute._toAddress.coordinates.longitude,
                     );
                     String otp = randomAlphaNumeric(6).toUpperCase();
-                    var url =
-                        "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                    var response = await post(
-                      url,
-                    );
-                    // final response = Response('', 200);
+                    // var url =
+                    //     "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                    // var response = await post(
+                    //   url,
+                    // );
+                    final response = Response('', 200);
 
                     if (response.statusCode == 200 ||
                         response.statusCode == 201 ||
@@ -2528,7 +2528,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
                           await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
-                        setState(() {});
+                        if (mounted) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            setState(() {});
+                          });
+                        }
                       }
                     },
                     leading: Icon(

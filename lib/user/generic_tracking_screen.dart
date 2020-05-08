@@ -352,7 +352,7 @@ class __BodyState extends State<_Body> {
     driverName = widget.data['driverName'];
     driverImage = widget.data['driverImage'];
 
-    await Utils.getMyLocation();
+    Utils.getMyLocation();
     driverIcon = await BitmapDescriptor.fromAssetImage(
       ImageConfiguration(),
       'assets/images/car.png',

@@ -59,11 +59,11 @@ Future<void> locationInitializer() async {
     // MyApp._lastKnowLocation = _location.getLocation().then((data) {
     //   return LatLng(data.latitude, data.longitude);
     // });
-    final data = await MyApp._lastKnowLocation;
-    MyApp._initialLocation = data;
-    MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-        .findAddressesFromCoordinates(
-            Coordinates(data.latitude, data.longitude)))[0];
+    // final data = await MyApp._lastKnowLocation;
+    // MyApp._initialLocation = data;
+    // MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+    //     .findAddressesFromCoordinates(
+    //         Coordinates(data.latitude, data.longitude)))[0];
   } else {
     SystemNavigator.pop();
   }
@@ -294,135 +294,156 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   // This widget is the root of your application.
+
+  Future<void> initialize() async {
+    await MyApp._lastKnowLocation.then((data) async {
+      MyApp._initialLocation = data;
+      MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(data.latitude, data.longitude)))[0];
+    }).timeout(Duration(seconds: 5), onTimeout: () {
+      MyApp._initialLocation = LatLng(0, 0);
+      MyApp._address = Address();
+      return null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BotToastInit(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        localizationsDelegates: const [
-          location_picker.S.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const <Locale>[
-          Locale('en', ''),
-          Locale('ar', ''),
-        ],
-        navigatorObservers: [BotToastNavigatorObserver()],
-        initialRoute: MyApp.initialRoute,
-        routes: {
-          // '/': (context) => StartPage(),
-          MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
-                OpenAs.NAVIGATION,
-                fromCoordinate: LatLng(31, 74),
-                toCoordinate: LatLng(40, 80),
-                myLocation: LatLng(42, 85),
-              ),
-          MyApp.startPage: (context) => StartPage(),
-          MyApp.driverHome: (context) => HomeScreenDriver(),
-          MyApp.userSignup: (context) => UserSignUpRoute(),
-          MyApp.userSignIn: (context) => UserSignInRoute(),
-          MyApp.userStartPage: (context) => UserStartPage(),
-          MyApp.driverSignup: (context) => DriverSignUpRoute(),
-          MyApp.driverSignin: (context) => DriverSignInRoute(),
-          MyApp.driverStartPage: (context) => DriverStartPage(),
-          MyApp.userHome: (context) => UserHomeRoute(),
-          MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
-                context: context,
-              ),
-          MyApp.selectFromAddress: (context) =>
-              SelectFromAddressRoute(MyApp._address),
-          // MyApp.receiveItRoute: (context) => StoresRoute(
-          //       key: GlobalKey<StoresRouteState>(),
-          //       address: MyApp._address,
-          //     ),
-          MyApp.storeMainPage: (context) => StoreMainPage(),
-          MyApp.partnerStoreHome: (context) => OrderedItemsList(),
-          // activeOrderBody: (context) => ActiveOrder(),
-          // MyApp.searchPage: (context) => SearchWidget(demo: true,),
-          MyApp.notificationWidget: (context) => UserNotificationWidget(),
-          // sennitOrderRoute: (context) => SennitOrderRoute({}),
-        },
-        title: 'Sennit',
-        theme: ThemeData(
-          backgroundColor: Colors.white,
-          fontFamily: 'ArchivoNarrow',
-          primaryColor: MyApp.secondaryColor,
-          accentColor: MyApp.secondaryColor,
-          // buttonColor: primaryColor,
-          buttonTheme: ButtonThemeData(
-            buttonColor: MyApp.secondaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(6),
-              ),
-            ),
-          ),
-          bottomAppBarColor: Colors.white,
-          bottomAppBarTheme: BottomAppBarTheme(
-            color: Colors.white,
-            elevation: 8,
-          ),
-          appBarTheme: AppBarTheme(
-            iconTheme: IconThemeData(
-              color: MyApp.secondaryColor,
-            ),
-            color: Colors.white,
-            textTheme: TextTheme(
-              title: TextStyle(
-                fontWeight: FontWeight.bold,
+      child: FutureBuilder<void>(
+          future: initialize(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              localizationsDelegates: const [
+                location_picker.S.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const <Locale>[
+                Locale('en', ''),
+                Locale('ar', ''),
+              ],
+              navigatorObservers: [BotToastNavigatorObserver()],
+              initialRoute: MyApp.initialRoute,
+              routes: {
+                // '/': (context) => StartPage(),
+                MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
+                      OpenAs.NAVIGATION,
+                      fromCoordinate: LatLng(31, 74),
+                      toCoordinate: LatLng(40, 80),
+                      myLocation: LatLng(42, 85),
+                    ),
+                MyApp.startPage: (context) => StartPage(),
+                MyApp.driverHome: (context) => HomeScreenDriver(),
+                MyApp.userSignup: (context) => UserSignUpRoute(),
+                MyApp.userSignIn: (context) => UserSignInRoute(),
+                MyApp.userStartPage: (context) => UserStartPage(),
+                MyApp.driverSignup: (context) => DriverSignUpRoute(),
+                MyApp.driverSignin: (context) => DriverSignInRoute(),
+                MyApp.driverStartPage: (context) => DriverStartPage(),
+                MyApp.userHome: (context) => UserHomeRoute(),
+                MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
+                      context: context,
+                    ),
+                MyApp.selectFromAddress: (context) =>
+                    SelectFromAddressRoute(MyApp._address),
+                // MyApp.receiveItRoute: (context) => StoresRoute(
+                //       key: GlobalKey<StoresRouteState>(),
+                //       address: MyApp._address,
+                //     ),
+                MyApp.storeMainPage: (context) => StoreMainPage(),
+                MyApp.partnerStoreHome: (context) => OrderedItemsList(),
+                // activeOrderBody: (context) => ActiveOrder(),
+                // MyApp.searchPage: (context) => SearchWidget(demo: true,),
+                MyApp.notificationWidget: (context) => UserNotificationWidget(),
+                // sennitOrderRoute: (context) => SennitOrderRoute({}),
+              },
+              title: 'Sennit',
+              theme: ThemeData(
+                backgroundColor: Colors.white,
                 fontFamily: 'ArchivoNarrow',
-                fontSize: 22,
-                color: MyApp.secondaryColor,
+                primaryColor: MyApp.secondaryColor,
+                accentColor: MyApp.secondaryColor,
+                // buttonColor: primaryColor,
+                buttonTheme: ButtonThemeData(
+                  buttonColor: MyApp.secondaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(6),
+                    ),
+                  ),
+                ),
+                bottomAppBarColor: Colors.white,
+                bottomAppBarTheme: BottomAppBarTheme(
+                  color: Colors.white,
+                  elevation: 8,
+                ),
+                appBarTheme: AppBarTheme(
+                  iconTheme: IconThemeData(
+                    color: MyApp.secondaryColor,
+                  ),
+                  color: Colors.white,
+                  textTheme: TextTheme(
+                    title: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'ArchivoNarrow',
+                      fontSize: 22,
+                      color: MyApp.secondaryColor,
+                    ),
+                  ),
+                ),
+                iconTheme: IconThemeData(
+                  color: MyApp.secondaryColor,
+                ),
+                textTheme: TextTheme(
+                    title: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    headline: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    subhead: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                    subtitle: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                    ),
+                    body1: TextStyle(
+                      fontSize: 14,
+                      decorationColor: Colors.black,
+                      fontFamily: 'Roboto',
+                    ),
+                    body2: TextStyle(
+                      fontSize: 14,
+                      decorationColor: Colors.black,
+                      fontFamily: 'Roboto',
+                      fontStyle: FontStyle.italic,
+                    ),
+                    button: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                    display1: TextStyle(
+                      fontSize: 26,
+                      color: MyApp.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    )),
               ),
-            ),
-          ),
-          iconTheme: IconThemeData(
-            color: MyApp.secondaryColor,
-          ),
-          textTheme: TextTheme(
-              title: TextStyle(
-                color: MyApp.secondaryColor,
-                fontSize: 22,
-                fontWeight: FontWeight.normal,
-              ),
-              headline: TextStyle(
-                color: MyApp.secondaryColor,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
-              subhead: TextStyle(
-                color: MyApp.secondaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-              subtitle: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-              ),
-              body1: TextStyle(
-                fontSize: 14,
-                decorationColor: Colors.black,
-                fontFamily: 'Roboto',
-              ),
-              body2: TextStyle(
-                fontSize: 14,
-                decorationColor: Colors.black,
-                fontFamily: 'Roboto',
-                fontStyle: FontStyle.italic,
-              ),
-              button: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-              display1: TextStyle(
-                fontSize: 26,
-                color: MyApp.secondaryColor,
-                fontWeight: FontWeight.bold,
-              )),
-        ),
-      ),
+            );
+          }),
     );
   }
 }
