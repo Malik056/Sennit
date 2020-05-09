@@ -562,15 +562,32 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                         '${locationData.latitude},${locationData.longitude}',
                   };
 
-                  Firestore.instance
+                  var batch = Firestore.instance.batch();
+
+                  
+                  var driverRef = Firestore.instance
                       .collection('drivers')
                       .document(driver.driverId)
                       .collection('acceptedOrders')
-                      .document(widget.data['orderId'])
-                      .setData(
+                      .document(widget.data['orderId']);
+                  var userRef = Firestore.instance
+                      .collection('users')
+                      .document(widget.data['userId'])
+                      .collection('orders')
+                      .document(widget.data['orderId']);
+
+
+                      batch.setData(
+                        driverRef,
                         dataToUpload,
                         merge: true,
                       );
+                      batch.setData(
+                        userRef,
+                        dataToUpload,
+                        merge: true,
+                      );
+                      batch.commit();
                 });
                 // await Firestore.instance
                 //     .collection('postedOrders')

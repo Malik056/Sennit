@@ -352,7 +352,7 @@ class __BodyState extends State<_Body> {
     driverName = widget.data['driverName'];
     driverImage = widget.data['driverImage'];
 
-    Utils.getMyLocation();
+    await Utils.getMyLocation();
     driverIcon = await BitmapDescriptor.fromAssetImage(
       ImageConfiguration(),
       'assets/images/car.png',
@@ -412,8 +412,10 @@ class __BodyState extends State<_Body> {
       visible: driverLatLng != null,
     );
     _firebaseSubscription = Firestore.instance
-        .collection('postedOrders')
-        .document(widget.data['orderId'])
+        .collection('users')
+        .document(widget.data['userId'])
+        .collection('orders')
+        .document('orderId')
         .snapshots()
         .listen((orderData) async {
       if (orderData.data == null) {

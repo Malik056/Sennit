@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   Driver driver;
 
   initializeDriver(context) async {
-    Utils.getMyLocation();
+    await Utils.getMyLocation();
     if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
       await FirebaseAuth.instance.currentUser().then((user) {
         String driverId = user.uid;
@@ -399,10 +399,10 @@ class _NotificationPageState extends State<_NotificationPage> {
               }
             }
           }
-          if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
-              20) {
+           if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
+               15) {
             documents.add(doc);
-          }
+           }
         });
         List<Widget> tiles = [];
 
