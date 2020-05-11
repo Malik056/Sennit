@@ -40,35 +40,6 @@ import 'driver/signup.dart';
 import 'models/models.dart';
 import 'user/user_startpage.dart';
 
-Future<void> locationInitializer() async {
-  Location _location = Location();
-  PermissionStatus locationPermission = await _location.requestPermission();
-  if (locationPermission == PermissionStatus.GRANTED) {
-    // == PermissionStatus.GRANTED) {
-    final locator = Geolocator();
-    MyApp._lastKnowLocation = locator.getLastKnownPosition().then((position) {
-      if (position == null) {
-        return _location.getLocation().then((locationData) {
-          return LatLng(locationData.latitude, locationData.longitude);
-        });
-      } else {
-        return LatLng(position.latitude, position.longitude);
-      }
-    });
-
-    // MyApp._lastKnowLocation = _location.getLocation().then((data) {
-    //   return LatLng(data.latitude, data.longitude);
-    // });
-    // final data = await MyApp._lastKnowLocation;
-    // MyApp._initialLocation = data;
-    // MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-    //     .findAddressesFromCoordinates(
-    //         Coordinates(data.latitude, data.longitude)))[0];
-  } else {
-    SystemNavigator.pop();
-  }
-}
-
 // Future<dynamic> myBackgroundMessageHandler(Map<String, dynamic> message) {
 //   if (message.containsKey('data')) {
 //     // Handle data message
@@ -86,7 +57,7 @@ Future<void> locationInitializer() async {
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await locationInitializer();
+  // await locationInitializer();
   await databaseInitializer();
   Utils.getFCMServerKey();
   Utils.getAPIKey();
@@ -295,7 +266,37 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   // This widget is the root of your application.
 
+  Future<void> locationInitializer() async {
+    Location _location = Location();
+    PermissionStatus locationPermission = await _location.requestPermission();
+    if (locationPermission == PermissionStatus.GRANTED) {
+      // == PermissionStatus.GRANTED) {
+      final locator = Geolocator();
+      MyApp._lastKnowLocation = locator.getLastKnownPosition().then((position) {
+        if (position == null) {
+          return _location.getLocation().then((locationData) {
+            return LatLng(locationData.latitude, locationData.longitude);
+          });
+        } else {
+          return LatLng(position.latitude, position.longitude);
+        }
+      });
+
+      // MyApp._lastKnowLocation = _location.getLocation().then((data) {
+      //   return LatLng(data.latitude, data.longitude);
+      // });
+      // final data = await MyApp._lastKnowLocation;
+      // MyApp._initialLocation = data;
+      // MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+      //     .findAddressesFromCoordinates(
+      //         Coordinates(data.latitude, data.longitude)))[0];
+    } else {
+      SystemNavigator.pop();
+    }
+  }
+
   Future<void> initialize() async {
+    await locationInitializer();
     await MyApp._lastKnowLocation.then((data) async {
       MyApp._initialLocation = data;
       MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
@@ -315,7 +316,26 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           future: initialize(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return MaterialApp(
+                theme: ThemeData(
+                  backgroundColor: Colors.white,
+                  fontFamily: 'ArchivoNarrow',
+                  primaryColor: MyApp.secondaryColor,
+                  accentColor: MyApp.secondaryColor,
+                ),
+                home: Scaffold(
+                    appBar: AppBar(
+                      backgroundColor: Colors.white,
+                      title: Text(
+                        'Sennit',
+                        style: TextStyle(
+                          color: MyApp.primaryColor,
+                        ),
+                      ),
+                      centerTitle: true,
+                    ),
+                    body: Center(child: CircularProgressIndicator())),
+              );
             }
             return MaterialApp(
               navigatorKey: navigatorKey,
@@ -528,30 +548,88 @@ class Utils {
   }
 
   static showSnackBarError(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.red.shade500,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 4),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.red.shade500,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 4),
+    // );
 
-    Scaffold.of(context).showSnackBar(snackBar);
+    // Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return Container(
+        color: Colors.red,
+        width: MediaQuery.of(context).size.width,
+        height: kToolbarHeight,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+                child: Icon(
+              Icons.error,
+            )),
+            Expanded(
+              flex: 3,
+              child: Text('$message'),
+            ),
+            Spacer(),
+          ],
+        ),
+      );
+    });
+    BotToast.showNotification(
+      title: (_) {
+        return Text("Error!");
+      },
+      align: Alignment.bottomCenter,
+      subtitle: (_) => Text("$message"),
+      // trailing: (_) => RaisedButton(
+      //   color: Theme.of(context).primaryColor,
+      //   child: Text(
+      //     'Shop now',
+      //     style: TextStyle(color: Colors.white),
+      //   ),
+      //   onPressed: () {
+      //     Navigator.popUntil(context, (route) {
+      //       return route.settings.name == 'receiveIt';
+      //     });
+      //   },
+      // ),
+    );
   }
 
   static showSnackBarErrorUsingKey(
       GlobalKey<ScaffoldState> key, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.red.shade500,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 4),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.red.shade500,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 4),
+    // );
 
-    key.currentState.showSnackBar(snackBar);
+    // key.currentState.showSnackBar(snackBar);
+    BotToast.showNotification(
+      title: (_) {
+        return Text("Error!");
+      },
+      align: Alignment.bottomCenter,
+      subtitle: (_) => Text("$message"),
+      // trailing: (_) => RaisedButton(
+      //   color: Theme.of(context).primaryColor,
+      //   child: Text(
+      //     'Shop now',
+      //     style: TextStyle(color: Colors.white),
+      //   ),
+      //   onPressed: () {
+      //     Navigator.popUntil(context, (route) {
+      //       return route.settings.name == 'receiveIt';
+      //     });
+      //   },
+      // ),
+    );
   }
 
   static showSnackBarWarning(BuildContext context, String message) {
@@ -570,43 +648,79 @@ class Utils {
   static showSnackBarWarningUsingKey(
       GlobalKey<ScaffoldState> key, String message,
       {Duration duration}) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.yellow.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: duration ?? Duration(seconds: 4),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.yellow.shade700,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: duration ?? Duration(seconds: 4),
+    // );
 
-    key.currentState.showSnackBar(snackBar);
+    // if (key.currentState == null) {
+    //   key.currentState.showSnackBar(snackBar);
+    // } else {
+    BotToast.showNotification(
+      align: Alignment.bottomCenter,
+      duration: Duration(seconds: 4),
+      title: (fn) => Text('Warning'),
+      subtitle: (fn) => Text('$message'),
+    );
+    // }
   }
 
   static showSnackBarSuccess(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.green.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 2),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.green.shade700,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 2),
+    // );
 
-    Scaffold.of(context).showSnackBar(snackBar);
+    // Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showNotification(
+      title: (_) {
+        return Text("Success!");
+      },
+      align: Alignment.bottomCenter,
+      subtitle: (_) => Text("$message"),
+      // trailing: (_) => RaisedButton(
+      //   color: Theme.of(context).primaryColor,
+      //   child: Text(
+      //     'Shop now',
+      //     style: TextStyle(color: Colors.white),
+      //   ),
+      //   onPressed: () {
+      //     Navigator.popUntil(context, (route) {
+      //       return route.settings.name == 'receiveIt';
+      //     });
+      //   },
+      // ),
+    );
   }
 
   static showSnackBarSuccessUsingKey(
       GlobalKey<ScaffoldState> key, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.green.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.green.shade700,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 4),
+    // );
+    // if (key.currentState == null) {
+    //   key.currentState.showSnackBar(snackBar);
+    // } else {
+    BotToast.showNotification(
+      align: Alignment.bottomCenter,
       duration: Duration(seconds: 4),
+      title: (fn) => Text('Success'),
+      subtitle: (fn) => Text('$message'),
     );
-
-    key.currentState.showSnackBar(snackBar);
+    // }
   }
 
   static void showSuccessDialog(String message) {
