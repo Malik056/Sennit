@@ -2125,7 +2125,7 @@ class ShoppingCartRoute extends StatelessWidget {
                               style: TextStyle(color: Colors.white),
                             ),
                             onPressed: () {
-                              Navigator.popUntil(context, (route) {
+                              navigator.popUntil((route) {
                                 return route.settings.name == 'receiveIt';
                               });
                             },
@@ -2140,22 +2140,16 @@ class ShoppingCartRoute extends StatelessWidget {
                             text: 'Please Select a Destination First!',
                             duration: Duration(seconds: 2));
                         // Utils.showSnackBarError(context, 'Please Select a Destination');
-                        Navigator.pop(context);
+                        navigator.pop();
                         return;
                       }
                       double totalCharges =
                           state.totalPrice + state.totalDeliveryCharges;
-                      Map<String, dynamic> result;
-                      try {
-                        result = await performTransaction(
-                          context,
-                          totalCharges,
-                        );
-                      } on dynamic catch (_) {
-                        // Utils.showSnackBarErrorUsingKey(
-                        //     _key, 'Error After Perform Transaction');
-                        // print(ex);
-                      }
+                      Map<String, dynamic> result = await performTransaction(
+                        context,
+                        totalCharges,
+                      );
+
                       await Future.delayed(
                         Duration(seconds: 4),
                       );
@@ -2168,14 +2162,14 @@ class ShoppingCartRoute extends StatelessWidget {
                       if (result['status'] == RaveStatus.cancelled) {
                         Utils.showSnackBarWarningUsingKey(
                             _key, 'Payment Cancelled');
-                        Navigator.pop(context);
+                        navigator.pop();
                         return;
                       } else if (result['status'] == RaveStatus.error) {
                         Utils.showSnackBarErrorUsingKey(
                           _key,
                           result['errorMessage'],
                         );
-                        Navigator.pop(context);
+                        navigator.pop();
                         return;
                       } else {
                         Utils.showSnackBarSuccessUsingKey(
@@ -2476,12 +2470,12 @@ class ShoppingCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-        )
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = true
@@ -2501,7 +2495,8 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = true
+      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
+      ..staging = false
       ..isPreAuth = false
       ..displayFee = true;
 

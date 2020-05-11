@@ -280,7 +280,12 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
         } else {
           return LatLng(position.latitude, position.longitude);
         }
-      });
+      }).timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          return LatLng(0, 0);
+        },
+      );
 
       // MyApp._lastKnowLocation = _location.getLocation().then((data) {
       //   return LatLng(data.latitude, data.longitude);
@@ -291,21 +296,35 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       //     .findAddressesFromCoordinates(
       //         Coordinates(data.latitude, data.longitude)))[0];
     } else {
-      SystemNavigator.pop();
+      MyApp._lastKnowLocation = Future.delayed(
+          Duration(
+            milliseconds: 10,
+          ), () {
+        MyApp._initialLocation = LatLng(0, 0);
+        MyApp._address = Address(
+          addressLine: '',
+        );
+        return MyApp._initialLocation;
+      });
     }
   }
 
   Future<void> initialize() async {
-    await locationInitializer();
+    await locationInitializer().timeout(
+      Duration(
+        seconds: 10,
+      ),
+      onTimeout: () {},
+    );
     await MyApp._lastKnowLocation.then((data) async {
       MyApp._initialLocation = data;
       MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
           .findAddressesFromCoordinates(
               Coordinates(data.latitude, data.longitude)))[0];
-    }).timeout(Duration(seconds: 5), onTimeout: () {
+    }).timeout(Duration(seconds: 5), onTimeout: () async {
       MyApp._initialLocation = LatLng(0, 0);
       MyApp._address = Address();
-      return null;
+      return MyApp._initialLocation;
     });
   }
 
@@ -328,9 +347,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       backgroundColor: Colors.white,
                       title: Text(
                         'Sennit',
-                        style: TextStyle(
-                          color: MyApp.primaryColor,
-                        ),
+                        style: Theme.of(context).textTheme.subhead,
                       ),
                       centerTitle: true,
                     ),
@@ -479,9 +496,73 @@ class UserSignUp {
   String country = '';
 }
 
+class SnackbarLayout extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget leading;
+  final Widget trailing;
+  final Color color;
+
+  SnackbarLayout({
+    this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: color ?? Colors.white,
+      padding: EdgeInsets.all(10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: leading ?? Opacity(opacity: 0),
+          ),
+          SizedBox(
+            width: 15,
+          ),
+          Expanded(
+            flex: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  title ?? '',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+                SizedBox(
+                  height: 8,
+                ),
+                Text(
+                  subtitle ?? '',
+                  style: Theme.of(context).textTheme.subtitle,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: trailing ??
+                Opacity(
+                  opacity: 0,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class Utils {
   static String _apiKey;
   static String _fcmServerKey;
+
   static Future<String> getAPIKey() async {
     if (_apiKey != null) {
       return _apiKey;
@@ -578,25 +659,26 @@ class Utils {
         ),
       );
     });
-    BotToast.showNotification(
-      title: (_) {
-        return Text("Error!");
-      },
-      align: Alignment.bottomCenter,
-      subtitle: (_) => Text("$message"),
-      // trailing: (_) => RaisedButton(
-      //   color: Theme.of(context).primaryColor,
-      //   child: Text(
-      //     'Shop now',
-      //     style: TextStyle(color: Colors.white),
-      //   ),
-      //   onPressed: () {
-      //     Navigator.popUntil(context, (route) {
-      //       return route.settings.name == 'receiveIt';
-      //     });
-      //   },
-      // ),
-    );
+
+    // BotToast.showNotification(
+    //   title: (_) {
+    //     return Text("Error!");
+    //   },
+    //   align: Alignment.bottomCenter,
+    //   subtitle: (_) => Text("$message"),
+    //   // trailing: (_) => RaisedButton(
+    //   //   color: Theme.of(context).primaryColor,
+    //   //   child: Text(
+    //   //     'Shop now',
+    //   //     style: TextStyle(color: Colors.white),
+    //   //   ),
+    //   //   onPressed: () {
+    //   //     Navigator.popUntil(context, (route) {
+    //   //       return route.settings.name == 'receiveIt';
+    //   //     });
+    //   //   },
+    //   // ),
+    // );
   }
 
   static showSnackBarErrorUsingKey(
@@ -611,116 +693,87 @@ class Utils {
     // );
 
     // key.currentState.showSnackBar(snackBar);
-    BotToast.showNotification(
-      title: (_) {
-        return Text("Error!");
-      },
-      align: Alignment.bottomCenter,
-      subtitle: (_) => Text("$message"),
-      // trailing: (_) => RaisedButton(
-      //   color: Theme.of(context).primaryColor,
-      //   child: Text(
-      //     'Shop now',
-      //     style: TextStyle(color: Colors.white),
-      //   ),
-      //   onPressed: () {
-      //     Navigator.popUntil(context, (route) {
-      //       return route.settings.name == 'receiveIt';
-      //     });
-      //   },
-      // ),
-    );
+
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.error),
+        color: Colors.red,
+        title: 'Error',
+        subtitle: '$message',
+      );
+    });
+
+    // BotToast.showNotification(
+    //   title: (_) {
+    //     return Text("Error!");
+    //   },
+    //   align: Alignment.bottomCenter,
+    //   subtitle: (_) => Text("$message"),
+    //   // trailing: (_) => RaisedButton(
+    //   //   color: Theme.of(context).primaryColor,
+    //   //   child: Text(
+    //   //     'Shop now',
+    //   //     style: TextStyle(color: Colors.white),
+    //   //   ),
+    //   //   onPressed: () {
+    //   //     Navigator.popUntil(context, (route) {
+    //   //       return route.settings.name == 'receiveIt';
+    //   //     });
+    //   //   },
+    //   // ),
+    // );
   }
 
   static showSnackBarWarning(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.yellow.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.black),
-      ),
-      duration: Duration(seconds: 4),
-    );
-
-    Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.warning),
+        color: Colors.yellow[400],
+        title: 'Warning',
+        subtitle: '$message',
+      );
+    });
   }
 
   static showSnackBarWarningUsingKey(
       GlobalKey<ScaffoldState> key, String message,
       {Duration duration}) {
-    // SnackBar snackBar = SnackBar(
-    //   backgroundColor: Colors.yellow.shade700,
-    //   content: Text(
-    //     message,
-    //     style: TextStyle(color: Colors.white),
-    //   ),
-    //   duration: duration ?? Duration(seconds: 4),
-    // );
-
-    // if (key.currentState == null) {
-    //   key.currentState.showSnackBar(snackBar);
-    // } else {
-    BotToast.showNotification(
-      align: Alignment.bottomCenter,
-      duration: Duration(seconds: 4),
-      title: (fn) => Text('Warning'),
-      subtitle: (fn) => Text('$message'),
-    );
-    // }
+    BotToast.showCustomNotification(
+        toastBuilder: (fn) {
+          return SnackbarLayout(
+            leading: Icon(Icons.error),
+            color: Colors.red,
+            title: 'Error',
+            subtitle: '$message',
+          );
+        },
+        duration: duration ??
+            Duration(
+              seconds: 3,
+            ));
   }
 
   static showSnackBarSuccess(BuildContext context, String message) {
-    // SnackBar snackBar = SnackBar(
-    //   backgroundColor: Colors.green.shade700,
-    //   content: Text(
-    //     message,
-    //     style: TextStyle(color: Colors.white),
-    //   ),
-    //   duration: Duration(seconds: 2),
-    // );
-
-    // Scaffold.of(context).showSnackBar(snackBar);
-    BotToast.showNotification(
-      title: (_) {
-        return Text("Success!");
-      },
-      align: Alignment.bottomCenter,
-      subtitle: (_) => Text("$message"),
-      // trailing: (_) => RaisedButton(
-      //   color: Theme.of(context).primaryColor,
-      //   child: Text(
-      //     'Shop now',
-      //     style: TextStyle(color: Colors.white),
-      //   ),
-      //   onPressed: () {
-      //     Navigator.popUntil(context, (route) {
-      //       return route.settings.name == 'receiveIt';
-      //     });
-      //   },
-      // ),
-    );
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.check_circle),
+        color: Colors.green,
+        title: 'Success',
+        subtitle: '$message',
+      );
+    });
   }
 
   static showSnackBarSuccessUsingKey(
       GlobalKey<ScaffoldState> key, String message) {
-    // SnackBar snackBar = SnackBar(
-    //   backgroundColor: Colors.green.shade700,
-    //   content: Text(
-    //     message,
-    //     style: TextStyle(color: Colors.white),
-    //   ),
-    //   duration: Duration(seconds: 4),
-    // );
-    // if (key.currentState == null) {
-    //   key.currentState.showSnackBar(snackBar);
-    // } else {
-    BotToast.showNotification(
-      align: Alignment.bottomCenter,
-      duration: Duration(seconds: 4),
-      title: (fn) => Text('Success'),
-      subtitle: (fn) => Text('$message'),
-    );
-    // }
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.check_circle),
+        color: Colors.green,
+        title: 'Success',
+        subtitle: '$message',
+      );
+    });
   }
 
   static void showSuccessDialog(String message) {

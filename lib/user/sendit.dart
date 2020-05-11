@@ -427,6 +427,8 @@ class SendItCartRoute extends StatelessWidget {
         actions: <Widget>[
           FlatButton(
             onPressed: () async {
+              Utils.showLoadingDialog(context);
+              NavigatorState navigator = Navigator.of(context);
               if (double.parse(
                           SendItCartRouteState.numberOfBoxesController.text) ==
                       0 &&
@@ -437,6 +439,7 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Select at least 1 Sleeve or Box',
                 );
+                navigator.pop();
                 return;
               } else if (SendItCartRouteState
                           .receiverPhoneNumberController.text.length !=
@@ -447,6 +450,7 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Receiver Phone Number',
                 );
+                navigator.pop();
                 return;
               } else if (SendItCartRouteState
                           .senderPhoneNumberController.text.length !=
@@ -457,6 +461,7 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Sender Phone Number',
                 );
+                navigator.pop();
                 return;
               } else if (!Utils.isEmailCorrect(
                   SendItCartRouteState.senderEmailController.text.trim())) {
@@ -464,6 +469,7 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Sender Email Address',
                 );
+                navigator.pop();
                 return;
               } else if (!Utils.isEmailCorrect(
                   SendItCartRouteState.receiverEmailController.text.trim())) {
@@ -471,6 +477,7 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Receiver Email Address',
                 );
+                navigator.pop();
                 return;
               }
               SendItCartRouteState.senderEmailController.text =
@@ -489,15 +496,15 @@ class SendItCartRoute extends StatelessWidget {
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
+                navigator.pop();
                 return;
               } else if (result['status'] == RaveStatus.error) {
                 Utils.showSnackBarErrorUsingKey(_key, result['errorMessage']);
+                navigator.pop();
                 return;
               } else {
                 Utils.showSnackBarSuccessUsingKey(_key, 'Payment Successful');
               }
-
-              Utils.showLoadingDialog(context);
               OrderFromSennit sennitOrder = OrderFromSennit();
               sennitOrder.senderHouse =
                   SendItCartRouteState.senderHouseController.text;
@@ -556,6 +563,18 @@ class SendItCartRoute extends StatelessWidget {
                   (response2.statusCode == 200 ||
                       response2.statusCode == 201 ||
                       response2.statusCode == 202)) {
+              } else {
+                BotToast.showNotification(
+                  title: (_) {
+                    return Text("Otp Sending Failed");
+                  },
+                  duration: Duration(seconds: 4),
+                  align: Alignment.bottomCenter,
+                  subtitle: (_) =>
+                      Text("Please Manually send the OTP\nYour OTP is $otp."),
+                );
+              }
+              {
                 // if (true) {
                 Map<String, dynamic> orderData = sennitOrder.toMap()
                   ..putIfAbsent('otp', () => otp);
@@ -627,10 +646,8 @@ class SendItCartRoute extends StatelessWidget {
                 Future.delayed(Duration(seconds: 2)).then((value) {
                   BotToast.cleanAll();
                 });
-                Navigator.popUntil(
-                    context, ModalRoute.withName(MyApp.userHome));
-                Navigator.push(
-                  context,
+                navigator.popUntil(ModalRoute.withName(MyApp.userHome));
+                navigator.push(
                   MaterialPageRoute(
                     builder: (context) {
                       return OrderTracking(
@@ -641,13 +658,6 @@ class SendItCartRoute extends StatelessWidget {
                     settings: RouteSettings(name: OrderTracking.NAME),
                   ),
                 );
-              } else {
-                Utils.showSnackBarErrorUsingKey(
-                    _key, 'Unable to send OTP please Try Again!');
-                // print('Response status: ${response.statusCode}');
-                // print('Response body: ${response.body}');
-                // print('Response reason: ${response.reasonPhrase}');
-                Navigator.pop(context);
               }
             },
             child: Text(
@@ -675,9 +685,12 @@ class SendItCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: 'eded539f04b38a2af712eb7d')
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = false
@@ -698,6 +711,7 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..staging = false
+      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
       ..isPreAuth = true
       ..displayFee = true;
 
