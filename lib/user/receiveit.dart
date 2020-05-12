@@ -2445,7 +2445,6 @@ class ShoppingCartRoute extends StatelessWidget {
                               merge: true,
                             );
 
-                            //TODO: Send Notifications to all devices
                             // deviceIds.forEach((id) {
                             request = post(
                               'https://fcm.googleapis.com/fcm/send',
@@ -2621,10 +2620,10 @@ class ShoppingCartRoute extends StatelessWidget {
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
         amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+        publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+            // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+        encryptionKey: 'eded539f04b38a2af712eb7d',
+            // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
         )
       ..country = "ZA"
       ..currency = "ZAR"
@@ -2646,7 +2645,7 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
-      ..staging = true
+      ..staging = false
       ..isPreAuth = false
       ..displayFee = true;
 
