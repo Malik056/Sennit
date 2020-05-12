@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
@@ -38,7 +39,7 @@ class ReceiveItRoute extends StatelessWidget {
   final bool demo;
   final TabController tabController;
   static int currentTab = 0;
-  static Future<Null> _authCheck;
+  static Future<void> _authCheck;
   static List<String> titles = [
     'Stores',
     'Search',
@@ -51,6 +52,15 @@ class ReceiveItRoute extends StatelessWidget {
   Future<void> initialize() async {
     if (_authCheck != null) {
       await _authCheck;
+    } else {
+      await FirebaseAuth.instance.currentUser().then((value) {
+        if (value == null) {
+          FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: 'demo@sennit.com',
+            password: '123456',
+          );
+        }
+      });
     }
     await MyApp.futureCart;
   }
@@ -658,16 +668,6 @@ class StoresRouteState extends State<StoresRoute> {
     getStoresWidget();
   }
 
-  // void appBarTap() {
-  //   Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-  //     return AddressAddingRoute(SourcePage.receiveIt, selectedAddress);
-  //   })).then((value) {
-  //     setState(() {
-  //       selectedAddress = value;
-  //     });
-  //   });
-  // }
-
   @override
   Widget build(BuildContext context) {
     return requestTimedOut
@@ -771,7 +771,12 @@ class StoresRouteState extends State<StoresRoute> {
       );
     });
     if (querySnapshot == null) return;
-    LatLng latlng = await Utils.getMyLocation();
+    LatLng latlng = await Utils.getMyLocation().then<LatLng>((latlng) {
+      return latlng;
+    }).timeout(Duration(seconds: 1), onTimeout: () {
+      LatLng latlng = Utils.getLastKnowLocation();
+      return latlng ?? LatLng(0, 0);
+    });
     for (var documentSnapshot in querySnapshot.documents) {
       Store store;
       var storeId = documentSnapshot.documentID;
@@ -792,6 +797,7 @@ class StoresRouteState extends State<StoresRoute> {
         for (var request in requests) {
           var item = await request;
           model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
+          storeItem.store = store;
           store.storeItems.add(storeItem);
         }
         stores.add(store);
@@ -2033,10 +2039,12 @@ class ShoppingCartRoute extends StatelessWidget {
   static Address _toAddress;
   final bool demo;
   final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
+
+  final _shoppingCartRouteBodyKey = GlobalKey<ShoppingCartRouteState>();
   ShoppingCartRoute(
     toAddress, {
     @required this.demo,
-  }) : body = ShoppingCartRouteBody(demo: demo) {
+  }) {
     // _fromAddress = fromAddress;
 
     if (toAddress != null) {
@@ -2045,8 +2053,17 @@ class ShoppingCartRoute extends StatelessWidget {
       _toAddress = Utils.getLastKnowAddress();
     }
   }
+  // : body = ShoppingCartRouteBody(demo: demo) {
+  //   // _fromAddress = fromAddress;
 
-  final ShoppingCartRouteBody body;
+  //   if (toAddress != null) {
+  //     _toAddress = toAddress;
+  //   } else if (_toAddress == null) {
+  //     _toAddress = Utils.getLastKnowAddress();
+  //   }
+  // }
+
+  // final ShoppingCartRouteBody body;
 
   @override
   Widget build(BuildContext context) {
@@ -2057,229 +2074,464 @@ class ShoppingCartRoute extends StatelessWidget {
           (demo == null || !demo)
               ? FlatButton(
                   onPressed: () async {
-                    Utils.showLoadingDialog(context);
-                    UserCart cart = Session.data['cart'];
-                    if (ShoppingCartRouteState._emailController.text == "" ||
-                        ShoppingCartRouteState._emailController.text == null) {
-                      Utils.showSnackBarErrorUsingKey(
-                        _key,
-                        'Please Provide your email Address',
-                      );
-                      Navigator.pop(context);
-                      return;
-                    } else if (ShoppingCartRouteState
-                                ._phoneNumberController.text ==
-                            "" ||
-                        ShoppingCartRouteState._phoneNumberController.text ==
-                            null) {
-                      Utils.showSnackBarErrorUsingKey(
-                        _key,
-                        'Please Provide your Phone Number',
-                      );
-                      Navigator.pop(context);
-                      return;
-                    } else if (ShoppingCartRouteState
-                                ._phoneNumberController.text.length !=
-                            10 ||
-                        !ShoppingCartRouteState._phoneNumberController.text
-                            .startsWith('0')) {
-                      Utils.showSnackBarErrorUsingKey(
-                        _key,
-                        'The Phone number Should start with 0 and Should Contain total of 10 digits',
-                      );
-                      Navigator.pop(context);
-                      return;
-                    } else if (!Utils.isEmailCorrect(
-                        ShoppingCartRouteState._emailController.text)) {
-                      Utils.showSnackBarErrorUsingKey(
-                        _key,
-                        'Invalid Email Format',
-                      );
-                      Navigator.pop(context);
-                      return;
-                    } else if (cart.itemsData == null ||
-                        cart.itemsData.length == 0) {
-                      Navigator.pop(context);
+                    try {
+                      Utils.showLoadingDialog(context);
+                      NavigatorState navigator = Navigator.of(context);
+                      ShoppingCartRouteState state =
+                          _shoppingCartRouteBodyKey.currentState;
+                      String email = state._emailController?.text?.trim() ?? '';
+                      String phoneNumber =
+                          state._phoneNumberController?.text?.trim() ?? '';
+                      String house = state._houseController?.text?.trim() ?? '';
+                      UserCart cart = Session.data['cart'];
+                      if (email == null || email.isEmpty) {
+                        Utils.showSnackBarErrorUsingKey(
+                          _key,
+                          'Please Provide your email Address',
+                        );
+                        Navigator.pop(context);
+                        return;
+                      } else if (phoneNumber == "" || phoneNumber == null) {
+                        Utils.showSnackBarErrorUsingKey(
+                          _key,
+                          'Please Provide your Phone Number',
+                        );
+                        Navigator.pop(context);
+                        return;
+                      } else if (phoneNumber.length != 10 ||
+                          !phoneNumber.startsWith('0')) {
+                        Utils.showSnackBarErrorUsingKey(
+                          _key,
+                          'The Phone number Should start with 0 and Should Contain total of 10 digits',
+                        );
+                        Navigator.pop(context);
+                        return;
+                      } else if (!Utils.isEmailCorrect(email)) {
+                        Utils.showSnackBarErrorUsingKey(
+                          _key,
+                          'Invalid Email Format',
+                        );
+                        Navigator.pop(context);
+                        return;
+                      } else if (cart.itemsData == null ||
+                          cart.itemsData.length == 0) {
+                        Navigator.pop(context);
 
-                      BotToast.showNotification(
-                        title: (_) {
-                          return Text("Your Cart is Empty");
-                        },
-                        align: Alignment.bottomCenter,
-                        subtitle: (_) =>
-                            Text("Please Add some items in your cart"),
-                        trailing: (_) => RaisedButton(
-                          color: Theme.of(context).primaryColor,
-                          child: Text(
-                            'Shop now',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          onPressed: () {
-                            Navigator.popUntil(context, (route) {
-                              return route.settings.name == 'receiveIt';
-                            });
+                        BotToast.showNotification(
+                          title: (_) {
+                            return Text("Your Cart is Empty");
                           },
-                        ),
+                          align: Alignment.bottomCenter,
+                          subtitle: (_) =>
+                              Text("Please Add some items in your cart"),
+                          trailing: (_) => RaisedButton(
+                            color: Theme.of(context).primaryColor,
+                            child: Text(
+                              'Shop now',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            onPressed: () {
+                              navigator.popUntil((route) {
+                                return route.settings.name == 'receiveIt';
+                              });
+                            },
+                          ),
+                        );
+
+                        // BotToast.showText(
+                        //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
+                        return;
+                      } else if (ShoppingCartRoute._toAddress == null) {
+                        BotToast.showText(
+                            text: 'Please Select a Destination First!',
+                            duration: Duration(seconds: 2));
+                        // Utils.showSnackBarError(context, 'Please Select a Destination');
+                        navigator.pop();
+                        return;
+                      }
+
+                      double totalCharges =
+                          state.totalPrice + state.totalDeliveryCharges;
+                      Map<String, dynamic> result = await performTransaction(
+                        context,
+                        totalCharges,
                       );
+                      // Map<String, dynamic> result = {
+                      //   'status': RaveStatus.success,
+                      //   'errorMessage': 'someMessage'
+                      // };
 
-                      // BotToast.showText(
-                      //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
-                      return;
-                    } else if (ShoppingCartRoute._toAddress == null) {
-                      BotToast.showText(
-                          text: 'Please Select a Destination First!',
-                          duration: Duration(seconds: 2));
-                      // Utils.showSnackBarError(context, 'Please Select a Destination');
-                      Navigator.pop(context);
-                      return;
-                    }
-                    Map<String, dynamic> result = await performTransaction(
-                      context,
-                      ShoppingCartRouteState.totalPrice +
-                          ShoppingCartRouteState.totalDeliveryCharges,
-                    );
+                      if (result['status'] == RaveStatus.cancelled) {
+                        Utils.showSnackBarWarningUsingKey(
+                            _key, 'Payment Cancelled');
+                        navigator.pop();
+                        return;
+                      } else if (result['status'] == RaveStatus.error) {
+                        Utils.showSnackBarErrorUsingKey(
+                          _key,
+                          result['errorMessage'],
+                        );
+                        navigator.pop();
+                        return;
+                      } else {
+                        Utils.showSnackBarSuccessUsingKey(
+                            _key, 'Payment Successful');
+                      }
 
-                    // Map<String, dynamic> result = {
-                    //   'status': RaveStatus.success,
-                    //   'errorMessage': 'someMessage'
-                    // };
+                      User user = Session.data['user'];
+                      model.OrderFromReceiveIt order =
+                          model.OrderFromReceiveIt();
+                      List<model.StoreItem> items = cart.items;
+                      double price = totalCharges;
 
-                    if (result['status'] == RaveStatus.cancelled) {
-                      Utils.showSnackBarWarningUsingKey(
-                          _key, 'Payment Cancelled');
-                      Navigator.pop(context);
-                      return;
-                    } else if (result['status'] == RaveStatus.error) {
-                      Utils.showSnackBarErrorUsingKey(
-                        _key,
-                        result['errorMessage'],
+                      List<LatLng> pickups = [];
+                      Map<String, double> itemsData = cart.itemsData;
+                      order.pickups = pickups;
+                      List<String> stores = [];
+                      List<double> pricePerItem = [];
+                      List<double> totalPricePerItem = [];
+                      order.stores = stores;
+                      for (model.StoreItem item in items) {
+                        // price += item.price * itemsData[item.itemId];
+                        pickups.add(item.latlng);
+                        stores.add(item.storeName);
+                        pricePerItem.add(item.price);
+                        totalPricePerItem.add(
+                          (item.price * itemsData[item.itemId] as num)
+                              .toDouble(),
+                        );
+                      }
+                      order.pricePerItem = pricePerItem;
+                      order.totalPricePerItem = totalPricePerItem;
+                      // order.quantities = quantities;
+                      order.date = DateTime.now();
+                      order.userId = user.userId;
+                      order.email = email;
+                      order.phoneNumber = phoneNumber;
+                      order.house = house;
+                      order.itemsData = itemsData;
+                      order.price = price;
+                      order.status = 'Pending';
+                      order.destination = LatLng(
+                        ShoppingCartRoute._toAddress.coordinates.latitude,
+                        ShoppingCartRoute._toAddress.coordinates.longitude,
                       );
-                      Navigator.pop(context);
-                      return;
-                    } else {
-                      Utils.showSnackBarSuccessUsingKey(
-                          _key, 'Payment Successful');
-                    }
+                      String otp = randomAlphaNumeric(6).toUpperCase();
+                      var url =
+                          "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                      var response = await post(
+                        url,
+                      ).catchError((_) {
+                        // Utils.showSnackBarErrorUsingKey(
+                        //     _key, 'Error While Sending sms');
+                      });
+                      // final response = Response('', 200);
 
-                    User user = Session.data['user'];
-                    model.OrderFromReceiveIt order = model.OrderFromReceiveIt();
-                    List<model.StoreItem> items = cart.items;
-                    double price = ShoppingCartRouteState.totalPrice +
-                        ShoppingCartRouteState.totalDeliveryCharges;
+                      if (response.statusCode == 200 ||
+                          response.statusCode == 201 ||
+                          response.statusCode == 202) {
+                      } else {
+                        int count = 0;
+                        while (response.statusCode != 200 &&
+                            response.statusCode != 201 &&
+                            response.statusCode != 202 &&
+                            count < 0) {
+                          count++;
+                          Utils.showSnackBarErrorUsingKey(
+                              _key, 'Unable to send OTP! Retrying!');
+                          BotToast.showNotification(
+                            title: (_) {
+                              return Text("Otp Sending Failed");
+                            },
+                            duration: Duration(seconds: 4),
+                            align: Alignment.bottomCenter,
+                            subtitle: (_) => Text("Retrying Attempt: $count"),
+                            // trailing: (_) => RaisedButton(
+                            //   color: Theme.of(context).primaryColor,
+                            //   child: Text(
+                            //     'Shop now',
+                            //     style: TextStyle(color: Colors.white),
+                            //   ),
+                            //   onPressed: () {
+                            //     Navigator.popUntil(context, (route) {
+                            //       return route.settings.name == 'receiveIt';
+                            //     });
+                            //   },
+                            // ),
+                          );
 
-                    List<LatLng> pickups = [];
-                    Map<String, double> itemsData = cart.itemsData;
-                    order.pickups = pickups;
-                    List<String> stores = [];
-                    order.stores = stores;
-                    for (model.StoreItem item in items) {
-                      // price += item.price * itemsData[item.itemId];
-                      pickups.add(item.latlng);
-                      stores.add(item.storeName);
-                    }
-                    // order.quantities = quantities;
-                    order.date = DateTime.now();
-                    order.userId = user.userId;
-                    order.email = ShoppingCartRouteState._emailController.text;
-                    order.phoneNumber =
-                        ShoppingCartRouteState._phoneNumberController.text;
-                    order.house = ShoppingCartRouteState._houseController.text;
-                    order.itemsData = itemsData;
-                    order.price = price;
-                    order.status = 'Pending';
-                    order.destination = LatLng(
-                      ShoppingCartRoute._toAddress.coordinates.latitude,
-                      ShoppingCartRoute._toAddress.coordinates.longitude,
-                    );
-                    String otp = randomAlphaNumeric(6).toUpperCase();
-                    var url =
-                        "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                    var response = await post(
-                      url,
-                    );
-                    // final response = Response('', 200);
-
-                    if (response.statusCode == 200 ||
-                        response.statusCode == 201 ||
-                        response.statusCode == 202) {
-                      // if (true) {
-                      Map<String, dynamic> orderData = order.toMap()
-                        ..putIfAbsent('otp', () => otp);
-                      Firestore.instance
-                          .collection('postedOrders')
-                          .add(orderData)
-                          .catchError((error) {})
-                          .then((data) async {
-                        orderData.update('orderId', (old) => data.documentID,
-                            ifAbsent: () => data.documentID);
-
-                        await Firestore.instance
-                            .collection("users")
-                            .document(user.userId)
-                            .collection('orders')
-                            .document(data.documentID)
-                            .setData(
-                              orderData,
-                              merge: true,
-                            );
-                        // await Firestore.instance
-                        //     .collection("verificationCodes")
-                        //     .document(data.documentID)
-                        //     .setData(
-                        //   {
-                        //     "key": otp,
-                        //   },
-                        // );
-
+                          var url =
+                              "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                          response = await post(
+                            url,
+                          ).catchError((_) {});
+                        }
+                        if (count >= 1) {
+                          BotToast.showNotification(
+                            title: (_) {
+                              return Text("Otp Sending Failed");
+                            },
+                            duration: Duration(seconds: 4),
+                            align: Alignment.bottomCenter,
+                            subtitle: (_) => Text(
+                                "Please Manually send the OTP\nYour OTP is $otp."),
+                            // trailing: (_) => RaisedButton(
+                            //   color: Theme.of(context).primaryColor,
+                            //   child: Text(
+                            //     'Shop now',
+                            //     style: TextStyle(color: Colors.white),
+                            //   ),
+                            //   onPressed: () {
+                            //     Navigator.popUntil(context, (route) {
+                            //       return route.settings.name == 'receiveIt';
+                            //     });
+                            //   },
+                            // ),
+                          );
+                        }
                         // print('Response status: ${response.statusCode}');
                         // print('Response body: ${response.body}');
                         // print('Response reason: ${response.reasonPhrase}');
-                        // print('${response.request.url}');
+                      }
+                      {
+                        // Utils.showSnackBarSuccessUsingKey(
+                        //     _key, 'Successfully Message Sent');
+                        // if (true) {
+                        Map<String, dynamic> orderData = order.toMap()
+                          ..putIfAbsent('otp', () => otp);
+                        Firestore.instance
+                            .collection('postedOrders')
+                            .add(orderData)
+                            .catchError((error) {
+                          Utils.showSnackBarErrorUsingKey(
+                              _key, 'Error Posting Order');
+                        }).then((data) async {
+                          orderData.update('orderId', (old) => data.documentID,
+                              ifAbsent: () => data.documentID);
+                          var batch = Firestore.instance.batch();
+                          var userOrderRef = Firestore.instance
+                              .collection("users")
+                              .document(user.userId)
+                              .collection('orders')
+                              .document(data.documentID);
 
-                        await Firestore.instance
-                            .collection('carts')
-                            .document(user.userId)
-                            .delete()
-                            .catchError((error) {})
-                            .then(
-                          (_) async {
-                            await Firestore.instance
-                                .collection('carts')
-                                .document(user.userId)
-                                .setData({});
-                            // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                            // Navigator.pop(context);
-                            Session.data['cart'] = UserCart(itemsData: {});
-                            Utils.showSuccessDialog(
-                                'Your Order is on its way!');
-                            Future.delayed(Duration(seconds: 2)).then((_) {
-                              BotToast.cleanAll();
-                            });
-                            Navigator.popUntil(
-                                context, ModalRoute.withName('receiveIt'));
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) {
-                                  return OrderTracking(
-                                    type: OrderTrackingType.RECEIVE_IT,
-                                    data: orderData,
-                                  );
+                          batch.setData(
+                            userOrderRef,
+                            orderData,
+                            merge: true,
+                          );
+                          // await Firestore.instance
+                          //     .collection("verificationCodes")
+                          //     .document(data.documentID)
+                          //     .setData(
+                          //   {
+                          //     "key": otp,
+                          //   },
+                          // );
+
+                          // print('Response status: ${response.statusCode}');
+                          // print('Response body: ${response.body}');
+                          // print('Response reason: ${response.reasonPhrase}');
+                          // print('${response.request.url}');
+                          var now = DateTime.now();
+
+                          Map<String, dynamic> storeOrders = {};
+                          List<String> deviceIds = [];
+
+                          for (model.StoreItem item in items) {
+                            final itemKey = item.itemId;
+                            if (storeOrders.containsKey(item.storeId)) {
+                              double price = storeOrders[item.storeId]['price'];
+                              price += item.price * itemsData[item.itemId];
+                              storeOrders[item.storeId].update(
+                                  'price', (old) => price,
+                                  ifAbsent: () => price);
+                              storeOrders[item.storeId]['pricePerItem']
+                                  .add(item.price);
+                              storeOrders[item.storeId]['totalPricePerItem']
+                                  .add(item.price * itemsData[item.itemId]);
+                              (storeOrders[item.storeId]['itemsData']
+                                      as Map<String, double>)
+                                  .putIfAbsent(
+                                itemKey,
+                                () => itemsData[itemKey],
+                              );
+                            } else {
+                              if (item.store == null) {
+                                var snapshot = await Firestore.instance
+                                    .collection('stores')
+                                    .document(item.storeId)
+                                    .get();
+                                item.store = Store.fromMap(snapshot.data);
+                                deviceIds.addAll(item.store.deviceTokens);
+                              } else if (item?.store?.deviceTokens != null &&
+                                  item.store.deviceTokens.length > 0) {
+                                deviceIds.addAll(item.store.deviceTokens);
+                              } else {
+                                var snapshot = await Firestore.instance
+                                    .collection('stores')
+                                    .document(item.storeId)
+                                    .get();
+                                item.store = Store.fromMap(snapshot.data);
+                                deviceIds.addAll(item.store.deviceTokens);
+                              }
+                              OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
+                                destination: Utils.latLngFromString(
+                                    orderData['destination']),
+                                date: now,
+                                deliveryTime: null,
+                                email: order.email,
+                                house: order.house,
+                                price: item.price * itemsData[item.itemId],
+                                orderId: orderData['orderId'],
+                                pricePerItem: [item.price],
+                                totalPricePerItem: [
+                                  item.price * itemsData[item.itemId]
+                                ],
+                                itemsData: {
+                                  itemKey: itemsData[itemKey],
                                 },
-                                settings:
-                                    RouteSettings(name: OrderTracking.NAME),
+                                phoneNumber: order.phoneNumber,
+                                userId: order.userId,
+                              );
+                              Map<String, dynamic> tempOrder =
+                                  receiveIt.toMap();
+                              tempOrder.putIfAbsent(
+                                'storeId',
+                                () => item.storeId,
+                              );
+                              tempOrder.putIfAbsent(
+                                  'storeName', () => item.storeName);
+                              tempOrder.putIfAbsent(
+                                  'storeAddress', () => item.storeAddress);
+                              tempOrder.putIfAbsent(
+                                'storeLatLng',
+                                () => Utils.latLngToString(
+                                    item.store.storeLatLng),
+                              );
+                              storeOrders.putIfAbsent(
+                                item.storeId,
+                                () {
+                                  return tempOrder;
+                                },
+                              );
+                            }
+                            // Map<String, dynamic> item = (await Firestore
+                            //         .instance
+                            //         .collection('items')
+                            //         .document(itemKey)
+                            //         .get())
+                            // .data;
+                            // LatLng latLng = Utils.latLngFromString(
+                            //     orderData['destination']);
+                            // String address = (await Geocoder.google(
+                            //             await Utils.getAPIKey())
+                            //         .findAddressesFromCoordinates(Coordinates(
+                            //             latLng.latitude, latLng.longitude)))[0]
+                            //     .addressLine;
+                          }
+                          Future<Response> request;
+                          final _fcmServerKey = await Utils.getFCMServerKey();
+                          storeOrders.forEach((k, v) {
+                            var storeOrderRef = Firestore.instance
+                                .collection('stores')
+                                .document(k)
+                                .collection('pendingOrderedItems')
+                                .document(order.orderId);
+
+                            batch.setData(
+                              storeOrderRef,
+                              v,
+                              merge: true,
+                            );
+
+                            // deviceIds.forEach((id) {
+                            request = post(
+                              'https://fcm.googleapis.com/fcm/send',
+                              headers: <String, String>{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'key=$_fcmServerKey',
+                              },
+                              body: jsonEncode(
+                                <String, dynamic>{
+                                  'notification': <String, dynamic>{
+                                    'body': 'An Order is just Arrived',
+                                    'title': 'Order'
+                                  },
+                                  'type': 'partnerStoreOrder',
+                                  'priority': 'high',
+                                  'data': <String, dynamic>{
+                                    'click_action':
+                                        'FLUTTER_NOTIFICATION_CLICK',
+                                    'orderId': '${order.orderId}',
+                                    'status': 'posted',
+                                    'userId': order.userId,
+                                  },
+                                  'registration_ids': deviceIds,
+                                },
                               ),
                             );
-                          },
-                        );
-                      });
-                    } else {
-                      Utils.showSnackBarErrorUsingKey(
-                          _key, 'Unable to send OTP please Try Again!');
-                      // print('Response status: ${response.statusCode}');
-                      // print('Response body: ${response.body}');
-                      // print('Response reason: ${response.reasonPhrase}');
-                      Navigator.pop(context);
+                            // });
+                          });
+                          var cartRef = Firestore.instance
+                              .collection('carts')
+                              .document(user.userId);
+                          batch.delete(cartRef);
+                          batch.commit().catchError((error) {
+                            Utils.showSnackBarErrorUsingKey(
+                                _key, 'error clearing cart');
+                          }).then(
+                            (_) async {
+                              await Firestore.instance
+                                  .collection('carts')
+                                  .document(user.userId)
+                                  .setData({}).catchError((error) {
+                                Utils.showSnackBarErrorUsingKey(
+                                    _key, 'error re initializing cart');
+                              });
+                              await request;
+                              // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                              // Navigator.pop(context);
+                              Session.data['cart'] = UserCart(itemsData: {});
+                              Utils.showSuccessDialog(
+                                  'Your Order is on its way!');
+                              Future.delayed(Duration(seconds: 2)).then((_) {
+                                BotToast.cleanAll();
+                              });
+                              try {
+                                navigator.pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return OrderTracking(
+                                        type: OrderTrackingType.RECEIVE_IT,
+                                        data: orderData,
+                                      );
+                                    },
+                                    settings:
+                                        RouteSettings(name: OrderTracking.NAME),
+                                  ),
+                                  (route) {
+                                    if (route?.settings?.name == null) {
+                                      return false;
+                                    }
+                                    return route.settings.name == 'receiveIt';
+                                  },
+                                );
+                              } on dynamic catch (_) {
+                                navigator.pop();
+                                BotToast.showText(
+                                    text: _.toString(),
+                                    duration: Duration(
+                                      seconds: 10,
+                                    ));
+                              }
+                            },
+                          );
+                        });
+                      }
+                    } on dynamic catch (ex) {
+                      BotToast.showText(
+                          text: ex.toString(), duration: Duration(seconds: 10));
                     }
                   },
                   child: Text(
@@ -2301,7 +2553,7 @@ class ShoppingCartRoute extends StatelessWidget {
         centerTitle: true,
         // backgroundColor: Theme.of(context).accentColor,
       ),
-      body: body,
+      body: ShoppingCartRouteBody(demo: demo, key: _shoppingCartRouteBodyKey),
       bottomSheet: (demo != null && demo)
           ? BottomAppBar(
               child: Column(
@@ -2369,11 +2621,14 @@ class ShoppingCartRoute extends StatelessWidget {
     var initializer = RavePayInitializer(
         amount: amount,
         publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: 'eded539f04b38a2af712eb7d')
+            // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+        encryptionKey: 'eded539f04b38a2af712eb7d',
+            // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+        )
       ..country = "ZA"
       ..currency = "ZAR"
-      ..displayEmail = false
-      ..displayAmount = false
+      ..displayEmail = true
+      ..displayAmount = true
       ..email = "${user.email}"
       ..fName = "${user.firstName}"
       ..lName = "${user.lastName}"
@@ -2389,14 +2644,23 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
+      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
       ..staging = false
-      ..isPreAuth = true
+      ..isPreAuth = false
       ..displayFee = true;
 
     // Initialize and get the transaction result
     RaveResult response = await RavePayManager()
-        .prompt(context: context, initializer: initializer);
+        .prompt(context: context, initializer: initializer)
+        .catchError((_) {
+      // Utils.showSnackBarErrorUsingKey(_key, 'Error In RavePayManager');
+      print("Unexpected Error in RavePayManager");
+      return _;
+    });
     print(response.message);
+
+    // Utils.showSnackBarErrorUsingKey(
+    //     _key, 'Error: ${response.status}, Message: ${response.message}');
 
     return <String, dynamic>{
       'status': response.status,
@@ -2422,10 +2686,10 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double cardPadding = 20;
   double groupMargin = 30;
   double itemMargin = 10;
-  static List<TextEditingController> _controllers;
-  static TextEditingController _emailController;
-  static TextEditingController _houseController;
-  static TextEditingController _phoneNumberController;
+  List<TextEditingController> _controllers;
+  TextEditingController _emailController;
+  TextEditingController _houseController;
+  TextEditingController _phoneNumberController;
   bool boxSizeSmall = true;
   bool boxSizeMedium = false;
   bool boxSizeLarge = false;
@@ -2528,7 +2792,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
                           await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
-                        setState(() {});
+                        if (mounted) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            setState(() {});
+                          });
+                        }
                       }
                     },
                     leading: Icon(
@@ -2536,9 +2804,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       color: Theme.of(context).accentColor,
                     ),
                     title: Text(
-                      ShoppingCartRoute._toAddress != null
-                          ? ShoppingCartRoute._toAddress.addressLine
-                          : 'Address Not Set',
+                      ShoppingCartRoute._toAddress?.addressLine ??
+                          'Address Not Set',
                       style: TextStyle(
                         color: Theme.of(context).accentColor,
                         fontSize: 16,
@@ -2745,8 +3012,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   List<model.StoreItem> items;
   Map<String, double> itemsData;
-  static double totalDeliveryCharges = 0;
-  static double totalPrice = 0;
+  double totalDeliveryCharges = 0;
+  double totalPrice = 0;
   List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
   // List<double> quantities;
 

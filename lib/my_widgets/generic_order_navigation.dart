@@ -317,9 +317,17 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     .collection('notifications')
                     .document(widget.data['orderId']);
 
-                final acceptedOrderRef = Firestore.instance
+                final orderRef = Firestore.instance
                     .collection('postedOrders')
                     .document(widget.data['orderId']);
+
+                final acceptedOrderRef = Firestore.instance
+                    .collection('drivers')
+                    .document(driverId)
+                    .collection('acceptedOrders')
+                    .document(
+                      widget.data['orderId'],
+                    );
 
                 final driverCompleteOrderRef = Firestore.instance
                     .collection('drivers')
@@ -364,54 +372,56 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     ),
                 );
                 batch.delete(acceptedOrderRef);
+                batch.delete(orderRef);
 
-                List<Map<String, dynamic>> itemDetails =
-                    (await ReceiveItSolidBottomSheet
-                        ._key.currentState.items)['itemDetails'];
-                Map<String, double> itemsData =
-                    Map<String, double>.from(widget.data['itemsData']);
-                int index = 0;
-                final keys = itemsData.keys;
-                for (String itemKey in keys) {
-                  Map<String, dynamic> item = (await Firestore.instance
-                          .collection('items')
-                          .document(itemKey)
-                          .get())
-                      .data;
-                  LatLng latLng =
-                      Utils.latLngFromString(widget.data['destination']);
-                  String address =
-                      (await Geocoder.google(await Utils.getAPIKey())
-                              .findAddressesFromCoordinates(Coordinates(
-                                  latLng.latitude, latLng.longitude)))[0]
-                          .addressLine;
-                  var storeItemRef = Firestore.instance
-                      .collection('stores')
-                      .document(item['storeId'])
-                      .collection('orderedItems')
-                      .document(item['itemId']);
+                if (widget.data['numberOfBoxes'] == null) {
+                  List<Map<String, dynamic>> itemDetails =
+                      (await ReceiveItSolidBottomSheet
+                          ._key.currentState.items)['itemDetails'];
+                  Map<String, double> itemsData =
+                      Map<String, double>.from(widget.data['itemsData']);
+                  int index = 0;
+                  final keys = itemsData.keys;
+                  for (String itemKey in keys) {
+                    Map<String, dynamic> item = (await Firestore.instance
+                            .collection('items')
+                            .document(itemKey)
+                            .get())
+                        .data;
+                    LatLng latLng =
+                        Utils.latLngFromString(widget.data['destination']);
+                    String address =
+                        (await Geocoder.google(await Utils.getAPIKey())
+                                .findAddressesFromCoordinates(Coordinates(
+                                    latLng.latitude, latLng.longitude)))[0]
+                            .addressLine;
+                    var storeItemRef = Firestore.instance
+                        .collection('stores')
+                        .document(item['storeId'])
+                        .collection('orderedItems')
+                        .document(item['itemId']);
 
-                  batch.setData(
-                    storeItemRef,
-                    {
-                      widget.data['orderId']: {
-                        'orderedBy': widget.data['userId'],
-                        'dateOrdered': widget.data['date'],
-                        'dateDelivered': now.millisecondsSinceEpoch,
-                        'deliveredTo': (widget.data['house'] == null ||
-                                    widget.data['house'] == ''
-                                ? ''
-                                : widget.data['house'] + ', ') +
-                            address,
-                        'quantity': itemsData[itemKey],
-                        'userEmail': widget.data['email'],
-                        'price': itemDetails[index++]['price'],
+                    batch.setData(
+                      storeItemRef,
+                      {
+                        widget.data['orderId']: {
+                          'orderedBy': widget.data['userId'],
+                          'dateOrdered': widget.data['date'],
+                          'dateDelivered': now.millisecondsSinceEpoch,
+                          'deliveredTo': (widget.data['house'] == null ||
+                                      widget.data['house'] == ''
+                                  ? ''
+                                  : widget.data['house'] + ', ') +
+                              address,
+                          'quantity': itemsData[itemKey],
+                          'userEmail': widget.data['email'],
+                          'price': itemDetails[index++]['price'],
+                        },
                       },
-                    },
-                    merge: true,
-                  );
+                      merge: true,
+                    );
+                  }
                 }
-
                 await batch.commit();
                 final snapshot = await userToken;
                 final _fcmServerKey = await Utils.getFCMServerKey();
@@ -552,15 +562,32 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                         '${locationData.latitude},${locationData.longitude}',
                   };
 
-                  Firestore.instance
+                  var batch = Firestore.instance.batch();
+
+                  
+                  var driverRef = Firestore.instance
                       .collection('drivers')
                       .document(driver.driverId)
                       .collection('acceptedOrders')
-                      .document(widget.data['orderId'])
-                      .setData(
+                      .document(widget.data['orderId']);
+                  var userRef = Firestore.instance
+                      .collection('users')
+                      .document(widget.data['userId'])
+                      .collection('orders')
+                      .document(widget.data['orderId']);
+
+
+                      batch.setData(
+                        driverRef,
                         dataToUpload,
                         merge: true,
                       );
+                      batch.setData(
+                        userRef,
+                        dataToUpload,
+                        merge: true,
+                      );
+                      batch.commit();
                 });
                 // await Firestore.instance
                 //     .collection('postedOrders')

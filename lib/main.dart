@@ -40,35 +40,6 @@ import 'driver/signup.dart';
 import 'models/models.dart';
 import 'user/user_startpage.dart';
 
-Future<void> locationInitializer() async {
-  Location _location = Location();
-  PermissionStatus locationPermission = await _location.requestPermission();
-  if (locationPermission == PermissionStatus.GRANTED) {
-    // == PermissionStatus.GRANTED) {
-    final locator = Geolocator();
-    MyApp._lastKnowLocation = locator.getLastKnownPosition().then((position) {
-      if (position == null) {
-        return _location.getLocation().then((locationData) {
-          return LatLng(locationData.latitude, locationData.longitude);
-        });
-      } else {
-        return LatLng(position.latitude, position.longitude);
-      }
-    });
-
-    // MyApp._lastKnowLocation = _location.getLocation().then((data) {
-    //   return LatLng(data.latitude, data.longitude);
-    // });
-    final data = await MyApp._lastKnowLocation;
-    MyApp._initialLocation = data;
-    MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-        .findAddressesFromCoordinates(
-            Coordinates(data.latitude, data.longitude)))[0];
-  } else {
-    SystemNavigator.pop();
-  }
-}
-
 // Future<dynamic> myBackgroundMessageHandler(Map<String, dynamic> message) {
 //   if (message.containsKey('data')) {
 //     // Handle data message
@@ -86,7 +57,7 @@ Future<void> locationInitializer() async {
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await locationInitializer();
+  // await locationInitializer();
   await databaseInitializer();
   Utils.getFCMServerKey();
   Utils.getAPIKey();
@@ -294,135 +265,223 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   // This widget is the root of your application.
+
+  Future<void> locationInitializer() async {
+    Location _location = Location();
+    PermissionStatus locationPermission = await _location.requestPermission();
+    if (locationPermission == PermissionStatus.GRANTED) {
+      // == PermissionStatus.GRANTED) {
+      final locator = Geolocator();
+      MyApp._lastKnowLocation =
+          locator.getLastKnownPosition().then<LatLng>((position) {
+        if (position == null) {
+          return _location.getLocation().then<LatLng>((locationData) {
+            return LatLng(locationData.latitude, locationData.longitude);
+          });
+        } else {
+          return LatLng(position.latitude, position.longitude);
+        }
+      }).timeout(
+        Duration(seconds: 5),
+        onTimeout: () {
+          return LatLng(0, 0);
+        },
+      );
+
+      // MyApp._lastKnowLocation = _location.getLocation().then((data) {
+      //   return LatLng(data.latitude, data.longitude);
+      // });
+      // final data = await MyApp._lastKnowLocation;
+      // MyApp._initialLocation = data;
+      // MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+      //     .findAddressesFromCoordinates(
+      //         Coordinates(data.latitude, data.longitude)))[0];
+    } else {
+      MyApp._lastKnowLocation = Future.delayed(
+          Duration(
+            milliseconds: 10,
+          ), () {
+        MyApp._initialLocation = LatLng(0, 0);
+        MyApp._address = Address(
+          addressLine: '',
+        );
+        return MyApp._initialLocation;
+      });
+    }
+  }
+
+  Future<void> initialize() async {
+    await locationInitializer().timeout(
+      Duration(
+        seconds: 10,
+      ),
+      onTimeout: () {},
+    );
+    await MyApp._lastKnowLocation.then((data) async {
+      MyApp._initialLocation = data;
+      MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(data.latitude, data.longitude)))[0];
+    }).timeout(Duration(seconds: 5), onTimeout: () async {
+      MyApp._initialLocation = LatLng(0, 0);
+      MyApp._address = Address();
+      return MyApp._initialLocation;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BotToastInit(
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        localizationsDelegates: const [
-          location_picker.S.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const <Locale>[
-          Locale('en', ''),
-          Locale('ar', ''),
-        ],
-        navigatorObservers: [BotToastNavigatorObserver()],
-        initialRoute: MyApp.initialRoute,
-        routes: {
-          // '/': (context) => StartPage(),
-          MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
-                OpenAs.NAVIGATION,
-                fromCoordinate: LatLng(31, 74),
-                toCoordinate: LatLng(40, 80),
-                myLocation: LatLng(42, 85),
-              ),
-          MyApp.startPage: (context) => StartPage(),
-          MyApp.driverHome: (context) => HomeScreenDriver(),
-          MyApp.userSignup: (context) => UserSignUpRoute(),
-          MyApp.userSignIn: (context) => UserSignInRoute(),
-          MyApp.userStartPage: (context) => UserStartPage(),
-          MyApp.driverSignup: (context) => DriverSignUpRoute(),
-          MyApp.driverSignin: (context) => DriverSignInRoute(),
-          MyApp.driverStartPage: (context) => DriverStartPage(),
-          MyApp.userHome: (context) => UserHomeRoute(),
-          MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
-                context: context,
-              ),
-          MyApp.selectFromAddress: (context) =>
-              SelectFromAddressRoute(MyApp._address),
-          // MyApp.receiveItRoute: (context) => StoresRoute(
-          //       key: GlobalKey<StoresRouteState>(),
-          //       address: MyApp._address,
-          //     ),
-          MyApp.storeMainPage: (context) => StoreMainPage(),
-          MyApp.partnerStoreHome: (context) => OrderedItemsList(),
-          // activeOrderBody: (context) => ActiveOrder(),
-          // MyApp.searchPage: (context) => SearchWidget(demo: true,),
-          MyApp.notificationWidget: (context) => UserNotificationWidget(),
-          // sennitOrderRoute: (context) => SennitOrderRoute({}),
-        },
-        title: 'Sennit',
-        theme: ThemeData(
-          backgroundColor: Colors.white,
-          fontFamily: 'ArchivoNarrow',
-          primaryColor: MyApp.secondaryColor,
-          accentColor: MyApp.secondaryColor,
-          // buttonColor: primaryColor,
-          buttonTheme: ButtonThemeData(
-            buttonColor: MyApp.secondaryColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(6),
-              ),
-            ),
-          ),
-          bottomAppBarColor: Colors.white,
-          bottomAppBarTheme: BottomAppBarTheme(
-            color: Colors.white,
-            elevation: 8,
-          ),
-          appBarTheme: AppBarTheme(
-            iconTheme: IconThemeData(
-              color: MyApp.secondaryColor,
-            ),
-            color: Colors.white,
-            textTheme: TextTheme(
-              title: TextStyle(
-                fontWeight: FontWeight.bold,
+      child: FutureBuilder<void>(
+          future: initialize(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return MaterialApp(
+                theme: ThemeData(
+                  backgroundColor: Colors.white,
+                  fontFamily: 'ArchivoNarrow',
+                  primaryColor: MyApp.secondaryColor,
+                  accentColor: MyApp.secondaryColor,
+                ),
+                home: Scaffold(
+                    appBar: AppBar(
+                      backgroundColor: Colors.white,
+                      title: Text(
+                        'Sennit',
+                        style: Theme.of(context).textTheme.subhead,
+                      ),
+                      centerTitle: true,
+                    ),
+                    body: Center(child: CircularProgressIndicator())),
+              );
+            }
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              localizationsDelegates: const [
+                location_picker.S.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const <Locale>[
+                Locale('en', ''),
+                Locale('ar', ''),
+              ],
+              navigatorObservers: [BotToastNavigatorObserver()],
+              initialRoute: MyApp.initialRoute,
+              routes: {
+                // '/': (context) => StartPage(),
+                MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
+                      OpenAs.NAVIGATION,
+                      fromCoordinate: LatLng(31, 74),
+                      toCoordinate: LatLng(40, 80),
+                      myLocation: LatLng(42, 85),
+                    ),
+                MyApp.startPage: (context) => StartPage(),
+                MyApp.driverHome: (context) => HomeScreenDriver(),
+                MyApp.userSignup: (context) => UserSignUpRoute(),
+                MyApp.userSignIn: (context) => UserSignInRoute(),
+                MyApp.userStartPage: (context) => UserStartPage(),
+                MyApp.driverSignup: (context) => DriverSignUpRoute(),
+                MyApp.driverSignin: (context) => DriverSignInRoute(),
+                MyApp.driverStartPage: (context) => DriverStartPage(),
+                MyApp.userHome: (context) => UserHomeRoute(),
+                MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
+                      context: context,
+                    ),
+                MyApp.selectFromAddress: (context) =>
+                    SelectFromAddressRoute(MyApp._address),
+                // MyApp.receiveItRoute: (context) => StoresRoute(
+                //       key: GlobalKey<StoresRouteState>(),
+                //       address: MyApp._address,
+                //     ),
+                MyApp.storeMainPage: (context) => StoreMainPage(),
+                MyApp.partnerStoreHome: (context) => OrderedItemsList(),
+                // activeOrderBody: (context) => ActiveOrder(),
+                // MyApp.searchPage: (context) => SearchWidget(demo: true,),
+                MyApp.notificationWidget: (context) => UserNotificationWidget(),
+                // sennitOrderRoute: (context) => SennitOrderRoute({}),
+              },
+              title: 'Sennit',
+              theme: ThemeData(
+                backgroundColor: Colors.white,
                 fontFamily: 'ArchivoNarrow',
-                fontSize: 22,
-                color: MyApp.secondaryColor,
+                primaryColor: MyApp.secondaryColor,
+                accentColor: MyApp.secondaryColor,
+                // buttonColor: primaryColor,
+                buttonTheme: ButtonThemeData(
+                  buttonColor: MyApp.secondaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(6),
+                    ),
+                  ),
+                ),
+                bottomAppBarColor: Colors.white,
+                bottomAppBarTheme: BottomAppBarTheme(
+                  color: Colors.white,
+                  elevation: 8,
+                ),
+                appBarTheme: AppBarTheme(
+                  iconTheme: IconThemeData(
+                    color: MyApp.secondaryColor,
+                  ),
+                  color: Colors.white,
+                  textTheme: TextTheme(
+                    title: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'ArchivoNarrow',
+                      fontSize: 22,
+                      color: MyApp.secondaryColor,
+                    ),
+                  ),
+                ),
+                iconTheme: IconThemeData(
+                  color: MyApp.secondaryColor,
+                ),
+                textTheme: TextTheme(
+                    title: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    headline: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    subhead: TextStyle(
+                      color: MyApp.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                    subtitle: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                    ),
+                    body1: TextStyle(
+                      fontSize: 14,
+                      decorationColor: Colors.black,
+                      fontFamily: 'Roboto',
+                    ),
+                    body2: TextStyle(
+                      fontSize: 14,
+                      decorationColor: Colors.black,
+                      fontFamily: 'Roboto',
+                      fontStyle: FontStyle.italic,
+                    ),
+                    button: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                    display1: TextStyle(
+                      fontSize: 26,
+                      color: MyApp.secondaryColor,
+                      fontWeight: FontWeight.bold,
+                    )),
               ),
-            ),
-          ),
-          iconTheme: IconThemeData(
-            color: MyApp.secondaryColor,
-          ),
-          textTheme: TextTheme(
-              title: TextStyle(
-                color: MyApp.secondaryColor,
-                fontSize: 22,
-                fontWeight: FontWeight.normal,
-              ),
-              headline: TextStyle(
-                color: MyApp.secondaryColor,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
-              subhead: TextStyle(
-                color: MyApp.secondaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-              subtitle: TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-              ),
-              body1: TextStyle(
-                fontSize: 14,
-                decorationColor: Colors.black,
-                fontFamily: 'Roboto',
-              ),
-              body2: TextStyle(
-                fontSize: 14,
-                decorationColor: Colors.black,
-                fontFamily: 'Roboto',
-                fontStyle: FontStyle.italic,
-              ),
-              button: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-              display1: TextStyle(
-                fontSize: 26,
-                color: MyApp.secondaryColor,
-                fontWeight: FontWeight.bold,
-              )),
-        ),
-      ),
+            );
+          }),
     );
   }
 }
@@ -438,9 +497,73 @@ class UserSignUp {
   String country = '';
 }
 
+class SnackbarLayout extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget leading;
+  final Widget trailing;
+  final Color color;
+
+  SnackbarLayout({
+    this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: color ?? Colors.white,
+      padding: EdgeInsets.all(10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: leading ?? Opacity(opacity: 0),
+          ),
+          SizedBox(
+            width: 15,
+          ),
+          Expanded(
+            flex: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  title ?? '',
+                  style: Theme.of(context).textTheme.subhead,
+                ),
+                SizedBox(
+                  height: 8,
+                ),
+                Text(
+                  subtitle ?? '',
+                  style: Theme.of(context).textTheme.subtitle,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: trailing ??
+                Opacity(
+                  opacity: 0,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class Utils {
   static String _apiKey;
   static String _fcmServerKey;
+
   static Future<String> getAPIKey() async {
     if (_apiKey != null) {
       return _apiKey;
@@ -507,85 +630,151 @@ class Utils {
   }
 
   static showSnackBarError(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.red.shade500,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 4),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.red.shade500,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 4),
+    // );
 
-    Scaffold.of(context).showSnackBar(snackBar);
+    // Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return Container(
+        color: Colors.red,
+        width: MediaQuery.of(context).size.width,
+        height: kToolbarHeight,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+                child: Icon(
+              Icons.error,
+            )),
+            Expanded(
+              flex: 3,
+              child: Text('$message'),
+            ),
+            Spacer(),
+          ],
+        ),
+      );
+    });
+
+    // BotToast.showNotification(
+    //   title: (_) {
+    //     return Text("Error!");
+    //   },
+    //   align: Alignment.bottomCenter,
+    //   subtitle: (_) => Text("$message"),
+    //   // trailing: (_) => RaisedButton(
+    //   //   color: Theme.of(context).primaryColor,
+    //   //   child: Text(
+    //   //     'Shop now',
+    //   //     style: TextStyle(color: Colors.white),
+    //   //   ),
+    //   //   onPressed: () {
+    //   //     Navigator.popUntil(context, (route) {
+    //   //       return route.settings.name == 'receiveIt';
+    //   //     });
+    //   //   },
+    //   // ),
+    // );
   }
 
   static showSnackBarErrorUsingKey(
       GlobalKey<ScaffoldState> key, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.red.shade500,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 4),
-    );
+    // SnackBar snackBar = SnackBar(
+    //   backgroundColor: Colors.red.shade500,
+    //   content: Text(
+    //     message,
+    //     style: TextStyle(color: Colors.white),
+    //   ),
+    //   duration: Duration(seconds: 4),
+    // );
 
-    key.currentState.showSnackBar(snackBar);
+    // key.currentState.showSnackBar(snackBar);
+
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.error),
+        color: Colors.red,
+        title: 'Error',
+        subtitle: '$message',
+      );
+    });
+
+    // BotToast.showNotification(
+    //   title: (_) {
+    //     return Text("Error!");
+    //   },
+    //   align: Alignment.bottomCenter,
+    //   subtitle: (_) => Text("$message"),
+    //   // trailing: (_) => RaisedButton(
+    //   //   color: Theme.of(context).primaryColor,
+    //   //   child: Text(
+    //   //     'Shop now',
+    //   //     style: TextStyle(color: Colors.white),
+    //   //   ),
+    //   //   onPressed: () {
+    //   //     Navigator.popUntil(context, (route) {
+    //   //       return route.settings.name == 'receiveIt';
+    //   //     });
+    //   //   },
+    //   // ),
+    // );
   }
 
   static showSnackBarWarning(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.yellow.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.black),
-      ),
-      duration: Duration(seconds: 4),
-    );
-
-    Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.warning),
+        color: Colors.yellow[400],
+        title: 'Warning',
+        subtitle: '$message',
+      );
+    });
   }
 
   static showSnackBarWarningUsingKey(
       GlobalKey<ScaffoldState> key, String message,
       {Duration duration}) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.yellow.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: duration ?? Duration(seconds: 4),
-    );
-
-    key.currentState.showSnackBar(snackBar);
+    BotToast.showCustomNotification(
+        toastBuilder: (fn) {
+          return SnackbarLayout(
+            leading: Icon(Icons.error),
+            color: Colors.red,
+            title: 'Error',
+            subtitle: '$message',
+          );
+        },
+        duration: duration ??
+            Duration(
+              seconds: 3,
+            ));
   }
 
   static showSnackBarSuccess(BuildContext context, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.green.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 2),
-    );
-
-    Scaffold.of(context).showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.check_circle),
+        color: Colors.green,
+        title: 'Success',
+        subtitle: '$message',
+      );
+    });
   }
 
   static showSnackBarSuccessUsingKey(
       GlobalKey<ScaffoldState> key, String message) {
-    SnackBar snackBar = SnackBar(
-      backgroundColor: Colors.green.shade700,
-      content: Text(
-        message,
-        style: TextStyle(color: Colors.white),
-      ),
-      duration: Duration(seconds: 4),
-    );
-
-    key.currentState.showSnackBar(snackBar);
+    BotToast.showCustomNotification(toastBuilder: (fn) {
+      return SnackbarLayout(
+        leading: Icon(Icons.check_circle),
+        color: Colors.green,
+        title: 'Success',
+        subtitle: '$message',
+      );
+    });
   }
 
   static void showSuccessDialog(String message) {
@@ -732,11 +921,12 @@ class Utils {
   }
 
   static LatLng getLastKnowLocation() {
-    return MyApp._initialLocation;
+    return MyApp._initialLocation ?? LatLng(0, 0);
   }
 
   static Address getLastKnowAddress() {
-    return MyApp._address;
+    return MyApp._address ??
+        Address(addressLine: 'Null', adminArea: 'Null', countryName: 'Null');
   }
 
   static LatLng latLngFromString(String latlng) {
@@ -838,20 +1028,156 @@ class Utils {
     // Navigator.of(context).popUntil((route) => route.isFirst);
     FirebaseMessaging fcm = FirebaseMessaging();
     User user = Session.data['user'];
-    Future unRegisteringTokens = Firestore.instance
-        .collection('users')
-        .document(user.userId)
-        .collection('tokens')
-        .document(await fcm.getToken())
-        .delete()
-        .timeout(Duration(seconds: 12), onTimeout: () {
-      Navigator.pop(context);
+    if (user == null) {
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+      return;
+    } else {
+      Future unRegisteringTokens = Firestore.instance
+          .collection('users')
+          .document(user.userId)
+          .collection('tokens')
+          .document(await fcm.getToken())
+          .delete()
+          .timeout(Duration(seconds: 12), onTimeout: () {
+        Navigator.pop(context);
+      });
+      await unRegisteringTokens;
+      await FirebaseAuth.instance.signOut();
+      Session.data..removeWhere((key, value) => true);
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+    }
+  }
+
+  static Future<DocumentSnapshot> getFirebaseDocument(
+      DocumentReference ref) async {
+    return ref.get().then(
+      (snapshot) {
+        return snapshot;
+      },
+    ).timeout(
+      Duration(seconds: 15),
+      onTimeout: () {
+        Utils.showSnackBarError(null, 'Request Timed Out');
+        return null;
+      },
+    ).catchError((_) {
+      Utils.showSnackBarError(null, _.toString());
+      return null;
     });
-    await unRegisteringTokens;
-    await FirebaseAuth.instance.signOut();
-    Session.data..removeWhere((key, value) => true);
-    Navigator.of(context)
-        .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+  }
+
+  static Future<dynamic> onResume(payload) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    Map data = Platform.isIOS ? payload : payload['data'];
+    if (data.containsKey('type') && data['type'] == 'partnerStoreOrder') {
+      return;
+    }
+    if (uid == null) return;
+    if (uid == data['userId']) {
+      await Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            MyAppState?.navigatorKey?.currentState.pop();
+            Utils.showSnackBarError(
+              null,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          if (!data.containsKey('driverId') || data['driverId'] == null) {
+            return;
+          }
+          MyAppState?.navigatorKey?.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) {
+                print(data);
+                return ReviewWidget(
+                  orderId: data['orderId'],
+                  user: user,
+                  itemId: null,
+                  isDriver: true,
+                  driverId: data['driverId'],
+                  userId: uid,
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  static Future<dynamic> onLaunch(payload) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    final data = Platform.isIOS ? payload : payload['data'];
+    if (data.containsKey('type') && data['type'] == 'partnerStoreOrder') {
+      return;
+    }
+    if(uid == null) return;
+    if (uid == data['userId']) {
+      Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            Utils.showSnackBarError(
+              null,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          if (!data.containsKey('driverId') || data['driverId'] == null) {
+            return;
+          }
+          MyAppState.navigatorKey?.currentState
+              ?.push(MaterialPageRoute(builder: (ctx) {
+            return ReviewWidget(
+              orderId: data['orderId'],
+              isDriver: true,
+              driverId: data['driverId'],
+              fromNotification: true,
+              userId: uid,
+              user: user,
+              itemId: null,
+              comment: "",
+            );
+          }));
+        },
+      );
+    }
+  }
+
+  static Future<dynamic> backgroundMessageHandler(
+      Map<String, dynamic> message) async {
+    MyAppState.showNotificationWithDefaultSound(message);
   }
 }
 

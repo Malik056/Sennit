@@ -347,7 +347,9 @@ class _ActiveOrderState extends State<_ActiveOrderBody> {
             width: ActiveOrder.deliveryDonePopUpShown ? popUpWidth : 0,
             height: ActiveOrder.deliveryDonePopUpShown ? popUpHeight : 0,
             curve: Curves.linearToEaseOut,
-            child: _DeliveryDonePopUp(parent: this),
+            child: _DeliveryDonePopUp(invalidate: () {
+              setState(() {});
+            }),
           ),
           onTap: () {
             print('Verify Order Pop up clicked!');
@@ -420,10 +422,10 @@ class _NavigationState extends State<_Navigation> {
 class _DeliveryDonePopUp extends StatefulWidget {
   // final width;
   // final height;
-  final _ActiveOrderState parent;
+  final Function() invalidate;
 
   const _DeliveryDonePopUp(
-      {this.parent}); //@required this.width, @required this.height})
+      {this.invalidate}); //@required this.width, @required this.height})
 
   // : super(key: key);
   @override
@@ -487,7 +489,7 @@ class _DeliveryDonePopUpState extends State<_DeliveryDonePopUp> {
               ),
               onPressed: () {
                 ActiveOrder.deliveryDonePopUpShown = false;
-                widget.parent.setState(() {});
+                widget.invalidate();
                 Navigator.pop(context);
                 // setState(() {});
               },

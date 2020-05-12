@@ -9,8 +9,15 @@ import 'package:sennit/user/generic_tracking_screen.dart';
 
 class OrderTile extends StatelessWidget {
   final data;
+  final isStore;
+  final status;
 
-  const OrderTile({Key key, this.data}) : super(key: key);
+  const OrderTile({
+    Key key,
+    this.data,
+    this.isStore = false,
+    this.status = "Pending",
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +32,11 @@ class OrderTile extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) {
-                  return ReceiveItOrderDetailsRoute(data: data);
+                  return ReceiveItOrderDetailsRoute(
+                    data: data,
+                    isStore: isStore,
+                    status: status,
+                  );
                 },
               ),
             );
@@ -69,7 +80,7 @@ class OrderTile extends StatelessWidget {
                 text: 'Status: ',
               ),
               TextSpan(
-                text: '${data['status']}',
+                text: '${data['status'] ?? status}',
                 style: Theme.of(context).textTheme.body1,
               ),
             ],
@@ -288,8 +299,15 @@ class SennitOrderDetailsRoute extends StatelessWidget {
 
 class ReceiveItOrderDetailsRoute extends StatelessWidget {
   final data;
+  final isStore;
+  final status;
 
-  const ReceiveItOrderDetailsRoute({Key key, this.data}) : super(key: key);
+  const ReceiveItOrderDetailsRoute({
+    Key key,
+    this.data,
+    this.isStore = false,
+    this.status = "Pending",
+  }) : super(key: key);
 
   Future<Address> _getAddressFromLatLng(LatLng latlng) async {
     Coordinates coordinates = Coordinates(latlng.latitude, latlng.longitude);
@@ -308,6 +326,16 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
       appBar: AppBar(
         title: Text('Order Details'),
         centerTitle: true,
+        actions: isStore
+            ? <Widget>[
+                FlatButton(
+                  child: Text('Served'),
+                  onPressed: () {
+                    Utils.showLoadingDialog(context);
+                  },
+                ),
+              ]
+            : null,
       ),
       body: Container(
         height: MediaQuery.of(context).size.height - 80,
@@ -416,7 +444,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${data['status']}',
+                      '${data['status'] ?? status}',
                       strutStyle: StrutStyle(
                         height: strutHeight,
                       ),
@@ -552,8 +580,9 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                     SizedBox(
                       width: 10,
                     ),
-                    (data['status'] as String).toUpperCase() !=
-                            'Delivered'.toUpperCase()
+                    (data['status'] != null &&
+                            (data['status'] as String).toUpperCase() !=
+                                'Delivered'.toUpperCase())
                         ? RaisedButton(
                             onPressed: () {
                               Navigator.push(

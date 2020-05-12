@@ -1,7 +1,7 @@
 name: sennit
 description: Send Anything Anywhere
 
-version: 2.1.2+32
+version: 2.1.6+36
 
 environment:
   sdk: ">=2.6.0 <3.0.0"

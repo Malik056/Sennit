@@ -399,10 +399,10 @@ class _NotificationPageState extends State<_NotificationPage> {
               }
             }
           }
-          if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
-              20) {
+           if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
+               15) {
             documents.add(doc);
-          }
+           }
         });
         List<Widget> tiles = [];
 

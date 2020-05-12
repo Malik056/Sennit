@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
 
 class PartnerStoreSignInRoute extends StatelessWidget {
   @override
@@ -133,21 +135,68 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                     context,
                                     "User not found",
                                   );
+                                  signInButtonEnabled = true;
                                   return;
                                 }
                                 // User user = User.fromMap(userData.data);
+                                var storeId = userData.data['storeId'];
+                                var data = await Firestore.instance
+                                    .collection('stores')
+                                    .document(storeId)
+                                    .get()
+                                    .catchError((_) {
+                                  FirebaseAuth.instance.signOut();
+                                  signInButtonEnabled = true;
+                                  Navigator.pop(context);
+                                  setState(() {});
+                                  return null;
+                                }).then((value) {
+                                  return value;
+                                }).timeout(
+                                  Duration(seconds: 10),
+                                  onTimeout: () {
+                                    FirebaseAuth.instance.signOut();
+                                    signInButtonEnabled = true;
+                                    setState(() {});
+                                    Navigator.pop(context);
+                                    Utils.showSnackBarError(
+                                      context,
+                                      'Request Timed out',
+                                    );
+                                    return null;
+                                  },
+                                );
+                                if (data == null) {
+                                  return;
+                                }
+                                Store store = Store.fromMap(data.data);
                                 Session.data.update(
                                   'partnerStore',
                                   (a) {
-                                    return userData.data;
+                                    return store;
                                   },
                                   ifAbsent: () {
-                                    return userData.data;
+                                    return store;
                                   },
                                 );
                                 // Navigator.pop(context);
                                 // Navigator.popUntil(
                                 //     context, (route) => route.isFirst);
+                                FirebaseMessaging fcm = FirebaseMessaging();
+                                final deviceId = await fcm.getToken();
+                                var deviceTokens = store.deviceTokens ?? [];
+                                if (!deviceTokens.contains(deviceId))
+                                  deviceTokens.add(deviceId);
+
+                                await Firestore.instance
+                                    .collection('stores')
+                                    .document(storeId)
+                                    .setData(
+                                  {
+                                    'deviceTokens': deviceTokens,
+                                  },
+                                  merge: true,
+                                );
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   MyApp.partnerStoreHome,
                                   (route) => false,
