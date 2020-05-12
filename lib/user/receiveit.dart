@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:auto_size_text/auto_size_text.dart';
@@ -38,7 +39,7 @@ class ReceiveItRoute extends StatelessWidget {
   final bool demo;
   final TabController tabController;
   static int currentTab = 0;
-  static Future<Null> _authCheck;
+  static Future<void> _authCheck;
   static List<String> titles = [
     'Stores',
     'Search',
@@ -51,6 +52,15 @@ class ReceiveItRoute extends StatelessWidget {
   Future<void> initialize() async {
     if (_authCheck != null) {
       await _authCheck;
+    } else {
+      await FirebaseAuth.instance.currentUser().then((value) {
+        if (value == null) {
+          FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: 'demo@sennit.com',
+            password: '123456',
+          );
+        }
+      });
     }
     await MyApp.futureCart;
   }
@@ -658,16 +668,6 @@ class StoresRouteState extends State<StoresRoute> {
     getStoresWidget();
   }
 
-  // void appBarTap() {
-  //   Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-  //     return AddressAddingRoute(SourcePage.receiveIt, selectedAddress);
-  //   })).then((value) {
-  //     setState(() {
-  //       selectedAddress = value;
-  //     });
-  //   });
-  // }
-
   @override
   Widget build(BuildContext context) {
     return requestTimedOut
@@ -771,7 +771,12 @@ class StoresRouteState extends State<StoresRoute> {
       );
     });
     if (querySnapshot == null) return;
-    LatLng latlng = await Utils.getMyLocation();
+    LatLng latlng = await Utils.getMyLocation().then<LatLng>((latlng) {
+      return latlng;
+    }).timeout(Duration(seconds: 1), onTimeout: () {
+      LatLng latlng = Utils.getLastKnowLocation();
+      return latlng ?? LatLng(0, 0);
+    });
     for (var documentSnapshot in querySnapshot.documents) {
       Store store;
       var storeId = documentSnapshot.documentID;
@@ -792,6 +797,7 @@ class StoresRouteState extends State<StoresRoute> {
         for (var request in requests) {
           var item = await request;
           model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
+          storeItem.store = store;
           store.storeItems.add(storeItem);
         }
         stores.add(store);
@@ -2143,17 +2149,13 @@ class ShoppingCartRoute extends StatelessWidget {
                         navigator.pop();
                         return;
                       }
+
                       double totalCharges =
                           state.totalPrice + state.totalDeliveryCharges;
                       Map<String, dynamic> result = await performTransaction(
                         context,
                         totalCharges,
                       );
-
-                      await Future.delayed(
-                        Duration(seconds: 4),
-                      );
-
                       // Map<String, dynamic> result = {
                       //   'status': RaveStatus.success,
                       //   'errorMessage': 'someMessage'
@@ -2186,12 +2188,21 @@ class ShoppingCartRoute extends StatelessWidget {
                       Map<String, double> itemsData = cart.itemsData;
                       order.pickups = pickups;
                       List<String> stores = [];
+                      List<double> pricePerItem = [];
+                      List<double> totalPricePerItem = [];
                       order.stores = stores;
                       for (model.StoreItem item in items) {
                         // price += item.price * itemsData[item.itemId];
                         pickups.add(item.latlng);
                         stores.add(item.storeName);
+                        pricePerItem.add(item.price);
+                        totalPricePerItem.add(
+                          (item.price * itemsData[item.itemId] as num)
+                              .toDouble(),
+                        );
                       }
+                      order.pricePerItem = pricePerItem;
+                      order.totalPricePerItem = totalPricePerItem;
                       // order.quantities = quantities;
                       order.date = DateTime.now();
                       order.userId = user.userId;
@@ -2297,20 +2308,18 @@ class ShoppingCartRoute extends StatelessWidget {
                         }).then((data) async {
                           orderData.update('orderId', (old) => data.documentID,
                               ifAbsent: () => data.documentID);
-
-                          await Firestore.instance
+                          var batch = Firestore.instance.batch();
+                          var userOrderRef = Firestore.instance
                               .collection("users")
                               .document(user.userId)
                               .collection('orders')
-                              .document(data.documentID)
-                              .setData(
-                                orderData,
-                                merge: true,
-                              )
-                              .catchError((error) {
-                            Utils.showSnackBarErrorUsingKey(_key,
-                                'error while uploading order to user database');
-                          });
+                              .document(data.documentID);
+
+                          batch.setData(
+                            userOrderRef,
+                            orderData,
+                            merge: true,
+                          );
                           // await Firestore.instance
                           //     .collection("verificationCodes")
                           //     .document(data.documentID)
@@ -2324,12 +2333,152 @@ class ShoppingCartRoute extends StatelessWidget {
                           // print('Response body: ${response.body}');
                           // print('Response reason: ${response.reasonPhrase}');
                           // print('${response.request.url}');
+                          var now = DateTime.now();
 
-                          await Firestore.instance
+                          Map<String, dynamic> storeOrders = {};
+                          List<String> deviceIds = [];
+
+                          for (model.StoreItem item in items) {
+                            final itemKey = item.itemId;
+                            if (storeOrders.containsKey(item.storeId)) {
+                              double price = storeOrders[item.storeId]['price'];
+                              price += item.price * itemsData[item.itemId];
+                              storeOrders[item.storeId].update(
+                                  'price', (old) => price,
+                                  ifAbsent: () => price);
+                              storeOrders[item.storeId]['pricePerItem']
+                                  .add(item.price);
+                              storeOrders[item.storeId]['totalPricePerItem']
+                                  .add(item.price * itemsData[item.itemId]);
+                              (storeOrders[item.storeId]['itemsData']
+                                      as Map<String, double>)
+                                  .putIfAbsent(
+                                itemKey,
+                                () => itemsData[itemKey],
+                              );
+                            } else {
+                              if (item.store == null) {
+                                var snapshot = await Firestore.instance
+                                    .collection('stores')
+                                    .document(item.storeId)
+                                    .get();
+                                item.store = Store.fromMap(snapshot.data);
+                                deviceIds.addAll(item.store.deviceTokens);
+                              } else if (item?.store?.deviceTokens != null &&
+                                  item.store.deviceTokens.length > 0) {
+                                deviceIds.addAll(item.store.deviceTokens);
+                              } else {
+                                var snapshot = await Firestore.instance
+                                    .collection('stores')
+                                    .document(item.storeId)
+                                    .get();
+                                item.store = Store.fromMap(snapshot.data);
+                                deviceIds.addAll(item.store.deviceTokens);
+                              }
+                              OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
+                                destination: Utils.latLngFromString(
+                                    orderData['destination']),
+                                date: now,
+                                deliveryTime: null,
+                                email: order.email,
+                                house: order.house,
+                                price: item.price * itemsData[item.itemId],
+                                orderId: orderData['orderId'],
+                                pricePerItem: [item.price],
+                                totalPricePerItem: [
+                                  item.price * itemsData[item.itemId]
+                                ],
+                                itemsData: {
+                                  itemKey: itemsData[itemKey],
+                                },
+                                phoneNumber: order.phoneNumber,
+                                userId: order.userId,
+                              );
+                              Map<String, dynamic> tempOrder =
+                                  receiveIt.toMap();
+                              tempOrder.putIfAbsent(
+                                'storeId',
+                                () => item.storeId,
+                              );
+                              tempOrder.putIfAbsent(
+                                  'storeName', () => item.storeName);
+                              tempOrder.putIfAbsent(
+                                  'storeAddress', () => item.storeAddress);
+                              tempOrder.putIfAbsent(
+                                'storeLatLng',
+                                () => Utils.latLngToString(
+                                    item.store.storeLatLng),
+                              );
+                              storeOrders.putIfAbsent(
+                                item.storeId,
+                                () {
+                                  return tempOrder;
+                                },
+                              );
+                            }
+                            // Map<String, dynamic> item = (await Firestore
+                            //         .instance
+                            //         .collection('items')
+                            //         .document(itemKey)
+                            //         .get())
+                            // .data;
+                            // LatLng latLng = Utils.latLngFromString(
+                            //     orderData['destination']);
+                            // String address = (await Geocoder.google(
+                            //             await Utils.getAPIKey())
+                            //         .findAddressesFromCoordinates(Coordinates(
+                            //             latLng.latitude, latLng.longitude)))[0]
+                            //     .addressLine;
+                          }
+                          Future<Response> request;
+                          final _fcmServerKey = await Utils.getFCMServerKey();
+                          storeOrders.forEach((k, v) {
+                            var storeOrderRef = Firestore.instance
+                                .collection('stores')
+                                .document(k)
+                                .collection('pendingOrderedItems')
+                                .document(order.orderId);
+
+                            batch.setData(
+                              storeOrderRef,
+                              v,
+                              merge: true,
+                            );
+
+                            //TODO: Send Notifications to all devices
+                            // deviceIds.forEach((id) {
+                            request = post(
+                              'https://fcm.googleapis.com/fcm/send',
+                              headers: <String, String>{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'key=$_fcmServerKey',
+                              },
+                              body: jsonEncode(
+                                <String, dynamic>{
+                                  'notification': <String, dynamic>{
+                                    'body': 'An Order is just Arrived',
+                                    'title': 'Order'
+                                  },
+                                  'type': 'partnerStoreOrder',
+                                  'priority': 'high',
+                                  'data': <String, dynamic>{
+                                    'click_action':
+                                        'FLUTTER_NOTIFICATION_CLICK',
+                                    'orderId': '${order.orderId}',
+                                    'status': 'posted',
+                                    'userId': order.userId,
+                                  },
+                                  'registration_ids': deviceIds,
+                                },
+                              ),
+                            );
+                            // });
+                          });
+                          var cartRef = Firestore.instance
                               .collection('carts')
-                              .document(user.userId)
-                              .delete()
-                              .catchError((error) {
+                              .document(user.userId);
+                          batch.delete(cartRef);
+                          batch.commit().catchError((error) {
                             Utils.showSnackBarErrorUsingKey(
                                 _key, 'error clearing cart');
                           }).then(
@@ -2341,6 +2490,7 @@ class ShoppingCartRoute extends StatelessWidget {
                                 Utils.showSnackBarErrorUsingKey(
                                     _key, 'error re initializing cart');
                               });
+                              await request;
                               // Utils.showSnackBarSuccess(context, 'Order Submitted');
                               // Navigator.pop(context);
                               Session.data['cart'] = UserCart(itemsData: {});
@@ -2470,12 +2620,12 @@ class ShoppingCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-      amount: amount,
-      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      encryptionKey: 'eded539f04b38a2af712eb7d',
-      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-    )
+        amount: amount,
+        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+        encryptionKey: //'eded539f04b38a2af712eb7d',
+            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+        )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = true
@@ -2496,7 +2646,7 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
-      ..staging = false
+      ..staging = true
       ..isPreAuth = false
       ..displayFee = true;
 

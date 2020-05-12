@@ -153,113 +153,114 @@ class UserHomeState extends State<UserHomeBody> {
         //     color: Theme.of(context).primaryColor,
         //   ),
         // );
-        MyAppState.showNotificationWithDefaultSound(data);
+        MyAppState.showNotificationWithDefaultSound(data['notification']);
       },
-      onBackgroundMessage: Platform.isIOS ? null : _backgroundMessageHandler,
-      onResume: _onResume,
-      onLaunch: _onLaunch,
+      onBackgroundMessage:
+          Platform.isIOS ? null : Utils.backgroundMessageHandler,
+      onResume: Utils.onResume,
+      onLaunch: Utils.onLaunch,
     );
   }
 
-  Future<dynamic> _onResume(payload) async {
-    final uid = (await FirebaseAuth.instance.currentUser()).uid;
-    final data = Platform.isIOS ? payload : payload['data'];
-    if (uid == data['userId']) {
-      await Firestore.instance.collection('users').document(uid).get().then(
-        (userData) async {
-          if (userData == null ||
-              !userData.exists ||
-              userData.data == null ||
-              userData.data.length <= 0) {
-            Navigator.pop(context);
-            Utils.showSnackBarError(
-              context,
-              "User not found",
-            );
-            return;
-          }
-          User user = User.fromMap(userData.data);
-          user.userId = uid;
-          Session.data.update(
-            'user',
-            (a) {
-              return user;
-            },
-            ifAbsent: () {
-              return user;
-            },
-          );
-          MyAppState?.navigatorKey?.currentState?.push(
-            MaterialPageRoute(
-              builder: (context) {
-                print(data);
-                return ReviewWidget(
-                  orderId: data['orderId'],
-                  user: user,
-                  itemId: null,
-                  isDriver: true,
-                  driverId: data['driverId'],
-                  userId: uid,
-                );
-              },
-            ),
-          );
-        },
-      );
-    }
-  }
+  // Future<dynamic> _onResume(payload) async {
+  //   final uid = (await FirebaseAuth.instance.currentUser()).uid;
+  //   final data = Platform.isIOS ? payload : payload['data'];
+  //   if (uid == data['userId']) {
+  //     await Firestore.instance.collection('users').document(uid).get().then(
+  //       (userData) async {
+  //         if (userData == null ||
+  //             !userData.exists ||
+  //             userData.data == null ||
+  //             userData.data.length <= 0) {
+  //           Navigator.pop(context);
+  //           Utils.showSnackBarError(
+  //             context,
+  //             "User not found",
+  //           );
+  //           return;
+  //         }
+  //         User user = User.fromMap(userData.data);
+  //         user.userId = uid;
+  //         Session.data.update(
+  //           'user',
+  //           (a) {
+  //             return user;
+  //           },
+  //           ifAbsent: () {
+  //             return user;
+  //           },
+  //         );
+  //         MyAppState?.navigatorKey?.currentState?.push(
+  //           MaterialPageRoute(
+  //             builder: (context) {
+  //               print(data);
+  //               return ReviewWidget(
+  //                 orderId: data['orderId'],
+  //                 user: user,
+  //                 itemId: null,
+  //                 isDriver: true,
+  //                 driverId: data['driverId'],
+  //                 userId: uid,
+  //               );
+  //             },
+  //           ),
+  //         );
+  //       },
+  //     );
+  //   }
+  // }
 
-  Future<dynamic> _onLaunch(payload) async {
-    final uid = (await FirebaseAuth.instance.currentUser()).uid;
-    final data = Platform.isIOS ? payload : payload['data'];
-    BotToast.showText(text: 'onLaunch: $data');
-    if (uid == data['userId']) {
-      Firestore.instance.collection('users').document(uid).get().then(
-        (userData) async {
-          if (userData == null ||
-              !userData.exists ||
-              userData.data == null ||
-              userData.data.length <= 0) {
-            Utils.showSnackBarError(
-              context,
-              "User not found",
-            );
-            return;
-          }
-          User user = User.fromMap(userData.data);
-          user.userId = uid;
-          Session.data.update(
-            'user',
-            (a) {
-              return user;
-            },
-            ifAbsent: () {
-              return user;
-            },
-          );
-          MyAppState.navigatorKey?.currentState
-              ?.push(MaterialPageRoute(builder: (ctx) {
-            return ReviewWidget(
-              orderId: data['orderId'],
-              isDriver: true,
-              driverId: data['driverId'],
-              fromNotification: true,
-              userId: uid,
-              user: user,
-              itemId: null,
-              comment: "",
-            );
-          }));
-        },
-      );
-    }
-  }
+  // Future<dynamic> _onLaunch(payload) async {
+  //   final uid = (await FirebaseAuth.instance.currentUser()).uid;
+  //   final data = Platform.isIOS ? payload : payload['data'];
+  //   BotToast.showText(text: 'onLaunch: $data');
+  //   if (uid == data['userId']) {
+  //     Firestore.instance.collection('users').document(uid).get().then(
+  //       (userData) async {
+  //         if (userData == null ||
+  //             !userData.exists ||
+  //             userData.data == null ||
+  //             userData.data.length <= 0) {
+  //           Utils.showSnackBarError(
+  //             context,
+  //             "User not found",
+  //           );
+  //           return;
+  //         }
+  //         User user = User.fromMap(userData.data);
+  //         user.userId = uid;
+  //         Session.data.update(
+  //           'user',
+  //           (a) {
+  //             return user;
+  //           },
+  //           ifAbsent: () {
+  //             return user;
+  //           },
+  //         );
+  //         MyAppState.navigatorKey?.currentState
+  //             ?.push(MaterialPageRoute(builder: (ctx) {
+  //           return ReviewWidget(
+  //             orderId: data['orderId'],
+  //             isDriver: true,
+  //             driverId: data['driverId'],
+  //             fromNotification: true,
+  //             userId: uid,
+  //             user: user,
+  //             itemId: null,
+  //             comment: "",
+  //           );
+  //         }));
+  //       },
+  //     );
+  //   }
+  // }
 
-  static Future<dynamic> _backgroundMessageHandler(
-      Map<String, dynamic> message) async {
-    print(message);
-    MyAppState.showNotificationWithDefaultSound(message);
-  }
+  // static Future<dynamic> _backgroundMessageHandler(
+  //     Map<String, dynamic> message) async {
+  //   print(message);
+  //   MyAppState.showNotificationWithDefaultSound(message);
+  // }
 
   @override
   Widget build(BuildContext context) {

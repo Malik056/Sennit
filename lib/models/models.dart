@@ -347,12 +347,15 @@ class OrderFromReceiveIt {
   List<LatLng> pickups = [];
   // List<double> quantities = [];
   List<String> stores = [];
+  List<double> pricePerItem = [];
+  List<double> totalPricePerItem = []; //Price x Quantity
   LatLng destination;
   String userId;
   String driverId;
   double price;
   DateTime date;
   DateTime deliveryTime;
+
   OrderFromReceiveIt({
     this.orderId,
     this.status,
@@ -370,6 +373,8 @@ class OrderFromReceiveIt {
     this.price,
     this.date,
     this.deliveryTime,
+    this.pricePerItem,
+    this.totalPricePerItem,
   });
 
   OrderFromReceiveIt copyWith({
@@ -389,6 +394,8 @@ class OrderFromReceiveIt {
     double price,
     DateTime orderDate,
     DateTime deliveryTime,
+    List<double> pricePerItem,
+    List<double> totalPricePerItem,
   }) {
     return OrderFromReceiveIt(
       orderId: orderId ?? this.orderId,
@@ -399,6 +406,8 @@ class OrderFromReceiveIt {
       house: house ?? this.house,
       driverName: driverName,
       pickups: pickups ?? this.pickups,
+      pricePerItem: pricePerItem ?? this.pricePerItem,
+      totalPricePerItem: totalPricePerItem ?? this.totalPricePerItem,
       // quantities: quantities ?? this.quantities,
       stores: stores ?? this.stores,
       destination: destination ?? this.destination,
@@ -420,10 +429,13 @@ class OrderFromReceiveIt {
       'phoneNumber': phoneNumber,
       'house': house,
       'pickups': List<dynamic>.from(
-        pickups.map((x) => Utils.latLngToString(x)),
-      ),
+            pickups?.map((x) => Utils.latLngToString(x)) ?? [],
+          ) ??
+          [],
+      'pricePerItem': pricePerItem ?? [],
+      'totalPricePerItem': totalPricePerItem ?? [],
       // 'quantities': List<dynamic>.from(quantities.map((x) => x)),
-      'stores': List<dynamic>.from(stores.map((x) => x)),
+      'stores': List<dynamic>.from(stores?.map((x) => x) ?? []) ?? [],
       'destination': Utils.latLngToString(destination),
       'userId': userId,
       'driverId': driverId,
@@ -446,9 +458,18 @@ class OrderFromReceiveIt {
       driverName: map['driverName'],
       pickups: List<LatLng>.from(
         map['pickups']?.map(
-          (x) => Utils.latLngFromString(x),
-        ),
+              (x) => Utils.latLngFromString(x),
+            ) ??
+            [],
       ),
+      pricePerItem: List<double>.from(map['pricePerItem']?.map(
+            (x) => (x as num).toDouble(),
+          ) ??
+          []),
+      totalPricePerItem: List<double>.from(map['totalPricePerItem']?.map(
+            (x) => (x as num).toDouble(),
+          ) ??
+          []),
       // quantities: List<double>.from(
       //   map['quantities']?.map((x) => x),
       // ),
@@ -469,7 +490,12 @@ class OrderFromReceiveIt {
 
   @override
   String toString() {
-    return 'OrderFromReceiveIt orderId: $orderId, status: $status, itemsData: $itemsData, email: $email, phoneNumber: $phoneNumber, house: $house, pickups: $pickups, stores: $stores, destination: $destination, userId: $userId, driverId: $driverId, price: $price, orderDate: $date, deliveryTime: $deliveryTime';
+    return '''OrderFromReceiveIt 
+    orderId: $orderId, status: $status, itemsData: $itemsData, email: $email, 
+    phoneNumber: $phoneNumber, house: $house, pickups: $pickups, stores: $stores, 
+    destination: $destination, userId: $userId, driverId: $driverId, price: $price, 
+    orderDate: $date, deliveryTime: $deliveryTime, pricePerItem: $pricePerItem, 
+    totalPricePerItem: $totalPricePerItem''';
   }
 
   @override
@@ -1546,6 +1572,8 @@ class StoreItem {
   Map<String, String> specifications;
   String itemName;
   LatLng latlng;
+  String storeId;
+  Store store;
 
   StoreItem({
     this.itemId,
@@ -1557,6 +1585,7 @@ class StoreItem {
     this.itemName,
     this.latlng,
     this.specifications,
+    this.storeId,
   }) {
     if (specifications == null) {
       specifications = {};
@@ -1572,6 +1601,7 @@ class StoreItem {
     String description,
     String itemName,
     LatLng latlng,
+    String storeId,
     Map<String, String> specifications,
   }) {
     return StoreItem(
@@ -1584,6 +1614,7 @@ class StoreItem {
       itemName: itemName ?? this.itemName,
       latlng: latlng ?? this.latlng,
       specifications: specifications ?? this.specifications,
+      storeId: storeId ?? this.storeId,
     );
   }
 
@@ -1598,12 +1629,12 @@ class StoreItem {
       'itemName': itemName,
       'latlng': Utils.latLngToString(latlng),
       'specifications': specifications ?? {},
+      'storeId': storeId,
     };
   }
 
   static StoreItem fromMap(Map<String, dynamic> map) {
     if (map == null) return null;
-
     return StoreItem(
       itemId: map['itemId'],
       images: List<String>.from(map['images']),
@@ -1618,6 +1649,7 @@ class StoreItem {
       itemName: map['itemName'],
       latlng: Utils.latLngFromString(map['latlng']),
       specifications: Map<String, String>.from(map['specifications'] ?? {}),
+      storeId: map['storeId'],
     );
   }
 
@@ -1627,7 +1659,7 @@ class StoreItem {
 
   @override
   String toString() {
-    return 'StoreItem itemId: $itemId, images: $images, price: $price, storeName: $storeName, description: $description, itemName: $itemName, location: $latlng';
+    return 'StoreItem itemId: $itemId, images: $images, price: $price, storeName: $storeName, description: $description, itemName: $itemName, location: $latlng, storeId: $storeId';
   }
 
   @override
@@ -1641,7 +1673,8 @@ class StoreItem {
         o.storeName == storeName &&
         o.description == description &&
         o.itemName == itemName &&
-        o.latlng == latlng;
+        o.latlng == latlng &&
+        o.storeId == storeId;
   }
 
   @override
@@ -1652,7 +1685,8 @@ class StoreItem {
         storeName.hashCode ^
         description.hashCode ^
         itemName.hashCode ^
-        latlng.hashCode;
+        latlng.hashCode ^
+        storeId.hashCode;
   }
 }
 
@@ -1665,6 +1699,7 @@ class Store {
   String storeMotto;
   LatLng storeLatLng;
   String storeAddress;
+  List<String> deviceTokens;
 
   Store({
     this.storeId,
@@ -1674,6 +1709,7 @@ class Store {
     this.storeMotto,
     this.storeLatLng,
     this.storeAddress,
+    this.deviceTokens,
   });
 
   Store copyWith({
@@ -1705,6 +1741,7 @@ class Store {
       'storeMotto': storeMotto,
       'storeAddress': storeAddress,
       'storeLatLng': Utils.latLngToString(storeLatLng),
+      'deviceTokens': deviceTokens,
     };
   }
 
@@ -1719,6 +1756,7 @@ class Store {
       storeMotto: map['storeMotto'],
       storeAddress: map['storeAddress'],
       storeLatLng: Utils.latLngFromString(map['storeLatLng']),
+      deviceTokens: List<String>.from(map['deviceTokens'] ?? []),
     );
   }
 
@@ -1728,7 +1766,7 @@ class Store {
 
   @override
   String toString() {
-    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMotto: $storeMotto, storeAddress: $storeAddress, storeLatLng: $storeLatLng';
+    return 'Store storeId: $storeId, storeName: $storeName, items: $items, storeImage: $storeImage, storeMotto: $storeMotto, storeAddress: $storeAddress, storeLatLng: $storeLatLng, deviceTokens: $deviceTokens';
   }
 
   @override
@@ -1740,7 +1778,8 @@ class Store {
         o.storeName == storeName &&
         o.items == items &&
         o.storeImage == storeImage &&
-        o.storeMotto == storeMotto;
+        o.storeMotto == storeMotto &&
+        o.deviceTokens == deviceTokens;
   }
 
   @override
@@ -1749,7 +1788,8 @@ class Store {
         storeName.hashCode ^
         items.hashCode ^
         storeImage.hashCode ^
-        storeMotto.hashCode;
+        storeMotto.hashCode ^
+        deviceTokens.hashCode;
   }
 }
 

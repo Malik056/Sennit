@@ -272,9 +272,10 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (locationPermission == PermissionStatus.GRANTED) {
       // == PermissionStatus.GRANTED) {
       final locator = Geolocator();
-      MyApp._lastKnowLocation = locator.getLastKnownPosition().then((position) {
+      MyApp._lastKnowLocation =
+          locator.getLastKnownPosition().then<LatLng>((position) {
         if (position == null) {
-          return _location.getLocation().then((locationData) {
+          return _location.getLocation().then<LatLng>((locationData) {
             return LatLng(locationData.latitude, locationData.longitude);
           });
         } else {
@@ -920,11 +921,12 @@ class Utils {
   }
 
   static LatLng getLastKnowLocation() {
-    return MyApp._initialLocation;
+    return MyApp._initialLocation ?? LatLng(0, 0);
   }
 
   static Address getLastKnowAddress() {
-    return MyApp._address;
+    return MyApp._address ??
+        Address(addressLine: 'Null', adminArea: 'Null', countryName: 'Null');
   }
 
   static LatLng latLngFromString(String latlng) {
@@ -1026,20 +1028,156 @@ class Utils {
     // Navigator.of(context).popUntil((route) => route.isFirst);
     FirebaseMessaging fcm = FirebaseMessaging();
     User user = Session.data['user'];
-    Future unRegisteringTokens = Firestore.instance
-        .collection('users')
-        .document(user.userId)
-        .collection('tokens')
-        .document(await fcm.getToken())
-        .delete()
-        .timeout(Duration(seconds: 12), onTimeout: () {
-      Navigator.pop(context);
+    if (user == null) {
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+      return;
+    } else {
+      Future unRegisteringTokens = Firestore.instance
+          .collection('users')
+          .document(user.userId)
+          .collection('tokens')
+          .document(await fcm.getToken())
+          .delete()
+          .timeout(Duration(seconds: 12), onTimeout: () {
+        Navigator.pop(context);
+      });
+      await unRegisteringTokens;
+      await FirebaseAuth.instance.signOut();
+      Session.data..removeWhere((key, value) => true);
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+    }
+  }
+
+  static Future<DocumentSnapshot> getFirebaseDocument(
+      DocumentReference ref) async {
+    return ref.get().then(
+      (snapshot) {
+        return snapshot;
+      },
+    ).timeout(
+      Duration(seconds: 15),
+      onTimeout: () {
+        Utils.showSnackBarError(null, 'Request Timed Out');
+        return null;
+      },
+    ).catchError((_) {
+      Utils.showSnackBarError(null, _.toString());
+      return null;
     });
-    await unRegisteringTokens;
-    await FirebaseAuth.instance.signOut();
-    Session.data..removeWhere((key, value) => true);
-    Navigator.of(context)
-        .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
+  }
+
+  static Future<dynamic> onResume(payload) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    Map data = Platform.isIOS ? payload : payload['data'];
+    if (data.containsKey('type') && data['type'] == 'partnerStoreOrder') {
+      return;
+    }
+    if (uid == null) return;
+    if (uid == data['userId']) {
+      await Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            MyAppState?.navigatorKey?.currentState.pop();
+            Utils.showSnackBarError(
+              null,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          if (!data.containsKey('driverId') || data['driverId'] == null) {
+            return;
+          }
+          MyAppState?.navigatorKey?.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) {
+                print(data);
+                return ReviewWidget(
+                  orderId: data['orderId'],
+                  user: user,
+                  itemId: null,
+                  isDriver: true,
+                  driverId: data['driverId'],
+                  userId: uid,
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  static Future<dynamic> onLaunch(payload) async {
+    final uid = (await FirebaseAuth.instance.currentUser()).uid;
+    final data = Platform.isIOS ? payload : payload['data'];
+    if (data.containsKey('type') && data['type'] == 'partnerStoreOrder') {
+      return;
+    }
+    if(uid == null) return;
+    if (uid == data['userId']) {
+      Firestore.instance.collection('users').document(uid).get().then(
+        (userData) async {
+          if (userData == null ||
+              !userData.exists ||
+              userData.data == null ||
+              userData.data.length <= 0) {
+            Utils.showSnackBarError(
+              null,
+              "User not found",
+            );
+            return;
+          }
+          User user = User.fromMap(userData.data);
+          user.userId = uid;
+          Session.data.update(
+            'user',
+            (a) {
+              return user;
+            },
+            ifAbsent: () {
+              return user;
+            },
+          );
+          if (!data.containsKey('driverId') || data['driverId'] == null) {
+            return;
+          }
+          MyAppState.navigatorKey?.currentState
+              ?.push(MaterialPageRoute(builder: (ctx) {
+            return ReviewWidget(
+              orderId: data['orderId'],
+              isDriver: true,
+              driverId: data['driverId'],
+              fromNotification: true,
+              userId: uid,
+              user: user,
+              itemId: null,
+              comment: "",
+            );
+          }));
+        },
+      );
+    }
+  }
+
+  static Future<dynamic> backgroundMessageHandler(
+      Map<String, dynamic> message) async {
+    MyAppState.showNotificationWithDefaultSound(message);
   }
 }
 
