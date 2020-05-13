@@ -298,7 +298,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
 }
 
 class ReceiveItOrderDetailsRoute extends StatelessWidget {
-  final data;
+  final Map<String, dynamic> data;
   final isStore;
   final status;
 
@@ -330,8 +330,32 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
             ? <Widget>[
                 FlatButton(
                   child: Text('Served'),
-                  onPressed: () {
+                  onPressed: () async {
                     Utils.showLoadingDialog(context);
+                    final batch = Firestore.instance.batch();
+
+                    var servedRef = Firestore.instance
+                        .collection('stores')
+                        .document(Session.data['partnerStore'].storeId)
+                        .collection('servedOrders')
+                        .document(data['orderId']);
+                    var pendingRef = Firestore.instance
+                        .collection('stores')
+                        .document(Session.data['partnerStore'].storeId)
+                        .collection('pendingOrderedItems')
+                        .document(data['orderId']);
+                    batch.setData(servedRef, data);
+                    batch.delete(pendingRef);
+                    await batch.commit().timeout(Duration(seconds: 20),
+                        onTimeout: () {
+                      Utils.showSnackBarError(context, 'Request Timed out!');
+                      return null;
+                    }).catchError((_) {
+                      Utils.showSnackBarError(context, 'Something went wrong!');
+                      return null;
+                    });
+                    Navigator.popUntil(
+                        context, ModalRoute.withName(MyApp.partnerStoreHome));
                   },
                 ),
               ]
