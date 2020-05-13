@@ -113,9 +113,11 @@ main() async {
             partnerStoreResult.data.length > 0 &&
             partnerStoreResult.exists) {
           Session.data.update('partnerStore', (a) {
-            return partnerStoreResult.data;
+            return Store.fromMap(partnerStoreResult.data)
+              ..storeId = partnerStoreResult.documentID;
           }, ifAbsent: () {
-            return partnerStoreResult.data;
+            return Store.fromMap(partnerStoreResult.data)
+              ..storeId = partnerStoreResult.documentID;
           });
           MyApp.initialRoute = MyApp.partnerStoreHome;
         }
