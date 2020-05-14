@@ -113,9 +113,11 @@ main() async {
             partnerStoreResult.data.length > 0 &&
             partnerStoreResult.exists) {
           Session.data.update('partnerStore', (a) {
-            return partnerStoreResult.data;
+            return Store.fromMap(partnerStoreResult.data)
+              ..storeId = partnerStoreResult.documentID;
           }, ifAbsent: () {
-            return partnerStoreResult.data;
+            return Store.fromMap(partnerStoreResult.data)
+              ..storeId = partnerStoreResult.documentID;
           });
           MyApp.initialRoute = MyApp.partnerStoreHome;
         }
@@ -222,6 +224,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       },
       merge: true,
     );
+    if (data.containsKey('type')) {
+      return;
+    }
     // Navigator.popUntil(context, predicate)
     navigatorKey.currentState.push(
       MaterialPageRoute(
@@ -1129,7 +1134,7 @@ class Utils {
     if (data.containsKey('type') && data['type'] == 'partnerStoreOrder') {
       return;
     }
-    if(uid == null) return;
+    if (uid == null) return;
     if (uid == data['userId']) {
       Firestore.instance.collection('users').document(uid).get().then(
         (userData) async {

@@ -8,5 +8,6 @@
         "sendit",
         "signin",
         "startpage"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "disabled"
 }

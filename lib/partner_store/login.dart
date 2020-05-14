@@ -170,6 +170,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                   return;
                                 }
                                 Store store = Store.fromMap(data.data);
+                                store.storeId = data.documentID;
                                 Session.data.update(
                                   'partnerStore',
                                   (a) {
