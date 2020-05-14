@@ -485,7 +485,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         Duration(seconds: 20), onTimeout: () {
                                       Navigator.pop(context);
                                       pressed = false;
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Utils.showSnackBarError(
                                           context, 'Request Time out');
                                     }).then((a) async {
@@ -541,7 +541,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });
@@ -549,9 +549,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 });
                               } on dynamic catch (_) {
                                 onSignUpError();
-                                FirebaseAuth.instance
-                                    .currentUser()
-                                    .then((user) => user?.delete());
+                                // FirebaseAuth.instance
+                                //     .currentUser()
+                                //     .then((user) => user?.delete());
                               }
                             } else if (driver.homeLocationLatLng == null
                                 // ||

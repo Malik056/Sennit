@@ -778,30 +778,32 @@ class StoresRouteState extends State<StoresRoute> {
       return latlng ?? LatLng(0, 0);
     });
     for (var documentSnapshot in querySnapshot.documents) {
-      Store store;
-      var storeId = documentSnapshot.documentID;
-      var storeAsMap = documentSnapshot.data;
-      storeAsMap.putIfAbsent('storeId', () {
-        return storeId;
-      });
-      store = Store.fromMap(storeAsMap);
+      if (documentSnapshot.data.containsKey('storeName')) {
+        Store store;
+        var storeId = documentSnapshot.documentID;
+        var storeAsMap = documentSnapshot.data;
+        storeAsMap.putIfAbsent('storeId', () {
+          return storeId;
+        });
+        store = Store.fromMap(storeAsMap);
 
-      if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
-        var itemIds = storeAsMap['items'];
-        List<Future<DocumentSnapshot>> requests = [];
-        for (String itemId in itemIds) {
-          var request =
-              Firestore.instance.collection('items').document(itemId).get();
-          requests.add(request);
+        if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
+          var itemIds = storeAsMap['items'];
+          List<Future<DocumentSnapshot>> requests = [];
+          for (String itemId in itemIds) {
+            var request =
+                Firestore.instance.collection('items').document(itemId).get();
+            requests.add(request);
+          }
+          for (var request in requests) {
+            var item = await request;
+            model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
+            storeItem.store = store;
+            store.storeItems.add(storeItem);
+          }
+          stores.add(store);
+          filtered.add(store);
         }
-        for (var request in requests) {
-          var item = await request;
-          model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
-          storeItem.store = store;
-          store.storeItems.add(storeItem);
-        }
-        stores.add(store);
-        filtered.add(store);
       }
     }
     return;
@@ -1286,8 +1288,9 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
           User user = Session.data['user'];
           UserCart cart = Session.data['cart'];
           if (cart == null) {
+            cart = UserCart(itemsData: {});
             Session.data.putIfAbsent('cart', () {
-              return UserCart(itemsData: {});
+              return cart;
             });
           }
           if (!isInCart) {
@@ -1296,7 +1299,12 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 .document(user.userId)
                 .setData(
               {
-                'itemsData': {ItemDetailsRoute._item.itemId: 1.0},
+                'itemsData': {
+                  ItemDetailsRoute._item.itemId: {
+                    'quantity': 1,
+                    'flavor': '',
+                  }
+                },
               },
               merge: true,
             ).catchError((error) {
@@ -1308,8 +1316,14 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             }).then((_) {
               cart.itemsData.update(
                 ItemDetailsRoute._item.itemId,
-                (x) => 1.0,
-                ifAbsent: () => 1.0,
+                (x) => {
+                  'quantity': 1,
+                  'flavor': '',
+                },
+                ifAbsent: () => {
+                  'quantity': 1,
+                  'flavor': '',
+                },
               );
               cart.items.add(ItemDetailsRoute._item);
               setState(() {
@@ -1318,7 +1332,8 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               });
             });
           } else {
-            var itemsData = Map<String, double>.from(cart.itemsData);
+            var itemsData =
+                Map<String, Map<String, dynamic>>.from(cart.itemsData);
             // var quantities = List.from(cart.quantities);
             // itemsData.removeWhere(
             //   (Map<String, double> e) {
@@ -1348,12 +1363,8 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               cart.items.removeWhere(
                 (item) => item.itemId == ItemDetailsRoute._item.itemId,
               );
-              cart.itemsData.removeWhere((key, value) {
-                if (key == ItemDetailsRoute._item.itemId) {
-                  return true;
-                }
-                return false;
-              });
+              cart.itemsData.removeWhere(
+                  (key, value) => key == ItemDetailsRoute._item.itemId);
               // cart.quantities.removeAt(index);
               setState(() {
                 addingToCart = false;
@@ -2141,7 +2152,15 @@ class ShoppingCartRoute extends StatelessWidget {
                         // BotToast.showText(
                         //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
                         return;
-                      } else if (ShoppingCartRoute._toAddress == null) {
+                      } else if (ShoppingCartRoute._toAddress == null ||
+                          ((ShoppingCartRoute
+                                          ._toAddress.coordinates?.latitude ??
+                                      0) ==
+                                  0 &&
+                              (ShoppingCartRoute
+                                          ._toAddress.coordinates?.longitude ??
+                                      0) ==
+                                  0)) {
                         BotToast.showText(
                             text: 'Please Select a Destination First!',
                             duration: Duration(seconds: 2));
@@ -2185,7 +2204,8 @@ class ShoppingCartRoute extends StatelessWidget {
                       double price = totalCharges;
 
                       List<LatLng> pickups = [];
-                      Map<String, double> itemsData = cart.itemsData;
+                      Map<String, Map<String, dynamic>> itemsData =
+                          cart.itemsData;
                       order.pickups = pickups;
                       List<String> stores = [];
                       List<double> pricePerItem = [];
@@ -2197,7 +2217,8 @@ class ShoppingCartRoute extends StatelessWidget {
                         stores.add(item.storeName);
                         pricePerItem.add(item.price);
                         totalPricePerItem.add(
-                          (item.price * itemsData[item.itemId] as num)
+                          (item.price * itemsData[item.itemId]['quantity']
+                                  as num)
                               .toDouble(),
                         );
                       }
@@ -2342,16 +2363,18 @@ class ShoppingCartRoute extends StatelessWidget {
                             final itemKey = item.itemId;
                             if (storeOrders.containsKey(item.storeId)) {
                               double price = storeOrders[item.storeId]['price'];
-                              price += item.price * itemsData[item.itemId];
+                              price += item.price *
+                                  itemsData[item.itemId]['quantity'];
                               storeOrders[item.storeId].update(
                                   'price', (old) => price,
                                   ifAbsent: () => price);
                               storeOrders[item.storeId]['pricePerItem']
                                   .add(item.price);
                               storeOrders[item.storeId]['totalPricePerItem']
-                                  .add(item.price * itemsData[item.itemId]);
+                                  .add(item.price *
+                                      itemsData[item.itemId]['quantity']);
                               (storeOrders[item.storeId]['itemsData']
-                                      as Map<String, double>)
+                                      as Map<String, Map<String, dynamic>>)
                                   .putIfAbsent(
                                 itemKey,
                                 () => itemsData[itemKey],
@@ -2382,11 +2405,13 @@ class ShoppingCartRoute extends StatelessWidget {
                                 deliveryTime: null,
                                 email: order.email,
                                 house: order.house,
-                                price: item.price * itemsData[item.itemId],
+                                price: item.price *
+                                    itemsData[item.itemId]['quantity'],
                                 orderId: orderData['orderId'],
                                 pricePerItem: [item.price],
                                 totalPricePerItem: [
-                                  item.price * itemsData[item.itemId]
+                                  item.price *
+                                      itemsData[item.itemId]['quantity']
                                 ],
                                 itemsData: {
                                   itemKey: itemsData[itemKey],
@@ -2437,7 +2462,7 @@ class ShoppingCartRoute extends StatelessWidget {
                                 .collection('stores')
                                 .document(k)
                                 .collection('pendingOrderedItems')
-                                .document(order.orderId);
+                                .document(orderData['orderId']);
 
                             batch.setData(
                               storeOrderRef,
@@ -2687,6 +2712,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double groupMargin = 30;
   double itemMargin = 10;
   List<TextEditingController> _controllers;
+  List<TextEditingController> _flavorControllers;
   TextEditingController _emailController;
   TextEditingController _houseController;
   TextEditingController _phoneNumberController;
@@ -2705,6 +2731,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   ShoppingCartRouteState() {
     _controllers = [];
+    _flavorControllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
@@ -2730,8 +2757,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     UserCart cart = Session.getCart();
     for (var key in cart.itemsData.keys) {
       final TextEditingController controller = TextEditingController();
+      final TextEditingController flavorController = TextEditingController();
       _controllers.add(controller);
-      controller.text = cart.itemsData[key].toInt().toString();
+      _flavorControllers.add(flavorController);
+      controller.text = cart.itemsData[key]['quantity'].toInt().toString();
+      flavorController.text = cart.itemsData[key]['flavor'];
       isAnimationVisibleList.add(false);
       isItemDeleteConfirmationVisibleList.add(false);
       isButtonActiveList.add(false);
@@ -2792,11 +2822,21 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
                           await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
-                        if (mounted) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setState(() {});
+                        // if (mounted) {
+                        // WidgetsBinding.instance.addPostFrameCallback((_) {
+                        // if (mounted) {
+                        try {
+                          setState(() {});
+                        } catch (ex) {
+                          Future.delayed(Duration(seconds: 3), () {
+                            if (mounted) {
+                              setState(() {});
+                            }
                           });
                         }
+                        // }
+                        // });
+                        // }
                       }
                     },
                     leading: Icon(
@@ -2804,8 +2844,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       color: Theme.of(context).accentColor,
                     ),
                     title: Text(
-                      ShoppingCartRoute._toAddress?.addressLine ??
-                          'Address Not Set',
+                      ((ShoppingCartRoute._toAddress?.coordinates?.latitude ??
+                                      0) ==
+                                  0 &&
+                              (ShoppingCartRoute
+                                          ._toAddress?.coordinates?.longitude ??
+                                      0) ==
+                                  0)
+                          ? 'Address Not Set'
+                          : ShoppingCartRoute._toAddress?.addressLine ??
+                              'Address Not Set',
                       style: TextStyle(
                         color: Theme.of(context).accentColor,
                         fontSize: 16,
@@ -3011,7 +3059,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   }
 
   List<model.StoreItem> items;
-  Map<String, double> itemsData;
+  Map<String, Map<String, dynamic>> itemsData;
   double totalDeliveryCharges = 0;
   double totalPrice = 0;
   List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
@@ -3071,8 +3119,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               children: List<Widget>.generate(items.length, (index) {
                 globalKeysForCartItem.add(GlobalKey<CartItemState>());
                 // model.StoreItem item = items[index];
-                totalPrice +=
-                    items[index].price * itemsData[items[index].itemId];
+                totalPrice += items[index].price *
+                    itemsData[items[index].itemId]['quantity'];
                 if (ShoppingCartRoute._toAddress != null) {
                   // double distance = Utils.calculateDistance(
                   //   LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
@@ -3121,27 +3169,68 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         );
                         setState(() {});
                       },
+                      onFlavorChange: (index, value) async {
+                        items[index].flavor = value;
+                        await Firestore.instance
+                            .collection('carts')
+                            .document((Session.data['user'] as User).userId)
+                            .setData(
+                          {
+                            'itemsData': {
+                              items[index].itemId: {
+                                'flavor': value,
+                                'quantity':
+                                    items[index].quantity?.toDouble() ?? 1,
+                              },
+                            }
+                          },
+                          merge: true,
+                        );
+                        itemsData.update(items[index].itemId, (a) {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavor': value ?? '',
+                          };
+                        }, ifAbsent: () {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavor': value ?? '',
+                          };
+                        });
+                      },
                       onQuantityChange: (value, index) async {
                         if (value == null || value == 0) {
                           return;
                         }
+                        items[index].quantity = value.toDouble();
                         Firestore.instance
                             .collection('carts')
                             .document((Session.data['user'] as User).userId)
                             .setData(
                           {
                             'itemsData': {
-                              items[index].itemId: value.toDouble(),
+                              items[index].itemId: {
+                                'quantity': value?.toDouble() ?? 1,
+                                'flavor': items[index]?.flavor ?? '',
+                              },
                             }
                           },
                           merge: true,
                         );
                         itemsData.update(items[index].itemId, (a) {
-                          return value.toDouble();
+                          return {
+                            'quantity': value?.toDouble() ?? 1,
+                            'flavor': items[index].flavor ?? '',
+                          };
                         });
                         totalPrice = 0;
                         for (var item in items) {
-                          totalPrice += item.price * itemsData[item.itemId];
+                          totalPrice +=
+                              item.price * itemsData[item.itemId]['quantity'];
                         }
                         totalPrice += totalDeliveryCharges;
 
@@ -3152,6 +3241,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       },
                       item: items[index],
                       controller: _controllers[index],
+                      flavorController: _flavorControllers[index],
                       itemIndex: index,
                     ),
                     isAnimationVisibleList[index]
@@ -3230,6 +3320,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                             ),
                                             Spacer(),
                                             Column(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: <Widget>[
                                                 IconButton(
                                                   tooltip: "Confirm",
@@ -3255,7 +3346,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                                   .data['cart'];
                                                           var itemsData = Map<
                                                               String,
-                                                              double>.from(
+                                                              Map<String,
+                                                                  dynamic>>.from(
                                                             cart.itemsData,
                                                           );
 
@@ -3325,8 +3417,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               _controllers
                                                                   .removeAt(
                                                                       index);
+                                                              _flavorControllers
+                                                                  .removeAt(
+                                                                      index);
                                                               print(_controllers
                                                                   .length);
+                                                              print(
+                                                                  _flavorControllers
+                                                                      .length);
                                                             });
                                                           });
                                                         }
@@ -3381,7 +3479,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 180),
                     child: Text(
-                      '${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : getDeliveryCharges()}',
+                      '''${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : ((ShoppingCartRoute._toAddress?.coordinates?.latitude ?? 0) == 0 && (ShoppingCartRoute._toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : getDeliveryCharges()}''',
                       style: Theme.of(context).textTheme.subtitle,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.visible,
@@ -3433,7 +3531,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
           (old) => old + 1,
         );
       } else {
-        Coordinates coordinates = ShoppingCartRoute._toAddress.coordinates;
+        Coordinates coordinates =
+            ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
         double distance = Utils.calculateDistance(
             LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
         deliveryCharges.putIfAbsent(
@@ -3498,40 +3597,71 @@ class CartItem extends StatefulWidget {
   final model.StoreItem item;
   final Function onDelete;
   final int itemIndex;
-  final Function(int, int) onQuantityChange;
+  final Function(int value, int index) onQuantityChange;
+  final Function(int index, String value) onFlavorChange;
   final _quantityFocusNode = FocusNode();
+  final _flavorFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
-  CartItem(
-      {this.key,
-      this.item,
-      this.controller,
-      this.itemIndex,
-      @required this.onQuantityChange,
-      @required this.onDelete})
-      : super(key: key) {
+  final TextEditingController flavorController;
+  CartItem({
+    this.key,
+    this.item,
+    this.controller,
+    this.flavorController,
+    this.itemIndex,
+    @required this.onQuantityChange,
+    @required this.onDelete,
+    @required this.onFlavorChange,
+  }) : super(key: key) {
     UserCart cart = Session.data['cart'];
-    controller.removeListener(() {});
+    // controller.removeListener(() {});
+    // flavorController.removeListener((){});
     controller.addListener(() {
       if (controller.text == null || controller.text.isEmpty) {
         return;
       }
       int value = int.parse(controller.text);
       if (value <= 0) {
-        cart.itemsData[item.itemId] = 1.0;
+        controller.text = '1';
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 1,
+          ifAbsent: () => 1,
+        );
         onQuantityChange(1, itemIndex);
       } else if (value > 99) {
-        cart.itemsData[item.itemId] = 99.0;
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 99,
+          ifAbsent: () => 99,
+        );
         onQuantityChange(99, itemIndex);
       } else {
-        cart.itemsData[item.itemId] = value.toDouble();
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => value.toDouble(),
+          ifAbsent: () => value.toDouble(),
+        );
         onQuantityChange(value, itemIndex);
       }
     });
     _quantityFocusNode.addListener(() {
       if (controller.text == '') {
-        controller.text = '0';
+        controller.text = '1';
       }
       key?.currentState?.refresh();
+    });
+    _flavorFocusNode.addListener(() {
+      if (!_flavorFocusNode.hasFocus) {
+        cart.itemsData[item.itemId].update(
+          'flavor',
+          (old) => flavorController?.text ?? '',
+          ifAbsent: () => flavorController?.text ?? '',
+        );
+        onFlavorChange(itemIndex, flavorController?.text ?? '');
+
+        key?.currentState?.refresh();
+      }
     });
   }
 
@@ -3569,149 +3699,181 @@ class CartItemState extends State<CartItem> {
     return Card(
       child: Padding(
         padding: EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: ShapeDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: ClipRRect(
-                  child: FadeInImage.assetNetwork(
-                    placeholder: 'assets/images/logo.png',
-                    image: widget.item.images[0],
-                    height: 80,
-                    fit: BoxFit.fitWidth,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 8,
-            ),
-            Expanded(
-              flex: 3,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(
+              width: MediaQuery.of(context).size.width,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.item.itemName,
-                              style: Theme.of(context).textTheme.title,
-                            ),
-                            Text(
-                              widget.item.description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                  Expanded(
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        color: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: <Widget>[
-                            InkWell(
-                              child: Text(
-                                ' - ',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 28,
-                                    fontFamily: "Roboto"),
-                              ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 1) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value - 1}';
-                                });
-                              },
-                            ),
-                            Container(
-                              width: 30,
-                              child: TextField(
-                                focusNode: widget._quantityFocusNode,
-                                controller: widget.controller,
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                ),
-                                inputFormatters: <TextInputFormatter>[
-                                  LengthLimitingTextInputFormatter(2),
-                                  WhitelistingTextInputFormatter.digitsOnly,
-                                  BlacklistingTextInputFormatter
-                                      .singleLineFormatter,
+                      child: ClipRRect(
+                        child: FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/logo.png',
+                          image: widget.item.images[0],
+                          height: 80,
+                          fit: BoxFit.fitWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 8,
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.item.itemName,
+                                    style: Theme.of(context).textTheme.title,
+                                  ),
+                                  Text(
+                                    widget.item.description,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
                             ),
-                            InkWell(
-                              child: Text(
-                                ' +',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 20,
-                                    fontFamily: "Roboto"),
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: <Widget>[
+                                  InkWell(
+                                    child: Text(
+                                      ' - ',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 28,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          1) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value - 1}';
+                                      });
+                                    },
+                                  ),
+                                  Container(
+                                    width: 30,
+                                    child: TextField(
+                                      focusNode: widget._quantityFocusNode,
+                                      controller: widget.controller,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                      ),
+                                      inputFormatters: <TextInputFormatter>[
+                                        LengthLimitingTextInputFormatter(2),
+                                        WhitelistingTextInputFormatter
+                                            .digitsOnly,
+                                        BlacklistingTextInputFormatter
+                                            .singleLineFormatter,
+                                      ],
+                                    ),
+                                  ),
+                                  InkWell(
+                                    child: Text(
+                                      ' +',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 20,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          99) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value + 1}';
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 99) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value + 1}';
-                                });
-                              },
                             ),
+                            Expanded(
+                              child: IconButton(
+                                onPressed: () {
+                                  if (!isPressed) {
+                                    widget.onDelete();
+                                    isPressed = true;
+                                    Future.delayed(Duration(seconds: 1))
+                                        .then((_) {
+                                      isPressed = false;
+                                    });
+                                  }
+                                },
+                                icon: Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            )
                           ],
                         ),
-                      ),
-                      Expanded(
-                        child: IconButton(
-                          onPressed: () {
-                            if (!isPressed) {
-                              widget.onDelete();
-                              isPressed = true;
-                              Future.delayed(Duration(seconds: 1)).then((_) {
-                                isPressed = false;
-                              });
-                            }
-                          },
-                          icon: Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                          ),
+                        SizedBox(
+                          height: 4,
                         ),
-                      )
-                    ],
-                  ),
-                  SizedBox(
-                    height: 4,
-                  ),
-                  Align(
-                    child: Text(
-                      'Price: R${widget.item.price.toInt()} per Item',
-                      style: Theme.of(context).textTheme.subhead,
+                        Align(
+                          child: Text(
+                            'Price: R${widget.item.price.toInt()} per Item',
+                            style: Theme.of(context).textTheme.subhead,
+                          ),
+                          alignment: Alignment.bottomRight,
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.bottomRight,
                   ),
                 ],
               ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            TextField(
+              controller: widget.flavorController,
+              focusNode: widget._flavorFocusNode,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Flavor',
+                helperText:
+                    'Add your Flavor here. If Applicable. For Food Deliveries Only',
+              ),
+              // onEditingComplete: () {
+              //   widget.onFlavorChange(
+              //       widget.itemIndex, widget.flavorController.text ?? '');
+              // },
             ),
           ],
         ),

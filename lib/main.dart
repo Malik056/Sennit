@@ -112,14 +112,24 @@ main() async {
             partnerStoreResult.data != null &&
             partnerStoreResult.data.length > 0 &&
             partnerStoreResult.exists) {
-          Session.data.update('partnerStore', (a) {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          }, ifAbsent: () {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          });
+          var data = await Firestore.instance
+              .collection('stores')
+              .document(partnerStoreResult.data['storeId'])
+              .get();
+          if (data != null &&
+              data.exists &&
+              data.data != null &&
+              data.data.length > 0) {
+            Session.data.update('partnerStore', (a) {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            }, ifAbsent: () {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            });
+          }
           MyApp.initialRoute = MyApp.partnerStoreHome;
+        } else {
+          await FirebaseAuth.instance.signOut();
+          MyApp.initialRoute = MyApp.startPage;
         }
       }
     }
@@ -134,6 +144,20 @@ databaseInitializer() async {
 class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String startPage = 'startPage';
   static String initialRoute = startPage;
+  static Address dummyAddress = Address(
+    addressLine: 'NULL',
+    adminArea: 'Null',
+    coordinates: Coordinates(0, 0),
+    countryName: 'Null',
+    countryCode: 'Null',
+    featureName: 'Null',
+    locality: 'Null',
+    postalCode: 'Null',
+    subAdminArea: 'Null',
+    subLocality: 'Null',
+    subThoroughfare: 'NULL',
+    thoroughfare: 'NULL',
+  );
   // static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
@@ -306,10 +330,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           Duration(
             milliseconds: 10,
           ), () {
+        Utils.getMyLocation();
         MyApp._initialLocation = LatLng(0, 0);
-        MyApp._address = Address(
-          addressLine: '',
-        );
+        MyApp._address = MyApp.dummyAddress;
         return MyApp._initialLocation;
       });
     }
@@ -322,14 +345,26 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
       onTimeout: () {},
     );
-    await MyApp._lastKnowLocation.then((data) async {
-      MyApp._initialLocation = data;
-      MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-          .findAddressesFromCoordinates(
-              Coordinates(data.latitude, data.longitude)))[0];
-    }).timeout(Duration(seconds: 5), onTimeout: () async {
+    if (MyApp._lastKnowLocation == null) {
+      Utils.getMyLocation();
       MyApp._initialLocation = LatLng(0, 0);
-      MyApp._address = Address();
+      MyApp._address = MyApp.dummyAddress;
+      return;
+    }
+    await MyApp._lastKnowLocation?.then((data) async {
+      MyApp._initialLocation = data;
+      final listOfAddress = (await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(data.latitude, data.longitude)));
+      if (listOfAddress == null || listOfAddress.length <= 0) {
+        Utils.getMyLocation();
+        MyApp._initialLocation = LatLng(0, 0);
+        MyApp._address = MyApp.dummyAddress;
+      }
+    })?.timeout(Duration(seconds: 5), onTimeout: () async {
+      Utils.getMyLocation();
+      MyApp._initialLocation = LatLng(0, 0);
+      MyApp._address = MyApp.dummyAddress;
       return MyApp._initialLocation;
     });
   }
@@ -915,6 +950,14 @@ class Utils {
       {location.LocationAccuracy accuracy =
           location.LocationAccuracy.BALANCED}) async {
     final _location = Location()..changeSettings(accuracy: accuracy);
+    if (await _location.hasPermission() != PermissionStatus.GRANTED) {
+      var result = await _location.requestPermission();
+      if (result != PermissionStatus.GRANTED) {
+        Utils.showSnackBarError(null,
+            'This App Needs Location Permission to work. Please give permission.');
+      }
+      return null;
+    }
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);
     });

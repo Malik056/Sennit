@@ -339,7 +339,7 @@ class Driver {
 class OrderFromReceiveIt {
   String orderId;
   String status;
-  Map<String, double> itemsData;
+  Map<String, Map<String, dynamic>> itemsData;
   String driverName;
   String email;
   String phoneNumber;
@@ -451,7 +451,7 @@ class OrderFromReceiveIt {
     return OrderFromReceiveIt(
       orderId: map['orderId'],
       status: map['status'],
-      itemsData: Map<String, double>.from(map['itemsData']),
+      itemsData: Map<String, Map<String, dynamic>>.from(map['itemsData']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],
       house: map['house'],
@@ -1188,13 +1188,13 @@ class OrderOtherCharges {
 
 class UserCart {
   List<StoreItem> items = List();
-  Map<String, double> itemsData;
+  Map<String, Map<String, dynamic>> itemsData;
   UserCart({
     this.itemsData,
   });
 
   UserCart copyWith({
-    List<Map<String, double>> itemsData,
+    List<Map<String, Map<String, dynamic>>> itemsData,
   }) {
     return UserCart(
       itemsData: itemsData ?? this.itemsData,
@@ -1211,7 +1211,7 @@ class UserCart {
     if (map == null) return null;
 
     return UserCart(
-      itemsData: Map<String, double>.from(
+      itemsData: Map<String, Map<String, dynamic>>.from(
         map['itemsData'],
       ),
     );
@@ -1574,6 +1574,10 @@ class StoreItem {
   LatLng latlng;
   String storeId;
   Store store;
+
+  //temp
+  String flavor = '';
+  double quantity = 1;
 
   StoreItem({
     this.itemId,

@@ -595,7 +595,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                                           data.data == null ||
                                           data.data.length <= 0) {
                                         Navigator.pop(context);
-                                        result.user.delete();
+                                        // result.user.delete();
                                         signInButtonEnabled = true;
                                         setState(() {});
                                         Utils.showSnackBarError(
