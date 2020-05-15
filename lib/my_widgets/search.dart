@@ -239,6 +239,7 @@ class SearchWidgetState extends State<SearchWidget>
                                         MaterialPageRoute(builder: (context) {
                                       return ItemDetailsRoute(
                                         item: items[index],
+                                        isDemo: widget.demo,
                                       );
                                     }));
                                   },
@@ -255,6 +256,7 @@ class SearchWidgetState extends State<SearchWidget>
                                       builder: (context) {
                                         return ItemDetailsRoute(
                                           item: items[index],
+                                          isDemo: widget.demo,
                                         );
                                       },
                                     ),

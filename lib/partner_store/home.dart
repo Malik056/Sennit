@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
-import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -30,7 +28,26 @@ class OrderedItemsList extends StatefulWidget {
         //     color: Theme.of(context).primaryColor,
         //   ),
         // );
-        MyAppState.showNotificationWithDefaultSound(data['notification']);
+        // await showNotificationWithDefaultSound(data['notification']);
+        var jsonData = data['notification'];
+        var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+            'orderArriveChannel',
+            'OrderArrived',
+            'When The Order is Posted this channel will show the notifications',
+            importance: Importance.Max,
+            priority: Priority.High);
+        var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+        var platformChannelSpecifics = new NotificationDetails(
+            androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+        await flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 10000,
+          jsonData['title'] ?? 'Order',
+          jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+          platformChannelSpecifics,
+          payload: json.encode(
+            jsonData,
+          ),
+        );
       },
       onBackgroundMessage: Platform.isIOS ? null : _backgroundMessageHandler,
       onResume: _onResume,
@@ -89,7 +106,7 @@ class OrderedItemsList extends StatefulWidget {
   Future<dynamic> _onLaunch(payload) async {
     final uid = (await FirebaseAuth.instance.currentUser()).uid;
     final data = Platform.isIOS ? payload : payload['data'];
-    BotToast.showText(text: 'onLaunch: $data');
+    // BotToast.showText(text: 'onLaunch: $data');
     // if (uid == data['userId']) {
     //   Firestore.instance.collection('users').document(uid).get().then(
     //     (userData) async {
@@ -135,7 +152,26 @@ class OrderedItemsList extends StatefulWidget {
   static Future<dynamic> _backgroundMessageHandler(
       Map<String, dynamic> message) async {
     print(message);
-    showNotificationWithDefaultSound(message);
+    // showNotificationWithDefaultSound(message);
+    var jsonData = message;
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'orderArriveChannel',
+        'OrderArrived',
+        'When The Order is Posted this channel will show the notifications',
+        importance: Importance.Max,
+        priority: Priority.High);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch,
+      jsonData['title'] ?? 'Order',
+      jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+      platformChannelSpecifics,
+      payload: json.encode(
+        jsonData,
+      ),
+    );
   }
 
   static Future showNotificationWithDefaultSound(
@@ -150,7 +186,7 @@ class OrderedItemsList extends StatefulWidget {
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-      0,
+      DateTime.now().millisecondsSinceEpoch,
       jsonData['title'] ?? 'Order',
       jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
       platformChannelSpecifics,
@@ -853,13 +889,13 @@ class PastOrdersRoute extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            FutureBuilder<QuerySnapshot>(
-              future: Firestore.instance
+            StreamBuilder<QuerySnapshot>(
+              stream: Firestore.instance
                   .collection('stores')
                   .document(partnerStoreId)
                   .collection(
                       isCompleted ? 'servedOrders' : 'pendingOrderedItems')
-                  .getDocuments(source: Source.server),
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -870,9 +906,11 @@ class PastOrdersRoute extends StatelessWidget {
                     snapshot.data.documents == null ||
                     snapshot.data.documents.isEmpty) {
                   return Center(
-                    child: Text(isCompleted
-                        ? 'No Orders Served Yet'
-                        : 'No Pending Orders Yet'),
+                    child: Text(
+                      isCompleted
+                          ? 'No Orders Served Yet'
+                          : 'No Pending Orders Yet',
+                    ),
                   );
                 } else {
                   final documents = snapshot.data.documents;

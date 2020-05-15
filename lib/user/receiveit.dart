@@ -26,6 +26,7 @@ import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
 import 'package:sennit/user/signin.dart';
+import 'package:sennit/user/signup.dart';
 import '../main.dart';
 import 'generic_tracking_screen.dart';
 
@@ -89,6 +90,7 @@ class ReceiveItRoute extends StatelessWidget {
             StoresRoute(
               key: storesRouteKey,
               address: null,
+              isDemo: demo,
             ),
           )
           ..add(SearchWidget(
@@ -102,6 +104,7 @@ class ReceiveItRoute extends StatelessWidget {
           StoresRoute(
             key: storesRouteKey,
             address: null,
+            isDemo: demo,
           ),
         )
         ..add(SearchWidget(
@@ -632,7 +635,12 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
 
 class StoresRoute extends StatefulWidget {
   final Address address;
-  StoresRoute({@required key, @required this.address}) : super(key: key);
+  final bool isDemo;
+  StoresRoute({
+    @required key,
+    @required this.address,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -707,6 +715,7 @@ class StoresRouteState extends State<StoresRoute> {
                                   builder: (context) {
                                     return StoreMainPage(
                                       store: filtered[index],
+                                      demo: widget.isDemo ?? false,
                                     );
                                   },
                                 ),
@@ -824,7 +833,8 @@ class StoresRouteState extends State<StoresRoute> {
 class StoreItem extends StatelessWidget {
   // final bool dummyPic;
   final Store store;
-  StoreItem({this.store});
+  final demo;
+  StoreItem({this.store, this.demo});
 
   @override
   Widget build(BuildContext context) {
@@ -964,8 +974,8 @@ class StoreItem extends StatelessWidget {
                             MaterialPageRoute(
                               builder: (context) {
                                 return ItemDetailsRoute(
-                                  item: store.storeItems[index],
-                                );
+                                    item: store.storeItems[index],
+                                    isDemo: demo);
                               },
                               maintainState: false,
                             ),
@@ -996,7 +1006,7 @@ class StoreMainPage extends StatelessWidget {
   final bool demo;
   StoreMainPage({
     this.store,
-    this.demo,
+    @required this.demo,
   });
 
   @override
@@ -1070,9 +1080,7 @@ class StoreMainPage extends StatelessWidget {
         body: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              StoreMenu(
-                store: store,
-              ),
+              StoreMenu(store: store, isDemo: demo),
               SizedBox(
                 height: 20,
               ),
@@ -1086,7 +1094,12 @@ class StoreMainPage extends StatelessWidget {
 
 class StoreMenu extends StatefulWidget {
   final Store store;
-  const StoreMenu({Key key, @required this.store}) : super(key: key);
+  final isDemo;
+  const StoreMenu({
+    Key key,
+    @required this.store,
+    @required this.isDemo,
+  }) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return StoreMenuState();
@@ -1133,6 +1146,7 @@ class StoreMenuState extends State<StoreMenu> {
         ),
         MenuCategorize(
           items: widget.store.storeItems,
+          isDemo: widget.isDemo ?? false,
         ),
       ],
     );
@@ -1141,7 +1155,12 @@ class StoreMenuState extends State<StoreMenu> {
 
 class MenuCategorize extends StatelessWidget {
   final List<model.StoreItem> items;
-  MenuCategorize({Key key, @required this.items}) : super(key: key);
+  final bool isDemo;
+  MenuCategorize({
+    Key key,
+    @required this.items,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1155,7 +1174,10 @@ class MenuCategorize extends StatelessWidget {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) {
-                  return ItemDetailsRoute(item: items[index]);
+                  return ItemDetailsRoute(
+                    item: items[index],
+                    isDemo: isDemo ?? false,
+                  );
                 },
               ),
             );
@@ -1285,7 +1307,12 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
           setState(() {
             addingToCart = true;
           });
-          User user = Session.data['user'];
+          FirebaseUser fUser = await FirebaseAuth.instance.currentUser();
+          User user = Session.data['user'] ??
+              User(
+                email: fUser.email,
+                userId: fUser.uid,
+              );
           UserCart cart = Session.data['cart'];
           if (cart == null) {
             cart = UserCart(itemsData: {});
@@ -1302,7 +1329,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 'itemsData': {
                   ItemDetailsRoute._item.itemId: {
                     'quantity': 1,
-                    'flavor': '',
+                    'flavour': '',
                   }
                 },
               },
@@ -1318,11 +1345,11 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 ItemDetailsRoute._item.itemId,
                 (x) => {
                   'quantity': 1,
-                  'flavor': '',
+                  'flavour': '',
                 },
                 ifAbsent: () => {
                   'quantity': 1,
-                  'flavor': '',
+                  'flavour': '',
                 },
               );
               cart.items.add(ItemDetailsRoute._item);
@@ -1382,8 +1409,10 @@ class ItemDetailsRoute extends StatefulWidget {
   static GlobalKey<ItemDetailsRouteState> _key =
       GlobalKey<ItemDetailsRouteState>();
   static model.StoreItem _item;
+  final bool isDemo;
   ItemDetailsRoute({
     @required model.StoreItem item,
+    @required this.isDemo,
   }) : super(key: _key) {
     _item = item;
   }
@@ -1406,6 +1435,41 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
         elevation: 40,
         onClosing: () {},
         builder: (context) {
+          //When Demo Following code can show login and sign in buttons instead of Add to Cart Button
+          // if (widget.isDemo) {
+          //   return GestureDetector(
+          //     child: Card(
+          //       child: Padding(
+          //         padding: const EdgeInsets.all(4),
+          //         child: Row(
+          //           children: <Widget>[
+          //             FlatButton(
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignup,
+          //                 );
+          //               },
+          //               child: Text('Signup'),
+          //             ),
+          //             Spacer(),
+          //             FlatButton(
+          //               color: Theme.of(context).primaryColor,
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignIn,
+          //                 );
+          //               },
+          //               child: Text('Login'),
+          //             ),
+          //             Spacer(),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   );
+          // }
           return BottomSheetButton();
         },
       ),
@@ -1426,6 +1490,7 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
         // onComeBack: () {
         //   setState(() {});
         // }
+        demo: widget.isDemo,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: itemDetailsBody,
@@ -1440,7 +1505,7 @@ class FloatingMenu extends StatefulWidget {
   FloatingMenu({
     Key key,
     this.itemId,
-    this.demo,
+    @required this.demo,
     // this.onComeBack,
   }) : super(key: key);
 
@@ -1481,18 +1546,22 @@ class _FloatingMenuState extends State<FloatingMenu> {
           foregroundColor: Theme.of(context).primaryColor,
           label: 'Review',
           labelStyle: TextStyle(fontSize: 18.0),
-          onTap: () async {
-            await Navigator.of(context)
-                .push(MaterialPageRoute(builder: (context) {
-              return ReviewWidget(
-                orderId: "",
-                user: Session.data['user'],
-                itemId: widget.itemId,
-              );
-            }));
-            // setState(() {
-            // });
-          },
+          onTap: widget.demo ?? false
+              ? () {
+                  Utils.showSnackBarWarning(context, 'Login to Review');
+                }
+              : () async {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (context) {
+                    return ReviewWidget(
+                      orderId: "",
+                      user: Session.data['user'],
+                      itemId: widget.itemId,
+                    );
+                  }));
+                  // setState(() {
+                  // });
+                },
         ),
         SpeedDialChild(
           child: Icon(Icons.shopping_cart),
@@ -2578,7 +2647,10 @@ class ShoppingCartRoute extends StatelessWidget {
         centerTitle: true,
         // backgroundColor: Theme.of(context).accentColor,
       ),
-      body: ShoppingCartRouteBody(demo: demo, key: _shoppingCartRouteBodyKey),
+      body: ShoppingCartRouteBody(
+        demo: demo,
+        key: _shoppingCartRouteBodyKey,
+      ),
       bottomSheet: (demo != null && demo)
           ? BottomAppBar(
               child: Column(
@@ -2644,12 +2716,12 @@ class ShoppingCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-        )
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = true
@@ -2700,7 +2772,9 @@ class ShoppingCartRouteBody extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    return ShoppingCartRouteState();
+    return ShoppingCartRouteState(
+      demo: demo,
+    );
   }
 }
 
@@ -2712,7 +2786,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double groupMargin = 30;
   double itemMargin = 10;
   List<TextEditingController> _controllers;
-  List<TextEditingController> _flavorControllers;
+  List<TextEditingController> _flavourControllers;
   TextEditingController _emailController;
   TextEditingController _houseController;
   TextEditingController _phoneNumberController;
@@ -2729,9 +2803,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   var isLoadingBarVisibleList = [];
 
-  ShoppingCartRouteState() {
+  ShoppingCartRouteState({
+    @required this.demo,
+  }) {
     _controllers = [];
-    _flavorControllers = [];
+    _flavourControllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
@@ -2757,11 +2833,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     UserCart cart = Session.getCart();
     for (var key in cart.itemsData.keys) {
       final TextEditingController controller = TextEditingController();
-      final TextEditingController flavorController = TextEditingController();
+      final TextEditingController flavourController = TextEditingController();
       _controllers.add(controller);
-      _flavorControllers.add(flavorController);
+      _flavourControllers.add(flavourController);
       controller.text = cart.itemsData[key]['quantity'].toInt().toString();
-      flavorController.text = cart.itemsData[key]['flavor'];
+      flavourController.text = cart.itemsData[key]['flavour'];
       isAnimationVisibleList.add(false);
       isItemDeleteConfirmationVisibleList.add(false);
       isButtonActiveList.add(false);
@@ -3169,8 +3245,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         );
                         setState(() {});
                       },
-                      onFlavorChange: (index, value) async {
-                        items[index].flavor = value;
+                      onFlavourChange: (index, value) async {
+                        items[index].flavour = value;
                         await Firestore.instance
                             .collection('carts')
                             .document((Session.data['user'] as User).userId)
@@ -3178,7 +3254,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                           {
                             'itemsData': {
                               items[index].itemId: {
-                                'flavor': value,
+                                'flavour': value,
                                 'quantity':
                                     items[index].quantity?.toDouble() ?? 1,
                               },
@@ -3191,14 +3267,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                             'quantity': (items[index]?.quantity ?? 0) == 0
                                 ? 1
                                 : items[index].quantity,
-                            'flavor': value ?? '',
+                            'flavour': value ?? '',
                           };
                         }, ifAbsent: () {
                           return {
                             'quantity': (items[index]?.quantity ?? 0) == 0
                                 ? 1
                                 : items[index].quantity,
-                            'flavor': value ?? '',
+                            'flavour': value ?? '',
                           };
                         });
                       },
@@ -3215,7 +3291,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                             'itemsData': {
                               items[index].itemId: {
                                 'quantity': value?.toDouble() ?? 1,
-                                'flavor': items[index]?.flavor ?? '',
+                                'flavour': items[index]?.flavour ?? '',
                               },
                             }
                           },
@@ -3224,7 +3300,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         itemsData.update(items[index].itemId, (a) {
                           return {
                             'quantity': value?.toDouble() ?? 1,
-                            'flavor': items[index].flavor ?? '',
+                            'flavour': items[index].flavour ?? '',
                           };
                         });
                         totalPrice = 0;
@@ -3241,7 +3317,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       },
                       item: items[index],
                       controller: _controllers[index],
-                      flavorController: _flavorControllers[index],
+                      flavourController: _flavourControllers[index],
                       itemIndex: index,
                     ),
                     isAnimationVisibleList[index]
@@ -3417,13 +3493,13 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               _controllers
                                                                   .removeAt(
                                                                       index);
-                                                              _flavorControllers
+                                                              _flavourControllers
                                                                   .removeAt(
                                                                       index);
                                                               print(_controllers
                                                                   .length);
                                                               print(
-                                                                  _flavorControllers
+                                                                  _flavourControllers
                                                                       .length);
                                                             });
                                                           });
@@ -3598,24 +3674,24 @@ class CartItem extends StatefulWidget {
   final Function onDelete;
   final int itemIndex;
   final Function(int value, int index) onQuantityChange;
-  final Function(int index, String value) onFlavorChange;
+  final Function(int index, String value) onFlavourChange;
   final _quantityFocusNode = FocusNode();
-  final _flavorFocusNode = FocusNode();
+  final _flavourFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
-  final TextEditingController flavorController;
+  final TextEditingController flavourController;
   CartItem({
     this.key,
     this.item,
     this.controller,
-    this.flavorController,
+    this.flavourController,
     this.itemIndex,
     @required this.onQuantityChange,
     @required this.onDelete,
-    @required this.onFlavorChange,
+    @required this.onFlavourChange,
   }) : super(key: key) {
     UserCart cart = Session.data['cart'];
     // controller.removeListener(() {});
-    // flavorController.removeListener((){});
+    // flavourController.removeListener((){});
     controller.addListener(() {
       if (controller.text == null || controller.text.isEmpty) {
         return;
@@ -3651,14 +3727,14 @@ class CartItem extends StatefulWidget {
       }
       key?.currentState?.refresh();
     });
-    _flavorFocusNode.addListener(() {
-      if (!_flavorFocusNode.hasFocus) {
+    _flavourFocusNode.addListener(() {
+      if (!_flavourFocusNode.hasFocus) {
         cart.itemsData[item.itemId].update(
-          'flavor',
-          (old) => flavorController?.text ?? '',
-          ifAbsent: () => flavorController?.text ?? '',
+          'flavour',
+          (old) => flavourController?.text ?? '',
+          ifAbsent: () => flavourController?.text ?? '',
         );
-        onFlavorChange(itemIndex, flavorController?.text ?? '');
+        onFlavourChange(itemIndex, flavourController?.text ?? '');
 
         key?.currentState?.refresh();
       }
@@ -3862,17 +3938,17 @@ class CartItemState extends State<CartItem> {
               height: 10,
             ),
             TextField(
-              controller: widget.flavorController,
-              focusNode: widget._flavorFocusNode,
+              controller: widget.flavourController,
+              focusNode: widget._flavourFocusNode,
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'Flavor',
+                labelText: 'Flavour',
                 helperText:
-                    'Add your Flavor here. If Applicable. For Food Deliveries Only',
+                    'Add your Flavour here. If Applicable. For Food Deliveries Only',
               ),
               // onEditingComplete: () {
-              //   widget.onFlavorChange(
-              //       widget.itemIndex, widget.flavorController.text ?? '');
+              //   widget.onFlavourChange(
+              //       widget.itemIndex, widget.flavourController.text ?? '');
               // },
             ),
           ],
