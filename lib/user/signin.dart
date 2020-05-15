@@ -249,7 +249,7 @@ class _UserSignInState extends State<UserSignIn> {
                                           data.data == null ||
                                           data.data.length <= 0) {
                                         Navigator.pop(context);
-                                        result.user.delete();
+                                        // result.user.delete();
                                         signInButtonEnabled = true;
                                         setState(() {});
                                         Utils.showSnackBarError(
@@ -406,10 +406,9 @@ class _UserSignInState extends State<UserSignIn> {
     if (Session.data.containsKey('cart') &&
         Session.data['cart'] != null &&
         (Session.data['cart'] as UserCart).itemsData.length > 0) {
-      return Firestore.instance
-          .collection("carts")
-          .document(userId)
-          .setData({'itemsData': Session.data['cart'].itemsData});
+      return Firestore.instance.collection("carts").document(userId).setData({
+        'itemsData': Session.data['cart'].itemsData,
+      });
     }
 
     var value =

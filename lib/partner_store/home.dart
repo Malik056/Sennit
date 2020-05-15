@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
-import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,12 +13,10 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/order_details.dart';
 
-class OrderedItemsList extends StatelessWidget {
-  static bool _buttonPressed;
-  final _key = GlobalKey<ScaffoldState>();
+class OrderedItemsList extends StatefulWidget {
   final FirebaseMessaging _fcm = FirebaseMessaging();
+
   OrderedItemsList() {
-    _buttonPressed = false;
     _fcm.configure(
       onMessage: (data) async {
         print(data);
@@ -32,7 +28,26 @@ class OrderedItemsList extends StatelessWidget {
         //     color: Theme.of(context).primaryColor,
         //   ),
         // );
-        MyAppState.showNotificationWithDefaultSound(data['notification']);
+        // await showNotificationWithDefaultSound(data['notification']);
+        var jsonData = data['notification'];
+        var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+            'orderArriveChannel',
+            'OrderArrived',
+            'When The Order is Posted this channel will show the notifications',
+            importance: Importance.Max,
+            priority: Priority.High);
+        var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+        var platformChannelSpecifics = new NotificationDetails(
+            androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+        await flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 10000,
+          jsonData['title'] ?? 'Order',
+          jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+          platformChannelSpecifics,
+          payload: json.encode(
+            jsonData,
+          ),
+        );
       },
       onBackgroundMessage: Platform.isIOS ? null : _backgroundMessageHandler,
       onResume: _onResume,
@@ -91,7 +106,7 @@ class OrderedItemsList extends StatelessWidget {
   Future<dynamic> _onLaunch(payload) async {
     final uid = (await FirebaseAuth.instance.currentUser()).uid;
     final data = Platform.isIOS ? payload : payload['data'];
-    BotToast.showText(text: 'onLaunch: $data');
+    // BotToast.showText(text: 'onLaunch: $data');
     // if (uid == data['userId']) {
     //   Firestore.instance.collection('users').document(uid).get().then(
     //     (userData) async {
@@ -137,7 +152,26 @@ class OrderedItemsList extends StatelessWidget {
   static Future<dynamic> _backgroundMessageHandler(
       Map<String, dynamic> message) async {
     print(message);
-    showNotificationWithDefaultSound(message);
+    // showNotificationWithDefaultSound(message);
+    var jsonData = message;
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'orderArriveChannel',
+        'OrderArrived',
+        'When The Order is Posted this channel will show the notifications',
+        importance: Importance.Max,
+        priority: Priority.High);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch,
+      jsonData['title'] ?? 'Order',
+      jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+      platformChannelSpecifics,
+      payload: json.encode(
+        jsonData,
+      ),
+    );
   }
 
   static Future showNotificationWithDefaultSound(
@@ -152,7 +186,7 @@ class OrderedItemsList extends StatelessWidget {
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-      0,
+      DateTime.now().millisecondsSinceEpoch,
       jsonData['title'] ?? 'Order',
       jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
       platformChannelSpecifics,
@@ -162,6 +196,16 @@ class OrderedItemsList extends StatelessWidget {
     );
   }
 
+  @override
+  State<StatefulWidget> createState() {
+    return OrderedItemsListState();
+  }
+}
+
+class OrderedItemsListState extends State<OrderedItemsList> {
+  final _key = GlobalKey<ScaffoldState>();
+  bool _buttonPressed = false;
+  int selectedTab = 0;
   @override
   Widget build(BuildContext context) {
     // Future<DocumentSnapshot> futureStoreData = Firestore.instance
@@ -184,29 +228,67 @@ class OrderedItemsList extends StatelessWidget {
         }
       },
       child: Scaffold(
-        // drawer: Drawer(
-        //   child: Column(
-        //     children: <Widget>[
-        //       UserAccountsDrawerHeader(
-        //         accountName: FutureBuilder<DocumentSnapshot>(
-        //           future: futureStoreData,
-        //           builder: (context, snapshot) {
-        //             if (snapshot.connectionState == ConnectionState.waiting) {
-        //               return Center(
-        //                 child: CircularProgressIndicator(
-        //                   strokeWidth: 2,
-        //                 ),
-        //               );
-        //             } else {
-        //               return Text(snapshot.data.data['storeName']);
-        //             }
-        //           },
-        //         ),
-        //         accountEmail: null,
-        //       )
-        //     ],
-        //   ),
-        // ),
+        drawer: Drawer(
+          child: Column(
+            children: <Widget>[
+              UserAccountsDrawerHeader(
+                arrowColor: Theme.of(context).primaryColor,
+                currentAccountPicture: CircleAvatar(
+                  backgroundImage: NetworkImage(
+                    (Session.data['partnerStore'] as Store)?.storeImage ?? '',
+                  ),
+                  backgroundColor: Theme.of(context).primaryColor,
+                ),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(
+                      (Session.data['partnerStore'] as Store)?.storeImage ?? '',
+                    ),
+                    fit: BoxFit.cover,
+                  ),
+                  color: Colors.white,
+                ),
+                accountName: Text(
+                  (Session.data['partnerStore'] as Store)?.storeName ?? '',
+                  style: Theme.of(context).textTheme.subhead.copyWith(
+                        fontSize: 12,
+                      ),
+                ),
+                accountEmail: Text(''),
+              ),
+              SizedBox(height: 10),
+              ListTile(
+                selected: selectedTab == 0,
+                onTap: () {
+                  selectedTab = 0;
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text('Current Orders'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                selected: selectedTab == 1,
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 1;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text('Completed Orders By Items'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              )
+            ],
+          ),
+        ),
         key: _key,
         appBar: AppBar(
           title: Text('Orders'),
@@ -223,7 +305,7 @@ class OrderedItemsList extends StatelessWidget {
               ),
               onPressed: () async {
                 Store store = Session.data['partnerStore'];
-                String token = await _fcm.getToken();
+                String token = await widget._fcm.getToken();
                 store.deviceTokens.removeWhere((value) => value == token);
                 Firestore.instance
                     .collection('stores')
@@ -238,67 +320,48 @@ class OrderedItemsList extends StatelessWidget {
             )
           ],
         ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            SizedBox(
-              height: 10,
-            ),
-            Text(
-              '  Pending Orders',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Expanded(
-              child: PastOrdersRoute(
-                partnerStoreId: Session.data['partnerStore'].storeId,
-              ),
-              // child: FutureBuilder<QuerySnapshot>(
-              //   future: Firestore.instance
-              //       .collection('stores')
-              //       .document(Session.data['partnerStore']['storeId'])
-              //       .collection('pendingOrderedItems')
-              //       .getDocuments(),
-              //   builder: (context, snapshot) {
-              //     if (snapshot.connectionState == ConnectionState.waiting) {
-              //       return Center(
-              //         child: CircularProgressIndicator(),
-              //       );
-              //     }
-              //     if (snapshot.data.documents == null ||
-              //         snapshot.data.documents.length <= 0) {
-              //       return Center(
-              //         child: Text(
-              //           'No Pending Orders',
-              //           style: Theme.of(context).textTheme.title.copyWith(
-              //                 fontWeight: FontWeight.bold,
-              //               ),
-              //         ),
-              //       );
-              //     }
-              //     return ListView.builder(
-              //       itemCount: snapshot.data.documents.length,
-              //       itemBuilder: (context, index) {
-              //         return
-              //       },
-              //     );
-              //   },
-              // ),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Text(
-              '  Completed Orders',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Expanded(
-              child: FutureBuilder<QuerySnapshot>(
+        body: selectedTab == 0
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Text(
+                    '  Pending Orders',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Expanded(
+                    child: PastOrdersRoute(
+                      partnerStoreId: Session.data['partnerStore'].storeId,
+                      isCompleted: false,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Text(
+                    '  Completed Orders',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Expanded(
+                    child: PastOrdersRoute(
+                      partnerStoreId: Session.data['partnerStore'].storeId,
+                      isCompleted: true,
+                    ),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                ],
+              )
+            : FutureBuilder<QuerySnapshot>(
                 future: Firestore.instance
                     .collection('stores')
                     .document((Session.data['partnerStore'] as Store).storeId)
@@ -390,6 +453,7 @@ class OrderedItemsList extends StatelessWidget {
                                             ),
                                           );
                                         },
+                                        maintainState: false,
                                       ),
                                     );
                                   },
@@ -554,12 +618,6 @@ class OrderedItemsList extends StatelessWidget {
                       });
                 },
               ),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -817,7 +875,11 @@ class ItemOrdersRoute extends StatelessWidget {
 
 class PastOrdersRoute extends StatelessWidget {
   final String partnerStoreId;
-  PastOrdersRoute({this.partnerStoreId});
+  final bool isCompleted;
+  PastOrdersRoute({
+    this.partnerStoreId,
+    @required this.isCompleted,
+  });
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -827,12 +889,13 @@ class PastOrdersRoute extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            FutureBuilder<QuerySnapshot>(
-              future: Firestore.instance
+            StreamBuilder<QuerySnapshot>(
+              stream: Firestore.instance
                   .collection('stores')
                   .document(partnerStoreId)
-                  .collection('pendingOrderedItems')
-                  .getDocuments(),
+                  .collection(
+                      isCompleted ? 'servedOrders' : 'pendingOrderedItems')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
@@ -843,7 +906,11 @@ class PastOrdersRoute extends StatelessWidget {
                     snapshot.data.documents == null ||
                     snapshot.data.documents.isEmpty) {
                   return Center(
-                    child: Text('No Pending Orders Yet'),
+                    child: Text(
+                      isCompleted
+                          ? 'No Orders Served Yet'
+                          : 'No Pending Orders Yet',
+                    ),
                   );
                 } else {
                   final documents = snapshot.data.documents;
@@ -856,7 +923,8 @@ class PastOrdersRoute extends StatelessWidget {
                           return OrderTile(
                             data: documents[index].data,
                             isStore: true,
-                            status: "Preparing",
+                            isCompleted: isCompleted,
+                            status: isCompleted ? 'Served' : "Preparing",
                           );
                         },
                       ),

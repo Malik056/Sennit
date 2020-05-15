@@ -11,12 +11,14 @@ class OrderTile extends StatelessWidget {
   final data;
   final isStore;
   final status;
+  final isCompleted;
 
   const OrderTile({
     Key key,
     this.data,
     this.isStore = false,
     this.status = "Pending",
+    this.isCompleted = false,
   }) : super(key: key);
 
   @override
@@ -35,6 +37,7 @@ class OrderTile extends StatelessWidget {
                   return ReceiveItOrderDetailsRoute(
                     data: data,
                     isStore: isStore,
+                    isCompleted: isCompleted,
                     status: status,
                   );
                 },
@@ -301,11 +304,13 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
   final Map<String, dynamic> data;
   final isStore;
   final status;
+  final isCompleted;
 
   const ReceiveItOrderDetailsRoute({
     Key key,
     this.data,
     this.isStore = false,
+    this.isCompleted = false,
     this.status = "Pending",
   }) : super(key: key);
 
@@ -326,7 +331,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
       appBar: AppBar(
         title: Text('Order Details'),
         centerTitle: true,
-        actions: isStore
+        actions: (isStore && !isCompleted)
             ? <Widget>[
                 FlatButton(
                   child: Text('Served'),
@@ -399,41 +404,43 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                 SizedBox(
                   height: 10,
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Delivered To: ',
-                      style: textTheme.subhead,
-                      strutStyle: StrutStyle(height: strutHeight),
-                    ),
-                    Expanded(
-                      child: FutureBuilder<Address>(
-                          future: _getAddressFromLatLng(
-                            Utils.latLngFromString(
-                              data['destination'],
-                            ),
+                isStore
+                    ? Opacity(opacity: 0)
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Delivered To: ',
+                            style: textTheme.subhead,
+                            strutStyle: StrutStyle(height: strutHeight),
                           ),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Text(
-                                'Loading .....',
-                                strutStyle: StrutStyle(
-                                  height: strutHeight,
+                          Expanded(
+                            child: FutureBuilder<Address>(
+                                future: _getAddressFromLatLng(
+                                  Utils.latLngFromString(
+                                    data['destination'],
+                                  ),
                                 ),
-                              );
-                            }
-                            return Text(
-                              '${data['house'] ?? ''}${((data['house'] != null && data['house'] != '') ? ', ' : '')}${snapshot.data.addressLine}',
-                              strutStyle: StrutStyle(
-                                height: strutHeight,
-                              ),
-                            );
-                          }),
-                    ),
-                  ],
-                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Text(
+                                      'Loading .....',
+                                      strutStyle: StrutStyle(
+                                        height: strutHeight,
+                                      ),
+                                    );
+                                  }
+                                  return Text(
+                                    '${data['house'] ?? ''}${((data['house'] != null && data['house'] != '') ? ', ' : '')}${snapshot.data.addressLine}',
+                                    strutStyle: StrutStyle(
+                                      height: strutHeight,
+                                    ),
+                                  );
+                                }),
+                          ),
+                        ],
+                      ),
                 SizedBox(
                   height: 10,
                 ),
@@ -555,24 +562,55 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: <Widget>[
-                                          Text(
-                                            item['itemName'],
-                                            style: textTheme.subhead,
+                                          Row(
+                                            children: <Widget>[
+                                              Text(
+                                                item['itemName'],
+                                                style: textTheme.subhead,
+                                              ),
+                                              Spacer(),
+                                              Expanded(
+                                                child: Text(
+                                                  (item['storeName'] as String)
+                                                      .substring(
+                                                    0,
+                                                    item['storeName'].length >
+                                                            24
+                                                        ? 24
+                                                        : item['storeName']
+                                                            .length,
+                                                  ),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .subhead
+                                                      .copyWith(
+                                                        fontSize: (22 -
+                                                            item['storeName']
+                                                                    .length /
+                                                                1.8),
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           SizedBox(
                                             height: 2.0,
                                           ),
-                                          Text(item['storeAddress']),
+                                          Text(isStore
+                                              ? (item['description'] ?? '')
+                                              : item['storeAddress']),
                                           SizedBox(
                                             height: 6.0,
                                           ),
-                                          Align(
-                                            alignment: Alignment.bottomRight,
-                                            child: Text(
-                                              'Price: R${item['price']} x ${(data['itemsData'][item['itemId']] as double).toInt()}',
+                                          Text(
+                                              '''Flavour: ${(data['itemsData'][item['itemId']]['flavour'] ?? '' == '' ? 'N/A' : data['itemsData'][item['itemId']]['flavour'])}'''),
+                                          Row(children: [
+                                            Spacer(),
+                                            Text(
+                                              '''Price: R${item['price']} x ${(data['itemsData'][item['itemId']]['quantity'] as num).toInt()}''',
                                               style: textTheme.subhead,
                                             ),
-                                          ),
+                                          ]),
                                         ],
                                       ),
                                     ),
@@ -647,7 +685,8 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
   }
 
   Future<List<Map<String, dynamic>>> getItemDetails(data) async {
-    Map<String, double> items = Map<String, double>.from(data['itemsData']);
+    Map<String, Map<String, dynamic>> items =
+        Map<String, Map<String, dynamic>>.from(data['itemsData']);
     Firestore firestore = Firestore.instance;
     List<Map<String, dynamic>> result = [];
     for (var item in items.keys) {

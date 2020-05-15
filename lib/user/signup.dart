@@ -487,7 +487,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                     batch.commit().timeout(
                                         Duration(seconds: 20), onTimeout: () {
                                       Navigator.pop(context);
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       pressed = false;
                                       Utils.showSnackBarError(
                                           context, 'Request Timeout');
@@ -540,7 +540,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });

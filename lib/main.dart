@@ -112,14 +112,24 @@ main() async {
             partnerStoreResult.data != null &&
             partnerStoreResult.data.length > 0 &&
             partnerStoreResult.exists) {
-          Session.data.update('partnerStore', (a) {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          }, ifAbsent: () {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          });
+          var data = await Firestore.instance
+              .collection('stores')
+              .document(partnerStoreResult.data['storeId'])
+              .get();
+          if (data != null &&
+              data.exists &&
+              data.data != null &&
+              data.data.length > 0) {
+            Session.data.update('partnerStore', (a) {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            }, ifAbsent: () {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            });
+          }
           MyApp.initialRoute = MyApp.partnerStoreHome;
+        } else {
+          await FirebaseAuth.instance.signOut();
+          MyApp.initialRoute = MyApp.startPage;
         }
       }
     }
@@ -134,6 +144,20 @@ databaseInitializer() async {
 class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String startPage = 'startPage';
   static String initialRoute = startPage;
+  static Address dummyAddress = Address(
+    addressLine: 'NULL',
+    adminArea: 'Null',
+    coordinates: Coordinates(0, 0),
+    countryName: 'Null',
+    countryCode: 'Null',
+    featureName: 'Null',
+    locality: 'Null',
+    postalCode: 'Null',
+    subAdminArea: 'Null',
+    subLocality: 'Null',
+    subThoroughfare: 'NULL',
+    thoroughfare: 'NULL',
+  );
   // static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
@@ -189,7 +213,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     var initializationSettingsAndroid =
         new AndroidInitializationSettings('logo');
-    var initializationSettingsIOS = new IOSInitializationSettings();
+    var initializationSettingsIOS = new IOSInitializationSettings(
+      onDidReceiveLocalNotification: (a, b, c, d) async {},
+    );
     var initializationSettings = new InitializationSettings(
         initializationSettingsAndroid, initializationSettingsIOS);
     flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
@@ -249,11 +275,17 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static Future showNotificationWithDefaultSound(
       Map<String, dynamic> jsonData) async {
     var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
-        'orderCompleteChannel',
-        'OrderComplete',
-        'When The Order is Delivered this channel will show the notifications',
-        importance: Importance.Max,
-        priority: Priority.High);
+      'orderCompleteChannel',
+      'OrderComplete',
+      'When The Order is Delivered this channel will show the notifications',
+      importance: Importance.Max,
+      priority: Priority.High,
+      enableLights: true,
+      enableVibration: true,
+      autoCancel: true,
+      color: Colors.green,
+      playSound: true,
+    );
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
@@ -306,10 +338,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           Duration(
             milliseconds: 10,
           ), () {
+        Utils.getMyLocation();
         MyApp._initialLocation = LatLng(0, 0);
-        MyApp._address = Address(
-          addressLine: '',
-        );
+        MyApp._address = MyApp.dummyAddress;
         return MyApp._initialLocation;
       });
     }
@@ -322,14 +353,26 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
       onTimeout: () {},
     );
-    await MyApp._lastKnowLocation.then((data) async {
-      MyApp._initialLocation = data;
-      MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-          .findAddressesFromCoordinates(
-              Coordinates(data.latitude, data.longitude)))[0];
-    }).timeout(Duration(seconds: 5), onTimeout: () async {
+    if (MyApp._lastKnowLocation == null) {
+      Utils.getMyLocation();
       MyApp._initialLocation = LatLng(0, 0);
-      MyApp._address = Address();
+      MyApp._address = MyApp.dummyAddress;
+      return;
+    }
+    await MyApp._lastKnowLocation?.then((data) async {
+      MyApp._initialLocation = data;
+      final listOfAddress = (await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(data.latitude, data.longitude)));
+      if (listOfAddress == null || listOfAddress.length <= 0) {
+        Utils.getMyLocation();
+        MyApp._initialLocation = LatLng(0, 0);
+        MyApp._address = MyApp.dummyAddress;
+      }
+    })?.timeout(Duration(seconds: 5), onTimeout: () async {
+      Utils.getMyLocation();
+      MyApp._initialLocation = LatLng(0, 0);
+      MyApp._address = MyApp.dummyAddress;
       return MyApp._initialLocation;
     });
   }
@@ -400,7 +443,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 //       key: GlobalKey<StoresRouteState>(),
                 //       address: MyApp._address,
                 //     ),
-                MyApp.storeMainPage: (context) => StoreMainPage(),
+                // MyApp.storeMainPage: (context) => StoreMainPage(),
                 MyApp.partnerStoreHome: (context) => OrderedItemsList(),
                 // activeOrderBody: (context) => ActiveOrder(),
                 // MyApp.searchPage: (context) => SearchWidget(demo: true,),
@@ -647,7 +690,7 @@ class Utils {
     // Scaffold.of(context).showSnackBar(snackBar);
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return Container(
-        color: Colors.red,
+        color: Colors.white,
         width: MediaQuery.of(context).size.width,
         height: kToolbarHeight,
         child: Row(
@@ -655,6 +698,7 @@ class Utils {
             Expanded(
                 child: Icon(
               Icons.error,
+              color: Colors.red,
             )),
             Expanded(
               flex: 3,
@@ -702,8 +746,11 @@ class Utils {
 
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.error),
-        color: Colors.red,
+        leading: Icon(
+          Icons.error,
+          color: Colors.red,
+        ),
+        color: Colors.white,
         title: 'Error',
         subtitle: '$message',
       );
@@ -733,8 +780,11 @@ class Utils {
   static showSnackBarWarning(BuildContext context, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.warning),
-        color: Colors.yellow[400],
+        leading: Icon(
+          Icons.warning,
+          color: Colors.yellow[400],
+        ),
+        color: Colors.white,
         title: 'Warning',
         subtitle: '$message',
       );
@@ -747,9 +797,12 @@ class Utils {
     BotToast.showCustomNotification(
         toastBuilder: (fn) {
           return SnackbarLayout(
-            leading: Icon(Icons.error),
-            color: Colors.red,
-            title: 'Error',
+            leading: Icon(
+              Icons.warning,
+              color: Colors.yellow[400],
+            ),
+            color: Colors.white,
+            title: 'Warning',
             subtitle: '$message',
           );
         },
@@ -762,8 +815,11 @@ class Utils {
   static showSnackBarSuccess(BuildContext context, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
+        leading: Icon(
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+        color: Colors.white,
         title: 'Success',
         subtitle: '$message',
       );
@@ -774,8 +830,11 @@ class Utils {
       GlobalKey<ScaffoldState> key, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
+        leading: Icon(
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+        color: Colors.white,
         title: 'Success',
         subtitle: '$message',
       );
@@ -896,7 +955,9 @@ class Utils {
                 builder: (context) => LocationPicker(
                   apiKey,
                   automaticallyAnimateToCurrentLocation: false,
-                  initialCenter: initialLocation ?? Utils.getLastKnowLocation(),
+                  initialCenter: initialLocation ??
+                      Utils.getLastKnowLocation() ??
+                      LatLng(0, 0),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,
@@ -915,6 +976,14 @@ class Utils {
       {location.LocationAccuracy accuracy =
           location.LocationAccuracy.BALANCED}) async {
     final _location = Location()..changeSettings(accuracy: accuracy);
+    if (await _location.hasPermission() != PermissionStatus.GRANTED) {
+      var result = await _location.requestPermission();
+      if (result != PermissionStatus.GRANTED) {
+        Utils.showSnackBarError(null,
+            'This App Needs Location Permission to work. Please give permission.');
+      }
+      return null;
+    }
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);
     });

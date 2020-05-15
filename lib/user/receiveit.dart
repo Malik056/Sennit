@@ -26,6 +26,7 @@ import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
 import 'package:sennit/user/signin.dart';
+import 'package:sennit/user/signup.dart';
 import '../main.dart';
 import 'generic_tracking_screen.dart';
 
@@ -89,6 +90,7 @@ class ReceiveItRoute extends StatelessWidget {
             StoresRoute(
               key: storesRouteKey,
               address: null,
+              isDemo: demo,
             ),
           )
           ..add(SearchWidget(
@@ -102,6 +104,7 @@ class ReceiveItRoute extends StatelessWidget {
           StoresRoute(
             key: storesRouteKey,
             address: null,
+            isDemo: demo,
           ),
         )
         ..add(SearchWidget(
@@ -632,7 +635,12 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
 
 class StoresRoute extends StatefulWidget {
   final Address address;
-  StoresRoute({@required key, @required this.address}) : super(key: key);
+  final bool isDemo;
+  StoresRoute({
+    @required key,
+    @required this.address,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -707,6 +715,7 @@ class StoresRouteState extends State<StoresRoute> {
                                   builder: (context) {
                                     return StoreMainPage(
                                       store: filtered[index],
+                                      demo: widget.isDemo ?? false,
                                     );
                                   },
                                 ),
@@ -778,30 +787,32 @@ class StoresRouteState extends State<StoresRoute> {
       return latlng ?? LatLng(0, 0);
     });
     for (var documentSnapshot in querySnapshot.documents) {
-      Store store;
-      var storeId = documentSnapshot.documentID;
-      var storeAsMap = documentSnapshot.data;
-      storeAsMap.putIfAbsent('storeId', () {
-        return storeId;
-      });
-      store = Store.fromMap(storeAsMap);
+      if (documentSnapshot.data.containsKey('storeName')) {
+        Store store;
+        var storeId = documentSnapshot.documentID;
+        var storeAsMap = documentSnapshot.data;
+        storeAsMap.putIfAbsent('storeId', () {
+          return storeId;
+        });
+        store = Store.fromMap(storeAsMap);
 
-      if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
-        var itemIds = storeAsMap['items'];
-        List<Future<DocumentSnapshot>> requests = [];
-        for (String itemId in itemIds) {
-          var request =
-              Firestore.instance.collection('items').document(itemId).get();
-          requests.add(request);
+        if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
+          var itemIds = storeAsMap['items'];
+          List<Future<DocumentSnapshot>> requests = [];
+          for (String itemId in itemIds) {
+            var request =
+                Firestore.instance.collection('items').document(itemId).get();
+            requests.add(request);
+          }
+          for (var request in requests) {
+            var item = await request;
+            model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
+            storeItem.store = store;
+            store.storeItems.add(storeItem);
+          }
+          stores.add(store);
+          filtered.add(store);
         }
-        for (var request in requests) {
-          var item = await request;
-          model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
-          storeItem.store = store;
-          store.storeItems.add(storeItem);
-        }
-        stores.add(store);
-        filtered.add(store);
       }
     }
     return;
@@ -822,7 +833,8 @@ class StoresRouteState extends State<StoresRoute> {
 class StoreItem extends StatelessWidget {
   // final bool dummyPic;
   final Store store;
-  StoreItem({this.store});
+  final demo;
+  StoreItem({this.store, this.demo});
 
   @override
   Widget build(BuildContext context) {
@@ -962,8 +974,8 @@ class StoreItem extends StatelessWidget {
                             MaterialPageRoute(
                               builder: (context) {
                                 return ItemDetailsRoute(
-                                  item: store.storeItems[index],
-                                );
+                                    item: store.storeItems[index],
+                                    isDemo: demo);
                               },
                               maintainState: false,
                             ),
@@ -994,7 +1006,7 @@ class StoreMainPage extends StatelessWidget {
   final bool demo;
   StoreMainPage({
     this.store,
-    this.demo,
+    @required this.demo,
   });
 
   @override
@@ -1068,9 +1080,7 @@ class StoreMainPage extends StatelessWidget {
         body: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              StoreMenu(
-                store: store,
-              ),
+              StoreMenu(store: store, isDemo: demo),
               SizedBox(
                 height: 20,
               ),
@@ -1084,7 +1094,12 @@ class StoreMainPage extends StatelessWidget {
 
 class StoreMenu extends StatefulWidget {
   final Store store;
-  const StoreMenu({Key key, @required this.store}) : super(key: key);
+  final isDemo;
+  const StoreMenu({
+    Key key,
+    @required this.store,
+    @required this.isDemo,
+  }) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return StoreMenuState();
@@ -1131,6 +1146,7 @@ class StoreMenuState extends State<StoreMenu> {
         ),
         MenuCategorize(
           items: widget.store.storeItems,
+          isDemo: widget.isDemo ?? false,
         ),
       ],
     );
@@ -1139,7 +1155,12 @@ class StoreMenuState extends State<StoreMenu> {
 
 class MenuCategorize extends StatelessWidget {
   final List<model.StoreItem> items;
-  MenuCategorize({Key key, @required this.items}) : super(key: key);
+  final bool isDemo;
+  MenuCategorize({
+    Key key,
+    @required this.items,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1153,7 +1174,10 @@ class MenuCategorize extends StatelessWidget {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) {
-                  return ItemDetailsRoute(item: items[index]);
+                  return ItemDetailsRoute(
+                    item: items[index],
+                    isDemo: isDemo ?? false,
+                  );
                 },
               ),
             );
@@ -1283,11 +1307,17 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
           setState(() {
             addingToCart = true;
           });
-          User user = Session.data['user'];
+          FirebaseUser fUser = await FirebaseAuth.instance.currentUser();
+          User user = Session.data['user'] ??
+              User(
+                email: fUser.email,
+                userId: fUser.uid,
+              );
           UserCart cart = Session.data['cart'];
           if (cart == null) {
+            cart = UserCart(itemsData: {});
             Session.data.putIfAbsent('cart', () {
-              return UserCart(itemsData: {});
+              return cart;
             });
           }
           if (!isInCart) {
@@ -1296,7 +1326,12 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                 .document(user.userId)
                 .setData(
               {
-                'itemsData': {ItemDetailsRoute._item.itemId: 1.0},
+                'itemsData': {
+                  ItemDetailsRoute._item.itemId: {
+                    'quantity': 1,
+                    'flavour': '',
+                  }
+                },
               },
               merge: true,
             ).catchError((error) {
@@ -1308,8 +1343,14 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
             }).then((_) {
               cart.itemsData.update(
                 ItemDetailsRoute._item.itemId,
-                (x) => 1.0,
-                ifAbsent: () => 1.0,
+                (x) => {
+                  'quantity': 1,
+                  'flavour': '',
+                },
+                ifAbsent: () => {
+                  'quantity': 1,
+                  'flavour': '',
+                },
               );
               cart.items.add(ItemDetailsRoute._item);
               setState(() {
@@ -1318,7 +1359,8 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               });
             });
           } else {
-            var itemsData = Map<String, double>.from(cart.itemsData);
+            var itemsData =
+                Map<String, Map<String, dynamic>>.from(cart.itemsData);
             // var quantities = List.from(cart.quantities);
             // itemsData.removeWhere(
             //   (Map<String, double> e) {
@@ -1348,12 +1390,8 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               cart.items.removeWhere(
                 (item) => item.itemId == ItemDetailsRoute._item.itemId,
               );
-              cart.itemsData.removeWhere((key, value) {
-                if (key == ItemDetailsRoute._item.itemId) {
-                  return true;
-                }
-                return false;
-              });
+              cart.itemsData.removeWhere(
+                  (key, value) => key == ItemDetailsRoute._item.itemId);
               // cart.quantities.removeAt(index);
               setState(() {
                 addingToCart = false;
@@ -1371,8 +1409,10 @@ class ItemDetailsRoute extends StatefulWidget {
   static GlobalKey<ItemDetailsRouteState> _key =
       GlobalKey<ItemDetailsRouteState>();
   static model.StoreItem _item;
+  final bool isDemo;
   ItemDetailsRoute({
     @required model.StoreItem item,
+    @required this.isDemo,
   }) : super(key: _key) {
     _item = item;
   }
@@ -1395,6 +1435,41 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
         elevation: 40,
         onClosing: () {},
         builder: (context) {
+          //When Demo Following code can show login and sign in buttons instead of Add to Cart Button
+          // if (widget.isDemo) {
+          //   return GestureDetector(
+          //     child: Card(
+          //       child: Padding(
+          //         padding: const EdgeInsets.all(4),
+          //         child: Row(
+          //           children: <Widget>[
+          //             FlatButton(
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignup,
+          //                 );
+          //               },
+          //               child: Text('Signup'),
+          //             ),
+          //             Spacer(),
+          //             FlatButton(
+          //               color: Theme.of(context).primaryColor,
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignIn,
+          //                 );
+          //               },
+          //               child: Text('Login'),
+          //             ),
+          //             Spacer(),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   );
+          // }
           return BottomSheetButton();
         },
       ),
@@ -1415,6 +1490,7 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
         // onComeBack: () {
         //   setState(() {});
         // }
+        demo: widget.isDemo,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: itemDetailsBody,
@@ -1429,7 +1505,7 @@ class FloatingMenu extends StatefulWidget {
   FloatingMenu({
     Key key,
     this.itemId,
-    this.demo,
+    @required this.demo,
     // this.onComeBack,
   }) : super(key: key);
 
@@ -1470,18 +1546,22 @@ class _FloatingMenuState extends State<FloatingMenu> {
           foregroundColor: Theme.of(context).primaryColor,
           label: 'Review',
           labelStyle: TextStyle(fontSize: 18.0),
-          onTap: () async {
-            await Navigator.of(context)
-                .push(MaterialPageRoute(builder: (context) {
-              return ReviewWidget(
-                orderId: "",
-                user: Session.data['user'],
-                itemId: widget.itemId,
-              );
-            }));
-            // setState(() {
-            // });
-          },
+          onTap: widget.demo ?? false
+              ? () {
+                  Utils.showSnackBarWarning(context, 'Login to Review');
+                }
+              : () async {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (context) {
+                    return ReviewWidget(
+                      orderId: "",
+                      user: Session.data['user'],
+                      itemId: widget.itemId,
+                    );
+                  }));
+                  // setState(() {
+                  // });
+                },
         ),
         SpeedDialChild(
           child: Icon(Icons.shopping_cart),
@@ -2141,7 +2221,15 @@ class ShoppingCartRoute extends StatelessWidget {
                         // BotToast.showText(
                         //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
                         return;
-                      } else if (ShoppingCartRoute._toAddress == null) {
+                      } else if (ShoppingCartRoute._toAddress == null ||
+                          ((ShoppingCartRoute
+                                          ._toAddress.coordinates?.latitude ??
+                                      0) ==
+                                  0 &&
+                              (ShoppingCartRoute
+                                          ._toAddress.coordinates?.longitude ??
+                                      0) ==
+                                  0)) {
                         BotToast.showText(
                             text: 'Please Select a Destination First!',
                             duration: Duration(seconds: 2));
@@ -2185,7 +2273,8 @@ class ShoppingCartRoute extends StatelessWidget {
                       double price = totalCharges;
 
                       List<LatLng> pickups = [];
-                      Map<String, double> itemsData = cart.itemsData;
+                      Map<String, Map<String, dynamic>> itemsData =
+                          cart.itemsData;
                       order.pickups = pickups;
                       List<String> stores = [];
                       List<double> pricePerItem = [];
@@ -2197,7 +2286,8 @@ class ShoppingCartRoute extends StatelessWidget {
                         stores.add(item.storeName);
                         pricePerItem.add(item.price);
                         totalPricePerItem.add(
-                          (item.price * itemsData[item.itemId] as num)
+                          (item.price * itemsData[item.itemId]['quantity']
+                                  as num)
                               .toDouble(),
                         );
                       }
@@ -2342,16 +2432,18 @@ class ShoppingCartRoute extends StatelessWidget {
                             final itemKey = item.itemId;
                             if (storeOrders.containsKey(item.storeId)) {
                               double price = storeOrders[item.storeId]['price'];
-                              price += item.price * itemsData[item.itemId];
+                              price += item.price *
+                                  itemsData[item.itemId]['quantity'];
                               storeOrders[item.storeId].update(
                                   'price', (old) => price,
                                   ifAbsent: () => price);
                               storeOrders[item.storeId]['pricePerItem']
                                   .add(item.price);
                               storeOrders[item.storeId]['totalPricePerItem']
-                                  .add(item.price * itemsData[item.itemId]);
+                                  .add(item.price *
+                                      itemsData[item.itemId]['quantity']);
                               (storeOrders[item.storeId]['itemsData']
-                                      as Map<String, double>)
+                                      as Map<String, Map<String, dynamic>>)
                                   .putIfAbsent(
                                 itemKey,
                                 () => itemsData[itemKey],
@@ -2382,11 +2474,13 @@ class ShoppingCartRoute extends StatelessWidget {
                                 deliveryTime: null,
                                 email: order.email,
                                 house: order.house,
-                                price: item.price * itemsData[item.itemId],
+                                price: item.price *
+                                    itemsData[item.itemId]['quantity'],
                                 orderId: orderData['orderId'],
                                 pricePerItem: [item.price],
                                 totalPricePerItem: [
-                                  item.price * itemsData[item.itemId]
+                                  item.price *
+                                      itemsData[item.itemId]['quantity']
                                 ],
                                 itemsData: {
                                   itemKey: itemsData[itemKey],
@@ -2437,7 +2531,7 @@ class ShoppingCartRoute extends StatelessWidget {
                                 .collection('stores')
                                 .document(k)
                                 .collection('pendingOrderedItems')
-                                .document(order.orderId);
+                                .document(orderData['orderId']);
 
                             batch.setData(
                               storeOrderRef,
@@ -2553,7 +2647,10 @@ class ShoppingCartRoute extends StatelessWidget {
         centerTitle: true,
         // backgroundColor: Theme.of(context).accentColor,
       ),
-      body: ShoppingCartRouteBody(demo: demo, key: _shoppingCartRouteBodyKey),
+      body: ShoppingCartRouteBody(
+        demo: demo,
+        key: _shoppingCartRouteBodyKey,
+      ),
       bottomSheet: (demo != null && demo)
           ? BottomAppBar(
               child: Column(
@@ -2619,12 +2716,12 @@ class ShoppingCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-        )
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = true
@@ -2675,7 +2772,9 @@ class ShoppingCartRouteBody extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    return ShoppingCartRouteState();
+    return ShoppingCartRouteState(
+      demo: demo,
+    );
   }
 }
 
@@ -2687,6 +2786,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double groupMargin = 30;
   double itemMargin = 10;
   List<TextEditingController> _controllers;
+  List<TextEditingController> _flavourControllers;
   TextEditingController _emailController;
   TextEditingController _houseController;
   TextEditingController _phoneNumberController;
@@ -2703,8 +2803,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   var isLoadingBarVisibleList = [];
 
-  ShoppingCartRouteState() {
+  ShoppingCartRouteState({
+    @required this.demo,
+  }) {
     _controllers = [];
+    _flavourControllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
@@ -2730,8 +2833,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     UserCart cart = Session.getCart();
     for (var key in cart.itemsData.keys) {
       final TextEditingController controller = TextEditingController();
+      final TextEditingController flavourController = TextEditingController();
       _controllers.add(controller);
-      controller.text = cart.itemsData[key].toInt().toString();
+      _flavourControllers.add(flavourController);
+      controller.text = cart.itemsData[key]['quantity'].toInt().toString();
+      flavourController.text = cart.itemsData[key]['flavour'];
       isAnimationVisibleList.add(false);
       isItemDeleteConfirmationVisibleList.add(false);
       isButtonActiveList.add(false);
@@ -2792,11 +2898,21 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         ShoppingCartRoute._toAddress = (await Geocoder.google(
                           await Utils.getAPIKey(),
                         ).findAddressesFromCoordinates(coordinates))[0];
-                        if (mounted) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setState(() {});
+                        // if (mounted) {
+                        // WidgetsBinding.instance.addPostFrameCallback((_) {
+                        // if (mounted) {
+                        try {
+                          setState(() {});
+                        } catch (ex) {
+                          Future.delayed(Duration(seconds: 3), () {
+                            if (mounted) {
+                              setState(() {});
+                            }
                           });
                         }
+                        // }
+                        // });
+                        // }
                       }
                     },
                     leading: Icon(
@@ -2804,8 +2920,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       color: Theme.of(context).accentColor,
                     ),
                     title: Text(
-                      ShoppingCartRoute._toAddress?.addressLine ??
-                          'Address Not Set',
+                      ((ShoppingCartRoute._toAddress?.coordinates?.latitude ??
+                                      0) ==
+                                  0 &&
+                              (ShoppingCartRoute
+                                          ._toAddress?.coordinates?.longitude ??
+                                      0) ==
+                                  0)
+                          ? 'Address Not Set'
+                          : ShoppingCartRoute._toAddress?.addressLine ??
+                              'Address Not Set',
                       style: TextStyle(
                         color: Theme.of(context).accentColor,
                         fontSize: 16,
@@ -3011,7 +3135,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   }
 
   List<model.StoreItem> items;
-  Map<String, double> itemsData;
+  Map<String, Map<String, dynamic>> itemsData;
   double totalDeliveryCharges = 0;
   double totalPrice = 0;
   List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
@@ -3071,8 +3195,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               children: List<Widget>.generate(items.length, (index) {
                 globalKeysForCartItem.add(GlobalKey<CartItemState>());
                 // model.StoreItem item = items[index];
-                totalPrice +=
-                    items[index].price * itemsData[items[index].itemId];
+                totalPrice += items[index].price *
+                    itemsData[items[index].itemId]['quantity'];
                 if (ShoppingCartRoute._toAddress != null) {
                   // double distance = Utils.calculateDistance(
                   //   LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
@@ -3121,27 +3245,68 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         );
                         setState(() {});
                       },
+                      onFlavourChange: (index, value) async {
+                        items[index].flavour = value;
+                        await Firestore.instance
+                            .collection('carts')
+                            .document((Session.data['user'] as User).userId)
+                            .setData(
+                          {
+                            'itemsData': {
+                              items[index].itemId: {
+                                'flavour': value,
+                                'quantity':
+                                    items[index].quantity?.toDouble() ?? 1,
+                              },
+                            }
+                          },
+                          merge: true,
+                        );
+                        itemsData.update(items[index].itemId, (a) {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavour': value ?? '',
+                          };
+                        }, ifAbsent: () {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavour': value ?? '',
+                          };
+                        });
+                      },
                       onQuantityChange: (value, index) async {
                         if (value == null || value == 0) {
                           return;
                         }
+                        items[index].quantity = value.toDouble();
                         Firestore.instance
                             .collection('carts')
                             .document((Session.data['user'] as User).userId)
                             .setData(
                           {
                             'itemsData': {
-                              items[index].itemId: value.toDouble(),
+                              items[index].itemId: {
+                                'quantity': value?.toDouble() ?? 1,
+                                'flavour': items[index]?.flavour ?? '',
+                              },
                             }
                           },
                           merge: true,
                         );
                         itemsData.update(items[index].itemId, (a) {
-                          return value.toDouble();
+                          return {
+                            'quantity': value?.toDouble() ?? 1,
+                            'flavour': items[index].flavour ?? '',
+                          };
                         });
                         totalPrice = 0;
                         for (var item in items) {
-                          totalPrice += item.price * itemsData[item.itemId];
+                          totalPrice +=
+                              item.price * itemsData[item.itemId]['quantity'];
                         }
                         totalPrice += totalDeliveryCharges;
 
@@ -3152,6 +3317,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       },
                       item: items[index],
                       controller: _controllers[index],
+                      flavourController: _flavourControllers[index],
                       itemIndex: index,
                     ),
                     isAnimationVisibleList[index]
@@ -3230,6 +3396,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                             ),
                                             Spacer(),
                                             Column(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: <Widget>[
                                                 IconButton(
                                                   tooltip: "Confirm",
@@ -3255,7 +3422,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                                   .data['cart'];
                                                           var itemsData = Map<
                                                               String,
-                                                              double>.from(
+                                                              Map<String,
+                                                                  dynamic>>.from(
                                                             cart.itemsData,
                                                           );
 
@@ -3325,8 +3493,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               _controllers
                                                                   .removeAt(
                                                                       index);
+                                                              _flavourControllers
+                                                                  .removeAt(
+                                                                      index);
                                                               print(_controllers
                                                                   .length);
+                                                              print(
+                                                                  _flavourControllers
+                                                                      .length);
                                                             });
                                                           });
                                                         }
@@ -3381,7 +3555,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 180),
                     child: Text(
-                      '${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : getDeliveryCharges()}',
+                      '''${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : ((ShoppingCartRoute._toAddress?.coordinates?.latitude ?? 0) == 0 && (ShoppingCartRoute._toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : getDeliveryCharges()}''',
                       style: Theme.of(context).textTheme.subtitle,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.visible,
@@ -3433,7 +3607,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
           (old) => old + 1,
         );
       } else {
-        Coordinates coordinates = ShoppingCartRoute._toAddress.coordinates;
+        Coordinates coordinates =
+            ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
         double distance = Utils.calculateDistance(
             LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
         deliveryCharges.putIfAbsent(
@@ -3498,40 +3673,71 @@ class CartItem extends StatefulWidget {
   final model.StoreItem item;
   final Function onDelete;
   final int itemIndex;
-  final Function(int, int) onQuantityChange;
+  final Function(int value, int index) onQuantityChange;
+  final Function(int index, String value) onFlavourChange;
   final _quantityFocusNode = FocusNode();
+  final _flavourFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
-  CartItem(
-      {this.key,
-      this.item,
-      this.controller,
-      this.itemIndex,
-      @required this.onQuantityChange,
-      @required this.onDelete})
-      : super(key: key) {
+  final TextEditingController flavourController;
+  CartItem({
+    this.key,
+    this.item,
+    this.controller,
+    this.flavourController,
+    this.itemIndex,
+    @required this.onQuantityChange,
+    @required this.onDelete,
+    @required this.onFlavourChange,
+  }) : super(key: key) {
     UserCart cart = Session.data['cart'];
-    controller.removeListener(() {});
+    // controller.removeListener(() {});
+    // flavourController.removeListener((){});
     controller.addListener(() {
       if (controller.text == null || controller.text.isEmpty) {
         return;
       }
       int value = int.parse(controller.text);
       if (value <= 0) {
-        cart.itemsData[item.itemId] = 1.0;
+        controller.text = '1';
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 1,
+          ifAbsent: () => 1,
+        );
         onQuantityChange(1, itemIndex);
       } else if (value > 99) {
-        cart.itemsData[item.itemId] = 99.0;
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 99,
+          ifAbsent: () => 99,
+        );
         onQuantityChange(99, itemIndex);
       } else {
-        cart.itemsData[item.itemId] = value.toDouble();
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => value.toDouble(),
+          ifAbsent: () => value.toDouble(),
+        );
         onQuantityChange(value, itemIndex);
       }
     });
     _quantityFocusNode.addListener(() {
       if (controller.text == '') {
-        controller.text = '0';
+        controller.text = '1';
       }
       key?.currentState?.refresh();
+    });
+    _flavourFocusNode.addListener(() {
+      if (!_flavourFocusNode.hasFocus) {
+        cart.itemsData[item.itemId].update(
+          'flavour',
+          (old) => flavourController?.text ?? '',
+          ifAbsent: () => flavourController?.text ?? '',
+        );
+        onFlavourChange(itemIndex, flavourController?.text ?? '');
+
+        key?.currentState?.refresh();
+      }
     });
   }
 
@@ -3569,149 +3775,181 @@ class CartItemState extends State<CartItem> {
     return Card(
       child: Padding(
         padding: EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: ShapeDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: ClipRRect(
-                  child: FadeInImage.assetNetwork(
-                    placeholder: 'assets/images/logo.png',
-                    image: widget.item.images[0],
-                    height: 80,
-                    fit: BoxFit.fitWidth,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 8,
-            ),
-            Expanded(
-              flex: 3,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(
+              width: MediaQuery.of(context).size.width,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.item.itemName,
-                              style: Theme.of(context).textTheme.title,
-                            ),
-                            Text(
-                              widget.item.description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                  Expanded(
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        color: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: <Widget>[
-                            InkWell(
-                              child: Text(
-                                ' - ',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 28,
-                                    fontFamily: "Roboto"),
-                              ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 1) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value - 1}';
-                                });
-                              },
-                            ),
-                            Container(
-                              width: 30,
-                              child: TextField(
-                                focusNode: widget._quantityFocusNode,
-                                controller: widget.controller,
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                ),
-                                inputFormatters: <TextInputFormatter>[
-                                  LengthLimitingTextInputFormatter(2),
-                                  WhitelistingTextInputFormatter.digitsOnly,
-                                  BlacklistingTextInputFormatter
-                                      .singleLineFormatter,
+                      child: ClipRRect(
+                        child: FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/logo.png',
+                          image: widget.item.images[0],
+                          height: 80,
+                          fit: BoxFit.fitWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 8,
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.item.itemName,
+                                    style: Theme.of(context).textTheme.title,
+                                  ),
+                                  Text(
+                                    widget.item.description,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
                             ),
-                            InkWell(
-                              child: Text(
-                                ' +',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 20,
-                                    fontFamily: "Roboto"),
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: <Widget>[
+                                  InkWell(
+                                    child: Text(
+                                      ' - ',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 28,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          1) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value - 1}';
+                                      });
+                                    },
+                                  ),
+                                  Container(
+                                    width: 30,
+                                    child: TextField(
+                                      focusNode: widget._quantityFocusNode,
+                                      controller: widget.controller,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                      ),
+                                      inputFormatters: <TextInputFormatter>[
+                                        LengthLimitingTextInputFormatter(2),
+                                        WhitelistingTextInputFormatter
+                                            .digitsOnly,
+                                        BlacklistingTextInputFormatter
+                                            .singleLineFormatter,
+                                      ],
+                                    ),
+                                  ),
+                                  InkWell(
+                                    child: Text(
+                                      ' +',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 20,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          99) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value + 1}';
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 99) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value + 1}';
-                                });
-                              },
                             ),
+                            Expanded(
+                              child: IconButton(
+                                onPressed: () {
+                                  if (!isPressed) {
+                                    widget.onDelete();
+                                    isPressed = true;
+                                    Future.delayed(Duration(seconds: 1))
+                                        .then((_) {
+                                      isPressed = false;
+                                    });
+                                  }
+                                },
+                                icon: Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            )
                           ],
                         ),
-                      ),
-                      Expanded(
-                        child: IconButton(
-                          onPressed: () {
-                            if (!isPressed) {
-                              widget.onDelete();
-                              isPressed = true;
-                              Future.delayed(Duration(seconds: 1)).then((_) {
-                                isPressed = false;
-                              });
-                            }
-                          },
-                          icon: Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                          ),
+                        SizedBox(
+                          height: 4,
                         ),
-                      )
-                    ],
-                  ),
-                  SizedBox(
-                    height: 4,
-                  ),
-                  Align(
-                    child: Text(
-                      'Price: R${widget.item.price.toInt()} per Item',
-                      style: Theme.of(context).textTheme.subhead,
+                        Align(
+                          child: Text(
+                            'Price: R${widget.item.price.toInt()} per Item',
+                            style: Theme.of(context).textTheme.subhead,
+                          ),
+                          alignment: Alignment.bottomRight,
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.bottomRight,
                   ),
                 ],
               ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            TextField(
+              controller: widget.flavourController,
+              focusNode: widget._flavourFocusNode,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Flavour',
+                helperText:
+                    'Add your Flavour here. If Applicable. For Food Deliveries Only',
+              ),
+              // onEditingComplete: () {
+              //   widget.onFlavourChange(
+              //       widget.itemIndex, widget.flavourController.text ?? '');
+              // },
             ),
           ],
         ),

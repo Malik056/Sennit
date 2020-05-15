@@ -749,7 +749,8 @@ class _MySolidBottomSheetForReceiveItState
 
   Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, double> itemsData = Map<String, double>.from(data['itemsData']);
+    Map<String, Map<String, dynamic>> itemsData =
+        Map<String, Map<String, dynamic>>.from(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> result = {};
     final keys = itemsData.keys;
@@ -937,7 +938,7 @@ class _MySolidBottomSheetForReceiveItState
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,

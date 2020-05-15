@@ -378,8 +378,9 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                   List<Map<String, dynamic>> itemDetails =
                       (await ReceiveItSolidBottomSheet
                           ._key.currentState.items)['itemDetails'];
-                  Map<String, double> itemsData =
-                      Map<String, double>.from(widget.data['itemsData']);
+                  Map<String, Map<String, dynamic>> itemsData =
+                      Map<String, Map<String, dynamic>>.from(
+                          widget.data['itemsData']);
                   int index = 0;
                   final keys = itemsData.keys;
                   for (String itemKey in keys) {
@@ -413,7 +414,8 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                                   ? ''
                                   : widget.data['house'] + ', ') +
                               address,
-                          'quantity': itemsData[itemKey],
+                          'quantity': itemsData[itemKey]['quantity'],
+                          'flavour': itemsData[itemKey]['flavour'],
                           'userEmail': widget.data['email'],
                           'price': itemDetails[index++]['price'],
                         },
@@ -485,7 +487,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                         ifAbsent: () => driver.profilePicture);
                     data.update(
                         ('driverPhoneNumber'), (old) => driver.phoneNumber,
-                        ifAbsent: () => driver.profilePicture);
+                        ifAbsent: () => driver.phoneNumber);
                     data.update(
                       ('driverLicencePlateNumber'),
                       (old) => driver.licencePlateNumber,
@@ -564,7 +566,6 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
 
                   var batch = Firestore.instance.batch();
 
-                  
                   var driverRef = Firestore.instance
                       .collection('drivers')
                       .document(driver.driverId)
@@ -576,18 +577,17 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                       .collection('orders')
                       .document(widget.data['orderId']);
 
-
-                      batch.setData(
-                        driverRef,
-                        dataToUpload,
-                        merge: true,
-                      );
-                      batch.setData(
-                        userRef,
-                        dataToUpload,
-                        merge: true,
-                      );
-                      batch.commit();
+                  batch.setData(
+                    driverRef,
+                    dataToUpload,
+                    merge: true,
+                  );
+                  batch.setData(
+                    userRef,
+                    dataToUpload,
+                    merge: true,
+                  );
+                  batch.commit();
                 });
                 // await Firestore.instance
                 //     .collection('postedOrders')
@@ -688,7 +688,8 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
 
   Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, double> itemsData = Map<String, double>.from(data['itemsData']);
+    Map<String, Map<String, dynamic>> itemsData =
+        Map<String, Map<String, dynamic>>.from(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> finalResult = {};
     final keys = itemsData.keys;
@@ -869,7 +870,7 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,
