@@ -597,17 +597,13 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                             height: 2.0,
                                           ),
                                           Text(isStore
-                                              ? 'Flavor: ${data['itemsData'][item['itemId']]['flavor']}'
+                                              ? (item['description'] ?? '')
                                               : item['storeAddress']),
                                           SizedBox(
                                             height: 6.0,
                                           ),
-                                          isStore
-                                              ? Opacity(
-                                                  opacity: 0,
-                                                )
-                                              : Text(
-                                                  '''Flavor: ${(data['itemsData'][item['itemId']]['flavor'])}'''),
+                                          Text(
+                                              '''Flavour: ${(data['itemsData'][item['itemId']]['flavour'] ?? '' == '' ? 'N/A' : data['itemsData'][item['itemId']]['flavour'])}'''),
                                           Row(children: [
                                             Spacer(),
                                             Text(

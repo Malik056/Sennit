@@ -213,7 +213,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     var initializationSettingsAndroid =
         new AndroidInitializationSettings('logo');
-    var initializationSettingsIOS = new IOSInitializationSettings();
+    var initializationSettingsIOS = new IOSInitializationSettings(
+      onDidReceiveLocalNotification: (a, b, c, d) async {},
+    );
     var initializationSettings = new InitializationSettings(
         initializationSettingsAndroid, initializationSettingsIOS);
     flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
@@ -273,11 +275,17 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static Future showNotificationWithDefaultSound(
       Map<String, dynamic> jsonData) async {
     var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
-        'orderCompleteChannel',
-        'OrderComplete',
-        'When The Order is Delivered this channel will show the notifications',
-        importance: Importance.Max,
-        priority: Priority.High);
+      'orderCompleteChannel',
+      'OrderComplete',
+      'When The Order is Delivered this channel will show the notifications',
+      importance: Importance.Max,
+      priority: Priority.High,
+      enableLights: true,
+      enableVibration: true,
+      autoCancel: true,
+      color: Colors.green,
+      playSound: true,
+    );
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
@@ -435,7 +443,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 //       key: GlobalKey<StoresRouteState>(),
                 //       address: MyApp._address,
                 //     ),
-                MyApp.storeMainPage: (context) => StoreMainPage(),
+                // MyApp.storeMainPage: (context) => StoreMainPage(),
                 MyApp.partnerStoreHome: (context) => OrderedItemsList(),
                 // activeOrderBody: (context) => ActiveOrder(),
                 // MyApp.searchPage: (context) => SearchWidget(demo: true,),
@@ -682,7 +690,7 @@ class Utils {
     // Scaffold.of(context).showSnackBar(snackBar);
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return Container(
-        color: Colors.red,
+        color: Colors.white,
         width: MediaQuery.of(context).size.width,
         height: kToolbarHeight,
         child: Row(
@@ -690,6 +698,7 @@ class Utils {
             Expanded(
                 child: Icon(
               Icons.error,
+              color: Colors.red,
             )),
             Expanded(
               flex: 3,
@@ -737,8 +746,11 @@ class Utils {
 
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.error),
-        color: Colors.red,
+        leading: Icon(
+          Icons.error,
+          color: Colors.red,
+        ),
+        color: Colors.white,
         title: 'Error',
         subtitle: '$message',
       );
@@ -768,8 +780,11 @@ class Utils {
   static showSnackBarWarning(BuildContext context, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.warning),
-        color: Colors.yellow[400],
+        leading: Icon(
+          Icons.warning,
+          color: Colors.yellow[400],
+        ),
+        color: Colors.white,
         title: 'Warning',
         subtitle: '$message',
       );
@@ -782,9 +797,12 @@ class Utils {
     BotToast.showCustomNotification(
         toastBuilder: (fn) {
           return SnackbarLayout(
-            leading: Icon(Icons.error),
-            color: Colors.red,
-            title: 'Error',
+            leading: Icon(
+              Icons.warning,
+              color: Colors.yellow[400],
+            ),
+            color: Colors.white,
+            title: 'Warning',
             subtitle: '$message',
           );
         },
@@ -797,8 +815,11 @@ class Utils {
   static showSnackBarSuccess(BuildContext context, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
+        leading: Icon(
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+        color: Colors.white,
         title: 'Success',
         subtitle: '$message',
       );
@@ -809,8 +830,11 @@ class Utils {
       GlobalKey<ScaffoldState> key, String message) {
     BotToast.showCustomNotification(toastBuilder: (fn) {
       return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
+        leading: Icon(
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+        color: Colors.white,
         title: 'Success',
         subtitle: '$message',
       );
@@ -931,7 +955,9 @@ class Utils {
                 builder: (context) => LocationPicker(
                   apiKey,
                   automaticallyAnimateToCurrentLocation: false,
-                  initialCenter: initialLocation ?? Utils.getLastKnowLocation(),
+                  initialCenter: initialLocation ??
+                      Utils.getLastKnowLocation() ??
+                      LatLng(0, 0),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,

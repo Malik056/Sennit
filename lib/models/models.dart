@@ -1576,7 +1576,7 @@ class StoreItem {
   Store store;
 
   //temp
-  String flavor = '';
+  String flavour = '';
   double quantity = 1;
 
   StoreItem({

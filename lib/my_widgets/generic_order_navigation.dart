@@ -415,7 +415,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                                   : widget.data['house'] + ', ') +
                               address,
                           'quantity': itemsData[itemKey]['quantity'],
-                          'flavor': itemsData[itemKey]['flavor'],
+                          'flavour': itemsData[itemKey]['flavour'],
                           'userEmail': widget.data['email'],
                           'price': itemDetails[index++]['price'],
                         },
