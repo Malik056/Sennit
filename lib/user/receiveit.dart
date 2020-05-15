@@ -2742,7 +2742,7 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
-      ..staging = true
+      ..staging = false
       ..isPreAuth = false
       ..displayFee = true;
 

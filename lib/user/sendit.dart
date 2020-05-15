@@ -710,7 +710,7 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = true
+      ..staging = false
       ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
       ..isPreAuth = true
       ..displayFee = true;

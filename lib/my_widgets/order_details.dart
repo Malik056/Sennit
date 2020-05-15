@@ -603,7 +603,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                             height: 6.0,
                                           ),
                                           Text(
-                                              '''Flavour: ${(data['itemsData'][item['itemId']]['flavour'] ?? '' == '' ? 'N/A' : data['itemsData'][item['itemId']]['flavour'])}'''),
+                                              '''Flavour: ${((data['itemsData'][item['itemId']]['flavour'] ?? '') == '' ? 'N/A' : data['itemsData'][item['itemId']]['flavour'])}'''),
                                           Row(children: [
                                             Spacer(),
                                             Text(
