@@ -1,7 +1,7 @@
 name: sennit
 description: Send Anything Anywhere
 
-version: 2.2.2+42
+version: 2.2.5+45
 
 environment:
   sdk: ">=2.6.0 <3.0.0"
@@ -58,6 +58,7 @@ dependencies:
   carousel_slider: ^1.4.1
   flutter_full_pdf_viewer: ^1.0.6
   path_provider: ^1.6.5
+  open_appstore: ^1.0.2
 
 dev_dependencies:
   flutter_test:

@@ -2387,241 +2387,245 @@ class ShoppingCartRoute extends StatelessWidget {
                         // Utils.showSnackBarSuccessUsingKey(
                         //     _key, 'Successfully Message Sent');
                         // if (true) {
+                        var now = DateTime.now().toUtc();
+                        String orderId = '${now.millisecondsSinceEpoch / 1000}';
+                        order.orderId = orderId;
                         Map<String, dynamic> orderData = order.toMap()
                           ..putIfAbsent('otp', () => otp);
-                        Firestore.instance
+                        var postedOrderRef = Firestore.instance
                             .collection('postedOrders')
-                            .add(orderData)
-                            .catchError((error) {
-                          Utils.showSnackBarErrorUsingKey(
-                              _key, 'Error Posting Order');
-                        }).then((data) async {
-                          orderData.update('orderId', (old) => data.documentID,
-                              ifAbsent: () => data.documentID);
-                          var batch = Firestore.instance.batch();
-                          var userOrderRef = Firestore.instance
-                              .collection("users")
-                              .document(user.userId)
-                              .collection('orders')
-                              .document(data.documentID);
+                            .document(orderId);
+                        // .setData(orderData);
+                        //     .catchError((error) {
+                        //   Utils.showSnackBarErrorUsingKey(
+                        //     _key,
+                        //     'Error Posting Order',
+                        //   );
+                        // });
+                        // .then((data) async {
+                        // orderData.update('orderId', (old) => orderId,
+                        //     ifAbsent: () => orderId);
+                        var batch = Firestore.instance.batch();
+                        batch.setData(postedOrderRef, orderData);
+                        var userOrderRef = Firestore.instance
+                            .collection("users")
+                            .document(user.userId)
+                            .collection('orders')
+                            .document(orderId);
+
+                        batch.setData(
+                          userOrderRef,
+                          orderData,
+                          merge: true,
+                        );
+                        // await Firestore.instance
+                        //     .collection("verificationCodes")
+                        //     .document(data.documentID)
+                        //     .setData(
+                        //   {
+                        //     "key": otp,
+                        //   },
+                        // );
+
+                        // print('Response status: ${response.statusCode}');
+                        // print('Response body: ${response.body}');
+                        // print('Response reason: ${response.reasonPhrase}');
+                        // print('${response.request.url}');
+
+                        Map<String, dynamic> storeOrders = {};
+                        List<String> deviceIds = [];
+
+                        for (model.StoreItem item in items) {
+                          final itemKey = item.itemId;
+                          if (storeOrders.containsKey(item.storeId)) {
+                            double price = storeOrders[item.storeId]['price'];
+                            price +=
+                                item.price * itemsData[item.itemId]['quantity'];
+                            storeOrders[item.storeId].update(
+                                'price', (old) => price,
+                                ifAbsent: () => price);
+                            storeOrders[item.storeId]['pricePerItem']
+                                .add(item.price);
+                            storeOrders[item.storeId]['totalPricePerItem'].add(
+                                item.price *
+                                    itemsData[item.itemId]['quantity']);
+                            (storeOrders[item.storeId]['itemsData']
+                                    as Map<String, Map<String, dynamic>>)
+                                .putIfAbsent(
+                              itemKey,
+                              () => itemsData[itemKey],
+                            );
+                          } else {
+                            if (item.store == null) {
+                              var snapshot = await Firestore.instance
+                                  .collection('stores')
+                                  .document(item.storeId)
+                                  .get();
+                              item.store = Store.fromMap(snapshot.data);
+                              deviceIds.addAll(item.store.deviceTokens);
+                            } else if (item?.store?.deviceTokens != null &&
+                                item.store.deviceTokens.length > 0) {
+                              deviceIds.addAll(item.store.deviceTokens);
+                            } else {
+                              var snapshot = await Firestore.instance
+                                  .collection('stores')
+                                  .document(item.storeId)
+                                  .get();
+                              item.store = Store.fromMap(snapshot.data);
+                              deviceIds.addAll(item.store.deviceTokens);
+                            }
+                            OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
+                              destination: Utils.latLngFromString(
+                                  orderData['destination']),
+                              date: now,
+                              deliveryTime: null,
+                              email: order.email,
+                              house: order.house,
+                              price: item.price *
+                                  itemsData[item.itemId]['quantity'],
+                              orderId: orderId,
+                              pricePerItem: [item.price],
+                              totalPricePerItem: [
+                                item.price * itemsData[item.itemId]['quantity']
+                              ],
+                              itemsData: {
+                                itemKey: itemsData[itemKey],
+                              },
+                              phoneNumber: order.phoneNumber,
+                              userId: order.userId,
+                            );
+                            Map<String, dynamic> tempOrder = receiveIt.toMap();
+                            tempOrder.putIfAbsent(
+                              'storeId',
+                              () => item.storeId,
+                            );
+                            tempOrder.putIfAbsent(
+                                'storeName', () => item.storeName);
+                            tempOrder.putIfAbsent(
+                                'storeAddress', () => item.storeAddress);
+                            tempOrder.putIfAbsent(
+                              'storeLatLng',
+                              () =>
+                                  Utils.latLngToString(item.store.storeLatLng),
+                            );
+                            storeOrders.putIfAbsent(
+                              item.storeId,
+                              () {
+                                return tempOrder;
+                              },
+                            );
+                          }
+                          // Map<String, dynamic> item = (await Firestore
+                          //         .instance
+                          //         .collection('items')
+                          //         .document(itemKey)
+                          //         .get())
+                          // .data;
+                          // LatLng latLng = Utils.latLngFromString(
+                          //     orderData['destination']);
+                          // String address = (await Geocoder.google(
+                          //             await Utils.getAPIKey())
+                          //         .findAddressesFromCoordinates(Coordinates(
+                          //             latLng.latitude, latLng.longitude)))[0]
+                          //     .addressLine;
+                        }
+                        Future<Response> request;
+                        final _fcmServerKey = await Utils.getFCMServerKey();
+                        storeOrders.forEach((k, v) {
+                          var storeOrderRef = Firestore.instance
+                              .collection('stores')
+                              .document(k)
+                              .collection('pendingOrderedItems')
+                              .document(orderData['orderId']);
 
                           batch.setData(
-                            userOrderRef,
-                            orderData,
+                            storeOrderRef,
+                            v,
                             merge: true,
                           );
-                          // await Firestore.instance
-                          //     .collection("verificationCodes")
-                          //     .document(data.documentID)
-                          //     .setData(
-                          //   {
-                          //     "key": otp,
-                          //   },
-                          // );
 
-                          // print('Response status: ${response.statusCode}');
-                          // print('Response body: ${response.body}');
-                          // print('Response reason: ${response.reasonPhrase}');
-                          // print('${response.request.url}');
-                          var now = DateTime.now();
-
-                          Map<String, dynamic> storeOrders = {};
-                          List<String> deviceIds = [];
-
-                          for (model.StoreItem item in items) {
-                            final itemKey = item.itemId;
-                            if (storeOrders.containsKey(item.storeId)) {
-                              double price = storeOrders[item.storeId]['price'];
-                              price += item.price *
-                                  itemsData[item.itemId]['quantity'];
-                              storeOrders[item.storeId].update(
-                                  'price', (old) => price,
-                                  ifAbsent: () => price);
-                              storeOrders[item.storeId]['pricePerItem']
-                                  .add(item.price);
-                              storeOrders[item.storeId]['totalPricePerItem']
-                                  .add(item.price *
-                                      itemsData[item.itemId]['quantity']);
-                              (storeOrders[item.storeId]['itemsData']
-                                      as Map<String, Map<String, dynamic>>)
-                                  .putIfAbsent(
-                                itemKey,
-                                () => itemsData[itemKey],
-                              );
-                            } else {
-                              if (item.store == null) {
-                                var snapshot = await Firestore.instance
-                                    .collection('stores')
-                                    .document(item.storeId)
-                                    .get();
-                                item.store = Store.fromMap(snapshot.data);
-                                deviceIds.addAll(item.store.deviceTokens);
-                              } else if (item?.store?.deviceTokens != null &&
-                                  item.store.deviceTokens.length > 0) {
-                                deviceIds.addAll(item.store.deviceTokens);
-                              } else {
-                                var snapshot = await Firestore.instance
-                                    .collection('stores')
-                                    .document(item.storeId)
-                                    .get();
-                                item.store = Store.fromMap(snapshot.data);
-                                deviceIds.addAll(item.store.deviceTokens);
-                              }
-                              OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
-                                destination: Utils.latLngFromString(
-                                    orderData['destination']),
-                                date: now,
-                                deliveryTime: null,
-                                email: order.email,
-                                house: order.house,
-                                price: item.price *
-                                    itemsData[item.itemId]['quantity'],
-                                orderId: orderData['orderId'],
-                                pricePerItem: [item.price],
-                                totalPricePerItem: [
-                                  item.price *
-                                      itemsData[item.itemId]['quantity']
-                                ],
-                                itemsData: {
-                                  itemKey: itemsData[itemKey],
-                                },
-                                phoneNumber: order.phoneNumber,
-                                userId: order.userId,
-                              );
-                              Map<String, dynamic> tempOrder =
-                                  receiveIt.toMap();
-                              tempOrder.putIfAbsent(
-                                'storeId',
-                                () => item.storeId,
-                              );
-                              tempOrder.putIfAbsent(
-                                  'storeName', () => item.storeName);
-                              tempOrder.putIfAbsent(
-                                  'storeAddress', () => item.storeAddress);
-                              tempOrder.putIfAbsent(
-                                'storeLatLng',
-                                () => Utils.latLngToString(
-                                    item.store.storeLatLng),
-                              );
-                              storeOrders.putIfAbsent(
-                                item.storeId,
-                                () {
-                                  return tempOrder;
-                                },
-                              );
-                            }
-                            // Map<String, dynamic> item = (await Firestore
-                            //         .instance
-                            //         .collection('items')
-                            //         .document(itemKey)
-                            //         .get())
-                            // .data;
-                            // LatLng latLng = Utils.latLngFromString(
-                            //     orderData['destination']);
-                            // String address = (await Geocoder.google(
-                            //             await Utils.getAPIKey())
-                            //         .findAddressesFromCoordinates(Coordinates(
-                            //             latLng.latitude, latLng.longitude)))[0]
-                            //     .addressLine;
-                          }
-                          Future<Response> request;
-                          final _fcmServerKey = await Utils.getFCMServerKey();
-                          storeOrders.forEach((k, v) {
-                            var storeOrderRef = Firestore.instance
-                                .collection('stores')
-                                .document(k)
-                                .collection('pendingOrderedItems')
-                                .document(orderData['orderId']);
-
-                            batch.setData(
-                              storeOrderRef,
-                              v,
-                              merge: true,
-                            );
-
-                            // deviceIds.forEach((id) {
-                            request = post(
-                              'https://fcm.googleapis.com/fcm/send',
-                              headers: <String, String>{
-                                'Content-Type': 'application/json',
-                                'Authorization': 'key=$_fcmServerKey',
-                              },
-                              body: jsonEncode(
-                                <String, dynamic>{
-                                  'notification': <String, dynamic>{
-                                    'body': 'An Order is just Arrived',
-                                    'title': 'Order'
-                                  },
-                                  'type': 'partnerStoreOrder',
-                                  'priority': 'high',
-                                  'data': <String, dynamic>{
-                                    'click_action':
-                                        'FLUTTER_NOTIFICATION_CLICK',
-                                    'orderId': '${order.orderId}',
-                                    'status': 'posted',
-                                    'userId': order.userId,
-                                  },
-                                  'registration_ids': deviceIds,
-                                },
-                              ),
-                            );
-                            // });
-                          });
-                          var cartRef = Firestore.instance
-                              .collection('carts')
-                              .document(user.userId);
-                          batch.delete(cartRef);
-                          batch.commit().catchError((error) {
-                            Utils.showSnackBarErrorUsingKey(
-                                _key, 'error clearing cart');
-                          }).then(
-                            (_) async {
-                              await Firestore.instance
-                                  .collection('carts')
-                                  .document(user.userId)
-                                  .setData({}).catchError((error) {
-                                Utils.showSnackBarErrorUsingKey(
-                                    _key, 'error re initializing cart');
-                              });
-                              await request;
-                              // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                              // Navigator.pop(context);
-                              Session.data['cart'] = UserCart(itemsData: {});
-                              Utils.showSuccessDialog(
-                                  'Your Order is on its way!');
-                              Future.delayed(Duration(seconds: 2)).then((_) {
-                                BotToast.cleanAll();
-                              });
-                              try {
-                                navigator.pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) {
-                                      return OrderTracking(
-                                        type: OrderTrackingType.RECEIVE_IT,
-                                        data: orderData,
-                                      );
-                                    },
-                                    settings:
-                                        RouteSettings(name: OrderTracking.NAME),
-                                  ),
-                                  (route) {
-                                    if (route?.settings?.name == null) {
-                                      return false;
-                                    }
-                                    return route.settings.name == 'receiveIt';
-                                  },
-                                );
-                              } on dynamic catch (_) {
-                                navigator.pop();
-                                BotToast.showText(
-                                    text: _.toString(),
-                                    duration: Duration(
-                                      seconds: 10,
-                                    ));
-                              }
+                          // deviceIds.forEach((id) {
+                          request = post(
+                            'https://fcm.googleapis.com/fcm/send',
+                            headers: <String, String>{
+                              'Content-Type': 'application/json',
+                              'Authorization': 'key=$_fcmServerKey',
                             },
+                            body: jsonEncode(
+                              <String, dynamic>{
+                                'notification': <String, dynamic>{
+                                  'body': 'An Order is just Arrived',
+                                  'title': 'Order'
+                                },
+                                'type': 'partnerStoreOrder',
+                                'priority': 'high',
+                                'data': <String, dynamic>{
+                                  'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                                  'orderId': '${order.orderId}',
+                                  'status': 'posted',
+                                  'userId': order.userId,
+                                },
+                                'registration_ids': deviceIds,
+                              },
+                            ),
                           );
+                          // });
                         });
+                        var cartRef = Firestore.instance
+                            .collection('carts')
+                            .document(user.userId);
+                        batch.delete(cartRef);
+                        batch.commit().catchError((error) {
+                          Utils.showSnackBarErrorUsingKey(
+                              _key, 'error clearing cart');
+                        }).then(
+                          (_) async {
+                            await Firestore.instance
+                                .collection('carts')
+                                .document(user.userId)
+                                .setData({}).catchError((error) {
+                              Utils.showSnackBarErrorUsingKey(
+                                  _key, 'error re initializing cart');
+                            });
+                            await request;
+                            // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                            // Navigator.pop(context);
+                            Session.data['cart'] = UserCart(itemsData: {});
+                            Utils.showSuccessDialog(
+                                'Your Order is on its way!');
+                            Future.delayed(Duration(seconds: 2)).then((_) {
+                              BotToast.cleanAll();
+                            });
+                            try {
+                              navigator.pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) {
+                                    return OrderTracking(
+                                      type: OrderTrackingType.RECEIVE_IT,
+                                      data: orderData,
+                                    );
+                                  },
+                                  settings:
+                                      RouteSettings(name: OrderTracking.NAME),
+                                ),
+                                (route) {
+                                  if (route?.settings?.name == null) {
+                                    return false;
+                                  }
+                                  return route.settings.name == 'receiveIt';
+                                },
+                              );
+                            } on dynamic catch (_) {
+                              navigator.pop();
+                              BotToast.showText(
+                                  text: _.toString(),
+                                  duration: Duration(
+                                    seconds: 10,
+                                  ));
+                            }
+                          },
+                        );
+                        // });
                       }
                     } on dynamic catch (ex) {
                       BotToast.showText(
@@ -3599,58 +3603,75 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     String finalString = '';
     double total = 0;
     // int index = 0;
+    Map<String, dynamic> uniqueStores = {};
     Map<String, Map<String, dynamic>> deliveryCharges = {};
+
     for (var item in items) {
-      if (deliveryCharges.containsKey(item.latlng.toString())) {
-        deliveryCharges[item.latlng.toString()].update(
-          'count',
-          (old) => old + 1,
-        );
+      if (uniqueStores.containsKey(item.latlng.toString())) {
       } else {
         Coordinates coordinates =
             ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
         double distance = Utils.calculateDistance(
             LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
-        deliveryCharges.putIfAbsent(
-          item.latlng.toString(),
-          () {
-            return {
-              'count': 1,
-              'distance': distance,
-            };
-          },
-        );
+        uniqueStores.putIfAbsent(item.latlng.toString(), () {
+          return {
+            'distance': distance,
+          };
+        });
       }
     }
 
-    deliveryCharges.forEach((k, v) {
-      final distance = v['distance'];
-      if (v['count'] == 1) {
-        double charges = 30;
-        final tempDistance = distance - 5;
-        if (tempDistance <= 0) {
-          v.putIfAbsent('charges', () => charges);
-        } else {
-          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
-          v.putIfAbsent('charges', () => charges);
-        }
+    // for (var item in items) {
+    //   if (deliveryCharges.containsKey(item.latlng.toString())) {
+    //     deliveryCharges[item.latlng.toString()].update(
+    //       'count',
+    //       (old) => old + 1,
+    //     );
+    //   } else {
+    //     Coordinates coordinates =
+    //         ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
+    //     double distance = Utils.calculateDistance(
+    //         LatLng(coordinates., coordinates.longitude), item.latlng);
+    //     deliveryCharges.putIfAbsent(
+    //       item.latlng.toString(),
+    //       () {
+    //         return {
+    //           'count': 1,
+    //           'distance': distance,
+    //         };
+    //       },
+    //     );
+    //   }
+    // }
+
+    uniqueStores.forEach((k, v) {
+      final distance = v;
+      // if (v['count'] == 1) {
+      double charges = 30;
+      final tempDistance = distance - 5;
+      if (tempDistance <= 0) {
+        v.putIfAbsent('charges', () => charges);
       } else {
-        if (distance <= 10) {
-          v.putIfAbsent('charges', () => 60.0);
-        } else {
-          double charges = 60.0;
-          final tempDistance = distance - 10;
-          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
-          v.putIfAbsent('charges', () => charges);
-        }
+        charges += ((tempDistance as double)) * 4.5;
+        v.putIfAbsent('charges', () => charges);
       }
+      // } else {
+      // if (distance <= 10) {
+      //   v.putIfAbsent('charges', () => 60.0);
+      // } else {
+      //   double charges = 60.0;
+      //   final tempDistance = distance - 10;
+      //   charges += ((tempDistance as double).ceilToDouble()) * 4.5;
+      //   v.putIfAbsent('charges', () => charges);
+      // }
+      // }
 
       total += v['charges'];
 
       if (finalString.isEmpty) {
-        finalString += '${v['charges']}R';
+        finalString += '${v['charges']} R';
       } else {
-        finalString += ' + ${v['charges']}R';
+        finalString += ' + ${v['charges']} R';
       }
     });
 
