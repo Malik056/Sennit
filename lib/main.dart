@@ -27,11 +27,11 @@ import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/review.dart';
+import 'package:sennit/my_widgets/update_notice.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
-import 'package:sennit/user/receiveit.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
@@ -346,7 +346,30 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> initialize() async {
+  Future<Map<String, dynamic>> initialize() async {
+    final ref = Firestore.instance.collection('versions');
+    Function catchError;
+    catchError = (_) async {
+      final querySnapshot = await ref.getDocuments().catchError(catchError);
+      return querySnapshot;
+    };
+    final querySnapshot = await ref.getDocuments().catchError(catchError);
+    num version = querySnapshot.documents.first.data['version'];
+    String versionName = querySnapshot.documents.first.data['versionName'];
+    num compulsoryIfNewVersion =
+        querySnapshot.documents.first.data['compulsoryIfLessThan'];
+    if (Session.version < version) {
+      bool compulsory = false;
+      if (compulsoryIfNewVersion > Session.version) {
+        compulsory = true;
+      }
+      return {
+        'compulsory': compulsory,
+        'update': true,
+        'version': version,
+        'versionName': versionName,
+      };
+    }
     await locationInitializer().timeout(
       Duration(
         seconds: 10,
@@ -357,7 +380,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       Utils.getMyLocation();
       MyApp._initialLocation = LatLng(0, 0);
       MyApp._address = MyApp.dummyAddress;
-      return;
+      return null;
     }
     await MyApp._lastKnowLocation?.then((data) async {
       MyApp._initialLocation = data;
@@ -375,34 +398,193 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       MyApp._address = MyApp.dummyAddress;
       return MyApp._initialLocation;
     });
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return BotToastInit(
-      child: FutureBuilder<void>(
+      child: FutureBuilder<Map<String, dynamic>>(
           future: initialize(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return MaterialApp(
-                theme: ThemeData(
-                  backgroundColor: Colors.white,
-                  fontFamily: 'ArchivoNarrow',
-                  primaryColor: MyApp.secondaryColor,
-                  accentColor: MyApp.secondaryColor,
-                ),
-                home: Scaffold(
-                    appBar: AppBar(
-                      backgroundColor: Colors.white,
-                      title: Text(
-                        'Sennit',
-                        style: Theme.of(context).textTheme.subhead,
-                      ),
-                      centerTitle: true,
-                    ),
-                    body: Center(child: CircularProgressIndicator())),
-              );
-            }
+            final comment = () {
+              // if (snapshot.connectionState == ConnectionState.waiting) {
+              //   return MaterialApp(
+              //     theme: ThemeData(
+              //       backgroundColor: Colors.white,
+              //       fontFamily: 'ArchivoNarrow',
+              //       primaryColor: MyApp.secondaryColor,
+              //       accentColor: MyApp.secondaryColor,
+              //       // buttonColor: primaryColor,
+              //       buttonTheme: ButtonThemeData(
+              //         buttonColor: MyApp.secondaryColor,
+              //         shape: RoundedRectangleBorder(
+              //           borderRadius: BorderRadius.all(
+              //             Radius.circular(6),
+              //           ),
+              //         ),
+              //       ),
+              //       bottomAppBarColor: Colors.white,
+              //       bottomAppBarTheme: BottomAppBarTheme(
+              //         color: Colors.white,
+              //         elevation: 8,
+              //       ),
+              //       appBarTheme: AppBarTheme(
+              //         iconTheme: IconThemeData(
+              //           color: MyApp.secondaryColor,
+              //         ),
+              //         color: Colors.white,
+              //         textTheme: TextTheme(
+              //           title: TextStyle(
+              //             fontWeight: FontWeight.bold,
+              //             fontFamily: 'ArchivoNarrow',
+              //             fontSize: 22,
+              //             color: MyApp.secondaryColor,
+              //           ),
+              //         ),
+              //       ),
+              //       iconTheme: IconThemeData(
+              //         color: MyApp.secondaryColor,
+              //       ),
+              //       textTheme: TextTheme(
+              //           title: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontSize: 22,
+              //             fontWeight: FontWeight.normal,
+              //           ),
+              //           headline: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontSize: 36,
+              //             fontWeight: FontWeight.bold,
+              //           ),
+              //           subhead: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontWeight: FontWeight.bold,
+              //             fontSize: 18,
+              //           ),
+              //           subtitle: TextStyle(
+              //             color: Colors.black,
+              //             fontSize: 16,
+              //           ),
+              //           body1: TextStyle(
+              //             fontSize: 14,
+              //             decorationColor: Colors.black,
+              //             fontFamily: 'Roboto',
+              //           ),
+              //           body2: TextStyle(
+              //             fontSize: 14,
+              //             decorationColor: Colors.black,
+              //             fontFamily: 'Roboto',
+              //             fontStyle: FontStyle.italic,
+              //           ),
+              //           button: TextStyle(
+              //             color: Colors.white,
+              //             fontSize: 16,
+              //           ),
+              //           display1: TextStyle(
+              //             fontSize: 26,
+              //             color: MyApp.secondaryColor,
+              //             fontWeight: FontWeight.bold,
+              //           )),
+              //     ),
+              //     home: Scaffold(
+              //         appBar: AppBar(
+              //           backgroundColor: Colors.white,
+              //           title: Text(
+              //             'Sennit',
+              //             style: Theme.of(context).textTheme.subhead,
+              //           ),
+              //           centerTitle: true,
+              //         ),
+              //         body: Center(child: CircularProgressIndicator())),
+              //   );
+              // }
+              // if (snapshot.data != null) {
+              //   MaterialApp(
+              //     theme: ThemeData(
+              //       backgroundColor: Colors.white,
+              //       fontFamily: 'ArchivoNarrow',
+              //       primaryColor: MyApp.secondaryColor,
+              //       accentColor: MyApp.secondaryColor,
+              //       // buttonColor: primaryColor,
+              //       buttonTheme: ButtonThemeData(
+              //         buttonColor: MyApp.secondaryColor,
+              //         shape: RoundedRectangleBorder(
+              //           borderRadius: BorderRadius.all(
+              //             Radius.circular(6),
+              //           ),
+              //         ),
+              //       ),
+              //       bottomAppBarColor: Colors.white,
+              //       bottomAppBarTheme: BottomAppBarTheme(
+              //         color: Colors.white,
+              //         elevation: 8,
+              //       ),
+              //       appBarTheme: AppBarTheme(
+              //         iconTheme: IconThemeData(
+              //           color: MyApp.secondaryColor,
+              //         ),
+              //         color: Colors.white,
+              //         textTheme: TextTheme(
+              //           title: TextStyle(
+              //             fontWeight: FontWeight.bold,
+              //             fontFamily: 'ArchivoNarrow',
+              //             fontSize: 22,
+              //             color: MyApp.secondaryColor,
+              //           ),
+              //         ),
+              //       ),
+              //       iconTheme: IconThemeData(
+              //         color: MyApp.secondaryColor,
+              //       ),
+              //       textTheme: TextTheme(
+              //           title: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontSize: 22,
+              //             fontWeight: FontWeight.normal,
+              //           ),
+              //           headline: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontSize: 36,
+              //             fontWeight: FontWeight.bold,
+              //           ),
+              //           subhead: TextStyle(
+              //             color: MyApp.secondaryColor,
+              //             fontWeight: FontWeight.bold,
+              //             fontSize: 18,
+              //           ),
+              //           subtitle: TextStyle(
+              //             color: Colors.black,
+              //             fontSize: 16,
+              //           ),
+              //           body1: TextStyle(
+              //             fontSize: 14,
+              //             decorationColor: Colors.black,
+              //             fontFamily: 'Roboto',
+              //           ),
+              //           body2: TextStyle(
+              //             fontSize: 14,
+              //             decorationColor: Colors.black,
+              //             fontFamily: 'Roboto',
+              //             fontStyle: FontStyle.italic,
+              //           ),
+              //           button: TextStyle(
+              //             color: Colors.white,
+              //             fontSize: 16,
+              //           ),
+              //           display1: TextStyle(
+              //             fontSize: 26,
+              //             color: MyApp.secondaryColor,
+              //             fontWeight: FontWeight.bold,
+              //           )),
+              //     ),
+              //     home: UpdateNoticeRoute(
+              //       snapshot.data['compulsory'],
+              //       snapshot.data['version'],
+              //     ),
+              //   );
+              // }
+            };
             return MaterialApp(
               navigatorKey: navigatorKey,
               localizationsDelegates: const [
@@ -416,7 +598,13 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 Locale('ar', ''),
               ],
               navigatorObservers: [BotToastNavigatorObserver()],
-              initialRoute: MyApp.initialRoute,
+              
+              initialRoute:
+                  // (snapshot.connectionState == ConnectionState.waiting ||
+                  //         snapshot.data != null)
+                      // ? '/'
+                      // : 
+                      MyApp.initialRoute,
               routes: {
                 // '/': (context) => StartPage(),
                 MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
@@ -528,6 +716,23 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       fontWeight: FontWeight.bold,
                     )),
               ),
+              home: snapshot.connectionState == ConnectionState.waiting
+                  ? Scaffold(
+                      appBar: AppBar(
+                        backgroundColor: Colors.white,
+                        title: Text(
+                          'Sennit',
+                          style: Theme.of(context).textTheme.subhead,
+                        ),
+                        centerTitle: true,
+                      ),
+                      body: Center(child: CircularProgressIndicator()))
+                  : snapshot.data != null
+                      ? UpdateNoticeRoute(
+                          snapshot.data['compulsory'],
+                          snapshot.data['versionName'],
+                        )
+                      : null,
             );
           }),
     );
@@ -1156,7 +1361,7 @@ class Utils {
               !userData.exists ||
               userData.data == null ||
               userData.data.length <= 0) {
-            MyAppState?.navigatorKey?.currentState.pop();
+            MyAppState?.navigatorKey?.currentState?.pop();
             Utils.showSnackBarError(
               null,
               "User not found",
@@ -1257,6 +1462,7 @@ class Utils {
 
 class Session {
   static Map<String, dynamic> data = Map<String, dynamic>();
+  static num version = 45;
   static getCart() {
     if (data.containsKey('cart')) {
       return data['cart'];

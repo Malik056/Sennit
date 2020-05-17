@@ -208,7 +208,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
       child: Scaffold(
         appBar: _MyAppBar(
           title:
-              "${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}R",
+              "R${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}",
           onDonePressed: () {
             _Body._key?.currentState?.widget?.showDeliveryCompleteDialogue();
           },
@@ -778,6 +778,9 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  SizedBox(height: 10),
+                  Text('OrderId: ${widget.data['orderId']}',
+                      style: Theme.of(context).textTheme.subhead),
                   SizedBox(
                     height: 40,
                   ),
@@ -2321,6 +2324,10 @@ class _OrderTile extends StatelessWidget {
             children: <Widget>[
               SizedBox(
                 height: 8,
+              ),
+              Text(
+                'OrderId: ${data['orderId']}',
+                style: Theme.of(context).textTheme.subhead,
               ),
               SizedBox(
                 height: 10,
