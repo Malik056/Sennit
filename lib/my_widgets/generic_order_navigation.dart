@@ -208,7 +208,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
       child: Scaffold(
         appBar: _MyAppBar(
           title:
-              "${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}R",
+              "R${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}",
           onDonePressed: () {
             _Body._key?.currentState?.widget?.showDeliveryCompleteDialogue();
           },

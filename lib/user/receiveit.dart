@@ -3572,7 +3572,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     margin: EdgeInsets.all(8),
                   ),
                   Text(
-                    'Total\n${totalDeliveryCharges.toStringAsFixed(2)} R',
+                    'Total\nR${totalDeliveryCharges.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.subhead,
                     textAlign: TextAlign.center,
                   ),
@@ -3583,7 +3583,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             Container(
               alignment: Alignment.centerRight,
               child: Text(
-                'Total: ${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)} R ',
+                'Total: R${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)}',
                 style: Theme.of(context).textTheme.title.copyWith(
                       inherit: true,
                       fontWeight: FontWeight.bold,
@@ -3645,14 +3645,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     // }
 
     uniqueStores.forEach((k, v) {
-      final distance = v;
+      final distance = v['distance'];
       // if (v['count'] == 1) {
       double charges = 30;
       final tempDistance = distance - 5;
       if (tempDistance <= 0) {
         v.putIfAbsent('charges', () => charges);
       } else {
-        charges += ((tempDistance as double)) * 4.5;
+        charges += ((tempDistance as double) * 4.5);
         v.putIfAbsent('charges', () => charges);
       }
       // } else {
@@ -3669,9 +3669,9 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
       total += v['charges'];
 
       if (finalString.isEmpty) {
-        finalString += '${v['charges']} R';
+        finalString += 'R${(v['charges'] as double).toStringAsFixed(1)}';
       } else {
-        finalString += ' + ${v['charges']} R';
+        finalString += ' + R${(v['charges'] as double).toStringAsFixed(1)}';
       }
     });
 

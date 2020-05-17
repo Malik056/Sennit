@@ -32,7 +32,6 @@ import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
-import 'package:sennit/user/receiveit.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
@@ -1362,7 +1361,7 @@ class Utils {
               !userData.exists ||
               userData.data == null ||
               userData.data.length <= 0) {
-            MyAppState?.navigatorKey?.currentState.pop();
+            MyAppState?.navigatorKey?.currentState?.pop();
             Utils.showSnackBarError(
               null,
               "User not found",

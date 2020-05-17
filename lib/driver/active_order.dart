@@ -246,7 +246,7 @@ class ActiveOrder extends StatelessWidget {
             // myLocation = snapshot.data;
             return Scaffold(
               appBar: AppBar(
-                title: Text('${_orderData['orderPrice']} R'),
+                title: Text('R${_orderData['orderPrice']}'),
                 centerTitle: true,
                 actions: <Widget>[
                   FlatButton(

@@ -102,7 +102,7 @@ class _OrderTrackingState extends State<OrderTracking> {
       ),
       key: scaffoldKey,
       appBar: _MyStatefulAppBar(
-        title: 'R ${(widget.data['price'] as double).toStringAsFixed(2)}',
+        title: 'R${(widget.data['price'] as double).toStringAsFixed(2)}',
         onDonePressed: () {
           _Body._key?.currentState?.showPopup();
         },
@@ -847,7 +847,14 @@ class _MySolidBottomSheetForReceiveItState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   SizedBox(
-                    height: 40,
+                    height: 8,
+                  ),
+                  Text(
+                    'OrderId: ${widget.data['orderId']}',
+                    style: Theme.of(context).textTheme.subhead,
+                  ),
+                  SizedBox(
+                    height: 10,
                   ),
                   Container(
                     color: Theme.of(context).primaryColor,
@@ -1452,6 +1459,10 @@ class _OrderTileState extends State<_OrderTile> {
           SizedBox(
             height: 8,
           ),
+          Text(
+            'OrderId: ${widget.data['orderId']}',
+            style: Theme.of(context).textTheme.subhead,
+          ),
           SizedBox(
             height: 10,
           ),
@@ -1652,7 +1663,7 @@ class _OrderTileState extends State<_OrderTile> {
           Text(
             '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'}
               ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-            style: Theme.of(context).textTheme.subhead.copyWith(fontSize: 20),
+            style: Theme.of(context).textTheme.subhead.copyWith(fontSize: 16),
           ),
         ],
       ),

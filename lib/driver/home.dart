@@ -555,7 +555,7 @@ class SennitNotificationTile extends StatelessWidget {
                           height: 6.0,
                         ),
                         Text(
-                          "${(data['price'] as num).toDouble().toStringAsFixed(2)}R",
+                          "R${(data['price'] as num).toDouble().toStringAsFixed(2)}",
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                       ],
