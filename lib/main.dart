@@ -407,184 +407,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
       child: FutureBuilder<Map<String, dynamic>>(
           future: initialize(),
           builder: (context, snapshot) {
-            final comment = () {
-              // if (snapshot.connectionState == ConnectionState.waiting) {
-              //   return MaterialApp(
-              //     theme: ThemeData(
-              //       backgroundColor: Colors.white,
-              //       fontFamily: 'ArchivoNarrow',
-              //       primaryColor: MyApp.secondaryColor,
-              //       accentColor: MyApp.secondaryColor,
-              //       // buttonColor: primaryColor,
-              //       buttonTheme: ButtonThemeData(
-              //         buttonColor: MyApp.secondaryColor,
-              //         shape: RoundedRectangleBorder(
-              //           borderRadius: BorderRadius.all(
-              //             Radius.circular(6),
-              //           ),
-              //         ),
-              //       ),
-              //       bottomAppBarColor: Colors.white,
-              //       bottomAppBarTheme: BottomAppBarTheme(
-              //         color: Colors.white,
-              //         elevation: 8,
-              //       ),
-              //       appBarTheme: AppBarTheme(
-              //         iconTheme: IconThemeData(
-              //           color: MyApp.secondaryColor,
-              //         ),
-              //         color: Colors.white,
-              //         textTheme: TextTheme(
-              //           title: TextStyle(
-              //             fontWeight: FontWeight.bold,
-              //             fontFamily: 'ArchivoNarrow',
-              //             fontSize: 22,
-              //             color: MyApp.secondaryColor,
-              //           ),
-              //         ),
-              //       ),
-              //       iconTheme: IconThemeData(
-              //         color: MyApp.secondaryColor,
-              //       ),
-              //       textTheme: TextTheme(
-              //           title: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontSize: 22,
-              //             fontWeight: FontWeight.normal,
-              //           ),
-              //           headline: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontSize: 36,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //           subhead: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontWeight: FontWeight.bold,
-              //             fontSize: 18,
-              //           ),
-              //           subtitle: TextStyle(
-              //             color: Colors.black,
-              //             fontSize: 16,
-              //           ),
-              //           body1: TextStyle(
-              //             fontSize: 14,
-              //             decorationColor: Colors.black,
-              //             fontFamily: 'Roboto',
-              //           ),
-              //           body2: TextStyle(
-              //             fontSize: 14,
-              //             decorationColor: Colors.black,
-              //             fontFamily: 'Roboto',
-              //             fontStyle: FontStyle.italic,
-              //           ),
-              //           button: TextStyle(
-              //             color: Colors.white,
-              //             fontSize: 16,
-              //           ),
-              //           display1: TextStyle(
-              //             fontSize: 26,
-              //             color: MyApp.secondaryColor,
-              //             fontWeight: FontWeight.bold,
-              //           )),
-              //     ),
-              //     home: Scaffold(
-              //         appBar: AppBar(
-              //           backgroundColor: Colors.white,
-              //           title: Text(
-              //             'Sennit',
-              //             style: Theme.of(context).textTheme.subhead,
-              //           ),
-              //           centerTitle: true,
-              //         ),
-              //         body: Center(child: CircularProgressIndicator())),
-              //   );
-              // }
-              // if (snapshot.data != null) {
-              //   MaterialApp(
-              //     theme: ThemeData(
-              //       backgroundColor: Colors.white,
-              //       fontFamily: 'ArchivoNarrow',
-              //       primaryColor: MyApp.secondaryColor,
-              //       accentColor: MyApp.secondaryColor,
-              //       // buttonColor: primaryColor,
-              //       buttonTheme: ButtonThemeData(
-              //         buttonColor: MyApp.secondaryColor,
-              //         shape: RoundedRectangleBorder(
-              //           borderRadius: BorderRadius.all(
-              //             Radius.circular(6),
-              //           ),
-              //         ),
-              //       ),
-              //       bottomAppBarColor: Colors.white,
-              //       bottomAppBarTheme: BottomAppBarTheme(
-              //         color: Colors.white,
-              //         elevation: 8,
-              //       ),
-              //       appBarTheme: AppBarTheme(
-              //         iconTheme: IconThemeData(
-              //           color: MyApp.secondaryColor,
-              //         ),
-              //         color: Colors.white,
-              //         textTheme: TextTheme(
-              //           title: TextStyle(
-              //             fontWeight: FontWeight.bold,
-              //             fontFamily: 'ArchivoNarrow',
-              //             fontSize: 22,
-              //             color: MyApp.secondaryColor,
-              //           ),
-              //         ),
-              //       ),
-              //       iconTheme: IconThemeData(
-              //         color: MyApp.secondaryColor,
-              //       ),
-              //       textTheme: TextTheme(
-              //           title: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontSize: 22,
-              //             fontWeight: FontWeight.normal,
-              //           ),
-              //           headline: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontSize: 36,
-              //             fontWeight: FontWeight.bold,
-              //           ),
-              //           subhead: TextStyle(
-              //             color: MyApp.secondaryColor,
-              //             fontWeight: FontWeight.bold,
-              //             fontSize: 18,
-              //           ),
-              //           subtitle: TextStyle(
-              //             color: Colors.black,
-              //             fontSize: 16,
-              //           ),
-              //           body1: TextStyle(
-              //             fontSize: 14,
-              //             decorationColor: Colors.black,
-              //             fontFamily: 'Roboto',
-              //           ),
-              //           body2: TextStyle(
-              //             fontSize: 14,
-              //             decorationColor: Colors.black,
-              //             fontFamily: 'Roboto',
-              //             fontStyle: FontStyle.italic,
-              //           ),
-              //           button: TextStyle(
-              //             color: Colors.white,
-              //             fontSize: 16,
-              //           ),
-              //           display1: TextStyle(
-              //             fontSize: 26,
-              //             color: MyApp.secondaryColor,
-              //             fontWeight: FontWeight.bold,
-              //           )),
-              //     ),
-              //     home: UpdateNoticeRoute(
-              //       snapshot.data['compulsory'],
-              //       snapshot.data['version'],
-              //     ),
-              //   );
-              // }
-            };
             return MaterialApp(
               navigatorKey: navigatorKey,
               localizationsDelegates: const [
@@ -598,15 +420,8 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 Locale('ar', ''),
               ],
               navigatorObservers: [BotToastNavigatorObserver()],
-              
-              initialRoute:
-                  // (snapshot.connectionState == ConnectionState.waiting ||
-                  //         snapshot.data != null)
-                      // ? '/'
-                      // : 
-                      MyApp.initialRoute,
+              initialRoute: MyApp.initialRoute,
               routes: {
-                // '/': (context) => StartPage(),
                 MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
                       OpenAs.NAVIGATION,
                       fromCoordinate: LatLng(31, 74),
@@ -664,7 +479,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   ),
                   color: Colors.white,
                   textTheme: TextTheme(
-                    title: TextStyle(
+                    headline6: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontFamily: 'ArchivoNarrow',
                       fontSize: 22,
@@ -676,45 +491,40 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   color: MyApp.secondaryColor,
                 ),
                 textTheme: TextTheme(
-                    title: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.normal,
-                    ),
-                    headline: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    subhead: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                    subtitle: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                    ),
-                    body1: TextStyle(
-                      fontSize: 14,
-                      decorationColor: Colors.black,
-                      fontFamily: 'Roboto',
-                    ),
-                    body2: TextStyle(
-                      fontSize: 14,
-                      decorationColor: Colors.black,
-                      fontFamily: 'Roboto',
-                      fontStyle: FontStyle.italic,
-                    ),
-                    button: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                    display1: TextStyle(
-                      fontSize: 26,
-                      color: MyApp.secondaryColor,
-                      fontWeight: FontWeight.bold,
-                    )),
+                  headline6: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.normal,
+                  ),
+                  headline5: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  subtitle1: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  subtitle2: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
+                  bodyText2: TextStyle(
+                    fontSize: 14,
+                    decorationColor: Colors.black,
+                    fontFamily: 'Roboto',
+                  ),
+                  button: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  headline4: TextStyle(
+                    fontSize: 26,
+                    color: MyApp.secondaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               home: snapshot.connectionState == ConnectionState.waiting
                   ? Scaffold(
@@ -722,7 +532,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                         backgroundColor: Colors.white,
                         title: Text(
                           'Sennit',
-                          style: Theme.of(context).textTheme.subhead,
+                          style: Theme.of(context).textTheme.subtitle1,
                         ),
                         centerTitle: true,
                       ),
@@ -788,14 +598,14 @@ class SnackbarLayout extends StatelessWidget {
               children: <Widget>[
                 Text(
                   title ?? '',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
                 SizedBox(
                   height: 8,
                 ),
                 Text(
                   subtitle ?? '',
-                  style: Theme.of(context).textTheme.subtitle,
+                  style: Theme.of(context).textTheme.subtitle2,
                 ),
               ],
             ),

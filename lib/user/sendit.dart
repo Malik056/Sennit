@@ -711,7 +711,7 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..staging = false
-      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
+      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
       ..isPreAuth = true
       ..displayFee = true;
 
@@ -818,7 +818,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Pick From',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   Opacity(
                     opacity: 0,
@@ -982,7 +982,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Deliver To',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   Opacity(
                     opacity: 0,
@@ -1150,7 +1150,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     ' Distance ',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Spacer(),
                   Text(
@@ -1173,7 +1173,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                   Center(
                       child: Text(
                     'Package Details',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   )),
                   ListTile(
                     title: Text('Required # of boxes'),
@@ -1320,7 +1320,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       children: <Widget>[
                         Text(
                           'Delivery Charges: R${getCharges()}',
-                          style: Theme.of(context).textTheme.subhead,
+                          style: Theme.of(context).textTheme.subtitle1,
                         ),
                       ],
                     ),

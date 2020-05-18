@@ -107,7 +107,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.firstName = firstName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       maxLines: 1,
@@ -120,7 +120,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.lastName = lastName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       keyboardType: TextInputType.emailAddress,
@@ -148,7 +148,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         // driver.email = email;
                         // return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       controller: passwordController,
@@ -163,7 +163,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       obscureText: true,
@@ -177,7 +177,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     Opacity(
                       opacity: 0,
@@ -298,7 +298,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.phoneNumber = cellNum;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     // ListTile(
                     //   leading: Icon(

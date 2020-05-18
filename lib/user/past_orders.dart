@@ -60,7 +60,7 @@ class PastOrdersRoute extends StatelessWidget {
 //           children: <Widget>[
 //             Text(
 //               'Sennit',
-//               style: Theme.of(context).textTheme.display1,
+//               style: Theme.of(context).textTheme.headline4,
 //             ),
 //             SizedBox(
 //               height: 14.0,
@@ -295,7 +295,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                     ),
 //                     Text(
 //                       'Order Id: ${data['orderId']}',
-//                       style: Theme.of(context).textTheme.subhead,
+//                       style: Theme.of(context).textTheme.subtitle1,
 //                     ),
 //                     SizedBox(
 //                       height: 6,
@@ -304,7 +304,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Picked From:',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -320,7 +320,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Drop Off:',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -336,7 +336,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Boxes: ',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -352,7 +352,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Sleeves Required',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -369,7 +369,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                         Expanded(
 //                           child: Text(
 //                             'Receiver Email: ',
-//                             style: Theme.of(context).textTheme.subhead,
+//                             style: Theme.of(context).textTheme.subtitle1,
 //                           ),
 //                         ),
 //                         Expanded(
@@ -381,7 +381,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                         Expanded(
 //                           child: Text(
 //                             'Receiver Phone: ',
-//                             style: Theme.of(context).textTheme.subhead,
+//                             style: Theme.of(context).textTheme.subtitle1,
 //                           ),
 //                         ),
 //                         Expanded(
@@ -402,7 +402,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           '${data['dropToDoor'] ? 'Picked From Door' : 'Met at Vehicle'}',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                       ],
 //                     ),
@@ -413,7 +413,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Total Distance',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -435,7 +435,7 @@ class PastOrdersRoute extends StatelessWidget {
 //                       children: <Widget>[
 //                         Text(
 //                           'Total Bill: ',
-//                           style: Theme.of(context).textTheme.subhead,
+//                           style: Theme.of(context).textTheme.subtitle1,
 //                         ),
 //                         Expanded(
 //                           child: Text(
@@ -499,7 +499,7 @@ class PastOrdersRoute extends StatelessWidget {
 //               alignment: Alignment.bottomRight,
 //               child: Text(
 //                 'Price: R${snapshot.data['price']})',
-//                 style: Theme.of(context).textTheme.subhead,
+//                 style: Theme.of(context).textTheme.subtitle1,
 //               ),
 //             ),
 //           ],

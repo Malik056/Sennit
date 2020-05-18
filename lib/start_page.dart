@@ -200,7 +200,7 @@ class MyStartPageState extends State<MyStartPage>
           //       //           children: <Widget>[
           //       //             Text(
           //       //               'Swipe Right to Explore  ',
-          //       //               style: Theme.of(context).textTheme.title.copyWith(
+          //       //               style: Theme.of(context).textTheme.headline6.copyWith(
           //       //                     fontWeight: FontWeight.normal,
           //       //                   ),
           //       //             ),
@@ -241,8 +241,8 @@ class MyStartPageState extends State<MyStartPage>
                 text: 'About Us\n',
                 style: MediaQuery.of(context).size.height <
                         800 / MediaQuery.of(context).devicePixelRatio
-                    ? Theme.of(context).textTheme.subhead.copyWith(fontSize: 14)
-                    : Theme.of(context).textTheme.headline,
+                    ? Theme.of(context).textTheme.subtitle1.copyWith(fontSize: 14)
+                    : Theme.of(context).textTheme.headline5,
                 children: [
                   TextSpan(
                     text:
@@ -251,9 +251,9 @@ class MyStartPageState extends State<MyStartPage>
                             800 / MediaQuery.of(context).devicePixelRatio
                         ? Theme.of(context)
                             .textTheme
-                            .body1
+                            .bodyText2
                             .copyWith(fontSize: 12)
-                        : Theme.of(context).textTheme.body1,
+                        : Theme.of(context).textTheme.bodyText2,
                   ),
                 ],
               ),
@@ -275,7 +275,7 @@ class MyStartPageState extends State<MyStartPage>
                 ),
                 title: Text(
                   'I am a Partner Store',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
                 trailing: Icon(
                   Icons.navigate_next,
@@ -306,7 +306,7 @@ class MyStartPageState extends State<MyStartPage>
                 ),
                 title: Text(
                   'I am a User',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
                 trailing: Icon(
                   Icons.navigate_next,
@@ -331,7 +331,7 @@ class MyStartPageState extends State<MyStartPage>
                 ),
                 title: Text(
                   'I am a Driver',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
                 trailing: Icon(
                   Icons.navigate_next,

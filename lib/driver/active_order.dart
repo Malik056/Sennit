@@ -454,7 +454,7 @@ class _DeliveryDonePopUpState extends State<_DeliveryDonePopUp> {
             ),
             Text(
               'Confirmation Key',
-              style: Theme.of(context).textTheme.display1,
+              style: Theme.of(context).textTheme.headline4,
             ),
             SizedBox(
               height: 3,
@@ -540,14 +540,14 @@ class _CancelOrderPopUpState extends State<_CancelOrderPopUp> {
               ),
               Text(
                 'Exit',
-                style: Theme.of(context).textTheme.display1,
+                style: Theme.of(context).textTheme.headline4,
               ),
               SizedBox(
                 height: 5,
               ),
               Text(
                 'Are you sure you wanna cancel the delivery? ',
-                style: Theme.of(context).textTheme.subtitle,
+                style: Theme.of(context).textTheme.subtitle2,
               ),
               SizedBox(
                 height: 2,
@@ -638,7 +638,7 @@ class _OrderConfirmationState extends State<_OrderConfirmation> {
                 ),
                 Text(
                   'Accept the order?',
-                  style: Theme.of(context).textTheme.title,
+                  style: Theme.of(context).textTheme.headline6,
                 ),
                 SizedBox(
                   height: 10,

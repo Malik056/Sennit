@@ -573,7 +573,7 @@ class __BodyState extends State<_Body> {
                                             'Not Registered',
                                         style: Theme.of(context)
                                             .textTheme
-                                            .title
+                                            .headline6
                                             .copyWith(
                                               fontWeight: FontWeight.bold,
                                               color: Theme.of(context)
@@ -597,7 +597,7 @@ class __BodyState extends State<_Body> {
                                       //             '${time / 60} minutes, ${time % 60} seconds',
                                       //         style: Theme.of(context)
                                       //             .textTheme
-                                      //             .body1,
+                                      //             .bodyText2,
                                       //       ),
                                       //     ],
                                       //   ),
@@ -612,14 +612,14 @@ class __BodyState extends State<_Body> {
                                               text: 'Phone: ',
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .subtitle,
+                                                  .subtitle2,
                                             ),
                                             TextSpan(
                                               text: driverPhoneNumber ??
                                                   'Not Available',
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .body1,
+                                                  .bodyText2,
                                             ),
                                           ],
                                         ),
@@ -658,7 +658,7 @@ class __BodyState extends State<_Body> {
                                             'Go',
                                             style: Theme.of(context)
                                                 .textTheme
-                                                .subhead,
+                                                .subtitle1,
                                           ),
                                         ],
                                       ),
@@ -679,7 +679,7 @@ class __BodyState extends State<_Body> {
                                     ' Finding Your Driver .... ',
                                     style: Theme.of(context)
                                         .textTheme
-                                        .title
+                                        .headline6
                                         .copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -851,7 +851,7 @@ class _MySolidBottomSheetForReceiveItState
                   ),
                   Text(
                     'OrderId: ${widget.data['orderId']}',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
                     height: 10,
@@ -934,7 +934,7 @@ class _MySolidBottomSheetForReceiveItState
                                                       [index]['itemName'],
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead,
+                                                      .subtitle1,
                                                 ),
                                                 SizedBox(
                                                   height: 4,
@@ -1343,7 +1343,7 @@ class _VerificationCodePopUpState extends State<_VerificationCodePopUp> {
                         child: Text(
                           'Verification Code\n' + widget.verificationCode,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.title.copyWith(
+                          style: Theme.of(context).textTheme.headline6.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
@@ -1461,7 +1461,7 @@ class _OrderTileState extends State<_OrderTile> {
           ),
           Text(
             'OrderId: ${widget.data['orderId']}',
-            style: Theme.of(context).textTheme.subhead,
+            style: Theme.of(context).textTheme.subtitle1,
           ),
           SizedBox(
             height: 10,
@@ -1663,7 +1663,7 @@ class _OrderTileState extends State<_OrderTile> {
           Text(
             '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'}
               ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-            style: Theme.of(context).textTheme.subhead.copyWith(fontSize: 16),
+            style: Theme.of(context).textTheme.subtitle1.copyWith(fontSize: 16),
           ),
         ],
       ),

@@ -172,7 +172,6 @@ class _HomeScreenState extends State<HomeScreenDriver>
                         builder: (ctx) => StartPage(),
                         settings: RouteSettings(
                           name: MyApp.startPage,
-                          isInitialRoute: true,
                         ),
                       ),
                     );
@@ -294,7 +293,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
                           Text(
                             'Your Vehicle is not Registered!\nPlease contact chaseF@sennit.co.za.\n\nTap to Retry',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.title,
+                            style: Theme.of(context).textTheme.headline6,
                           ),
                           SizedBox(height: 10),
                           Icon(
@@ -373,7 +372,7 @@ class _NotificationPageState extends State<_NotificationPage> {
               'No Notifications',
               style: Theme.of(context)
                   .textTheme
-                  .title
+                  .headline6
                   .copyWith(fontWeight: FontWeight.bold),
             ),
           );
@@ -399,10 +398,10 @@ class _NotificationPageState extends State<_NotificationPage> {
               }
             }
           }
-           if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
-               15) {
+          if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
+              15) {
             documents.add(doc);
-           }
+          }
         });
         List<Widget> tiles = [];
 
@@ -454,7 +453,7 @@ class _NotificationPageState extends State<_NotificationPage> {
               'No Notifications',
               style: Theme.of(context)
                   .textTheme
-                  .title
+                  .headline6
                   .copyWith(fontWeight: FontWeight.bold),
             ),
           );
@@ -487,7 +486,7 @@ class SennitNotificationTile extends StatelessWidget {
           children: <Widget>[
             Text(
               'Sennit',
-              style: Theme.of(context).textTheme.display1,
+              style: Theme.of(context).textTheme.headline4,
             ),
             SizedBox(
               height: 14.0,
@@ -761,7 +760,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
             children: <Widget>[
               Text(
                 'Receive it',
-                style: Theme.of(context).textTheme.display1,
+                style: Theme.of(context).textTheme.headline4,
               ),
               SizedBox(
                 height: 14.0,
@@ -1197,7 +1196,7 @@ class _ProfilePage extends StatelessWidget {
           ),
           Text(
             '${driver.fullName}',
-            style: Theme.of(context).textTheme.subhead,
+            style: Theme.of(context).textTheme.subtitle1,
           ),
           SizedBox(
             height: 6,
@@ -1249,7 +1248,7 @@ class _ProfilePage extends StatelessWidget {
           Align(
             child: Text(
               'Reviews',
-              style: Theme.of(context).textTheme.display1,
+              style: Theme.of(context).textTheme.headline4,
             ),
           ),
           SizedBox(

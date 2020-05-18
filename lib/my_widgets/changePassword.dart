@@ -132,7 +132,7 @@ class AuthenticateAgainRoute extends StatelessWidget {
                   // Spacer(),
                   Text(
                     'Verify Password',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   SizedBox(
                     height: 40,

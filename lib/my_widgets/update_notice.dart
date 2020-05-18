@@ -56,7 +56,7 @@ class UpdateNoticeRoute extends StatelessWidget {
                 ),
                 Text(
                   'Update Notice',
-                  style: Theme.of(context).textTheme.title.copyWith(
+                  style: Theme.of(context).textTheme.headline6.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
@@ -67,12 +67,12 @@ class UpdateNoticeRoute extends StatelessWidget {
                     ? Text(
                         '''A new version $version of the app is available.\nThis is a compulsory update.\nPlease Update Your App!''',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.subhead,
+                        style: Theme.of(context).textTheme.subtitle1,
                       )
                     : Text(
                         '''A new version $version is available.\nPlease update the app and get the most out of it.''',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.subhead,
+                        style: Theme.of(context).textTheme.subtitle1,
                       ),
                 SizedBox(
                   height: 15,

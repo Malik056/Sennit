@@ -58,7 +58,7 @@
 //               TextFormField(
 //                 keyboardType: TextInputType.emailAddress,
 //                 decoration: InputDecoration(labelText: 'Email'),
-//                 // style: Theme.of(context).textTheme.body1,
+//                 // style: Theme.of(context).textTheme.bodyText2,
 //                 validator: (email) {
 //                   if (email.isEmpty) {
 //                     return "Email can't be empty";
@@ -459,7 +459,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                 decoration: InputDecoration(
                     labelText: 'Email',
                     focusColor: Theme.of(context).accentColor),
-                // style: Theme.of(context).textTheme.body1,
+                // style: Theme.of(context).textTheme.bodyText2,
                 validator: (email) {
                   if (email.isEmpty) {
                     return "Email can't be empty";

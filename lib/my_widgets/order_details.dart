@@ -60,16 +60,16 @@ class OrderTile extends StatelessWidget {
         ),
         title: Text(
           '${data['numberOfSleevesNeeded'] == null ? 'Receive it' : 'Sennit'}',
-          style: Theme.of(context).textTheme.title,
+          style: Theme.of(context).textTheme.headline6,
         ),
         subtitle: Text.rich(
           TextSpan(
             text: 'OrderId: ',
-            style: Theme.of(context).textTheme.subhead,
+            style: Theme.of(context).textTheme.subtitle1,
             children: [
               TextSpan(
                 text: '${data['orderId']}\n',
-                style: Theme.of(context).textTheme.body1,
+                style: Theme.of(context).textTheme.bodyText2,
               ),
               TextSpan(
                 text: 'Date: ',
@@ -77,21 +77,21 @@ class OrderTile extends StatelessWidget {
               TextSpan(
                 text:
                     '''${DateFormat("dd/MM/yyyy").format(DateTime.fromMillisecondsSinceEpoch(data['date']))}\n''',
-                style: Theme.of(context).textTheme.body1,
+                style: Theme.of(context).textTheme.bodyText2,
               ),
               TextSpan(
                 text: 'Status: ',
               ),
               TextSpan(
                 text: '${data['status'] ?? status}',
-                style: Theme.of(context).textTheme.body1,
+                style: Theme.of(context).textTheme.bodyText2,
               ),
             ],
           ),
         ),
         trailing: Text(
           'R${(data['price'] as double).toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.subhead,
+          style: Theme.of(context).textTheme.subtitle1,
         ),
       ),
     );
@@ -134,7 +134,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'OrderId: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Text(
@@ -151,7 +151,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'PickUp Address: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Expanded(
@@ -170,7 +170,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Delivery Address: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Expanded(
@@ -188,7 +188,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Boxes: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Text(
@@ -204,7 +204,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Status: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Expanded(
@@ -215,7 +215,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                   ),
                   Text(
                     'Date: ',
-                    style: textTheme.subhead,
+                    style: textTheme.subtitle1,
                     strutStyle: StrutStyle(height: strutHeight),
                   ),
                   Expanded(
@@ -238,7 +238,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           'Driver: ',
-                          style: textTheme.subhead,
+                          style: textTheme.subtitle1,
                           strutStyle: StrutStyle(height: strutHeight),
                         ),
                         Text(
@@ -274,7 +274,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                           child: Text(
                             'Track Your Order',
                             style:
-                                Theme.of(context).textTheme.subtitle.copyWith(
+                                Theme.of(context).textTheme.subtitle2.copyWith(
                                       color: Colors.white,
                                     ),
                           ),
@@ -285,7 +285,7 @@ class SennitOrderDetailsRoute extends StatelessWidget {
                   Spacer(),
                   Text(
                     'Total: R${(data['price'] as double).toStringAsFixed(2)}',
-                    style: textTheme.title,
+                    style: textTheme.headline6,
                   ),
                   SizedBox(
                     width: 10,
@@ -382,7 +382,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                 // Center(
                 //   child: Text(
                 //     'ReceiveIt',
-                //     style: textTheme.headline,
+                //     style: textTheme.headline5,
                 //   ),
                 // ),
                 SizedBox(
@@ -392,7 +392,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       'OrderId: ',
-                      style: textTheme.subhead,
+                      style: textTheme.subtitle1,
                       strutStyle: StrutStyle(height: strutHeight),
                     ),
                     Text(
@@ -411,7 +411,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             'Delivered To: ',
-                            style: textTheme.subhead,
+                            style: textTheme.subtitle1,
                             strutStyle: StrutStyle(height: strutHeight),
                           ),
                           Expanded(
@@ -451,7 +451,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       'Date: ',
-                      style: textTheme.subhead,
+                      style: textTheme.subtitle1,
                       strutStyle: StrutStyle(
                         height: strutHeight,
                       ),
@@ -469,7 +469,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                     SizedBox(width: 20),
                     Text(
                       'Status: ',
-                      style: textTheme.subhead,
+                      style: textTheme.subtitle1,
                       strutStyle: StrutStyle(
                         height: strutHeight,
                       ),
@@ -496,7 +496,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                             children: <Widget>[
                               Text(
                                 'Driver: ',
-                                style: textTheme.subhead,
+                                style: textTheme.subtitle1,
                                 strutStyle: StrutStyle(
                                   height: strutHeight,
                                 ),
@@ -566,7 +566,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                             children: <Widget>[
                                               Text(
                                                 item['itemName'],
-                                                style: textTheme.subhead,
+                                                style: textTheme.subtitle1,
                                               ),
                                               Spacer(),
                                               Expanded(
@@ -582,7 +582,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                                   ),
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead
+                                                      .subtitle1
                                                       .copyWith(
                                                         fontSize: (22 -
                                                             item['storeName']
@@ -608,7 +608,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                             Spacer(),
                                             Text(
                                               '''Price: R${item['price']} x ${(data['itemsData'][item['itemId']]['quantity'] as num).toInt()}''',
-                                              style: textTheme.subhead,
+                                              style: textTheme.subtitle1,
                                             ),
                                           ]),
                                         ],
@@ -660,7 +660,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                             child: Text(
                               'Track Your Order',
                               style:
-                                  Theme.of(context).textTheme.subtitle.copyWith(
+                                  Theme.of(context).textTheme.subtitle2.copyWith(
                                         color: Colors.white,
                                       ),
                             ),
@@ -669,7 +669,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                     Spacer(),
                     Text(
                       'Total: R${(data['price'] as double).toStringAsFixed(2)}',
-                      style: textTheme.title,
+                      style: textTheme.headline6,
                     ),
                     SizedBox(
                       width: 10,

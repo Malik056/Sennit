@@ -10,7 +10,6 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
-import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/user/receiveit.dart';
 
 class UserHomeRoute extends StatelessWidget {
@@ -280,7 +279,7 @@ class UserHomeState extends State<UserHomeBody> {
             ),
             Text(
               'Choose a Service',
-              style: Theme.of(context).textTheme.headline,
+              style: Theme.of(context).textTheme.headline5,
             ),
             Spacer(),
             Row(
@@ -526,7 +525,7 @@ class UserHomeState extends State<UserHomeBody> {
                 Expanded(
                   child: Text(
                     'Hold down a button to see Help',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -571,7 +570,7 @@ class HelpScreenSennit extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'This Feature helps you to send anything, anywhere to anyone with no effort. We are responsible for picking the package from your door and delivering it to your friend\'s door. Just Follow the Instruction below and Leave everything to Us.',
-                    style: Theme.of(context).textTheme.subtitle,
+                    style: Theme.of(context).textTheme.subtitle2,
                     textAlign: TextAlign.justify,
                   ),
                 ),
@@ -586,7 +585,7 @@ class HelpScreenSennit extends StatelessWidget {
                   child: Text(
                     'Instructions',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                 ),
               ],
@@ -622,7 +621,7 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
                 Text(
                   'Pick a pickup point',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -657,7 +656,7 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
                 Text(
                   'Provide delivery Location',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -692,7 +691,7 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
                 Text(
                   'Provide Details of your package',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -724,7 +723,7 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
                 Text(
                   'Click Done',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -760,7 +759,7 @@ class HelpScreenSennit extends StatelessWidget {
                 ),
                 Text(
                   'Make Payment',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -769,7 +768,7 @@ class HelpScreenSennit extends StatelessWidget {
             ),
             Text(
               'Our Delivery Guy will be at your door step in a flash.',
-              style: Theme.of(context).textTheme.subtitle,
+              style: Theme.of(context).textTheme.subtitle2,
               textAlign: TextAlign.center,
             ),
           ],
@@ -808,7 +807,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'This Feature helps you to order anything, anywhere from our partner stores. We are responsible for delivering the product to your door step. Just Follow the Instruction below and Leave everything to Us.',
-                    style: Theme.of(context).textTheme.subtitle,
+                    style: Theme.of(context).textTheme.subtitle2,
                     textAlign: TextAlign.justify,
                   ),
                 ),
@@ -823,7 +822,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                   child: Text(
                     'Instructions',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                 ),
               ],
@@ -860,7 +859,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Select a product from any of our partner store',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                 ),
               ],
@@ -896,7 +895,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 ),
                 Text(
                   'Select the product quantity',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -931,7 +930,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 ),
                 Text(
                   'Enter the delivery location',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -966,7 +965,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 ),
                 Text(
                   'Click Done',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -999,7 +998,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
                 ),
                 Text(
                   'Make Payment',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
               ],
             ),
@@ -1008,7 +1007,7 @@ class HelpScreenReceiveIt extends StatelessWidget {
             ),
             Text(
               'Our Delivery Guy will be at your door step in a flash.',
-              style: Theme.of(context).textTheme.subtitle,
+              style: Theme.of(context).textTheme.subtitle2,
               textAlign: TextAlign.center,
             ),
           ],

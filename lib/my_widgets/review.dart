@@ -159,7 +159,7 @@ class ReviewWidgetState extends State<ReviewWidget> {
                               border: InputBorder.none,
                             ),
                             controller: commentController,
-                            style: Theme.of(context).textTheme.subtitle,
+                            style: Theme.of(context).textTheme.subtitle2,
                           ),
                         ),
                       ),
@@ -403,7 +403,7 @@ class _StarWidgetState extends State<_StarWidget> {
           width: 40,
           child: Text(
             rating != null ? '${rating.toStringAsFixed(1)}' : "0.0",
-            style: Theme.of(context).textTheme.title,
+            style: Theme.of(context).textTheme.headline6,
           ),
         ),
         SizedBox(

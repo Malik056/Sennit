@@ -59,7 +59,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                 decoration: InputDecoration(
                     labelText: 'Email',
                     focusColor: Theme.of(context).accentColor),
-                // style: Theme.of(context).textTheme.body1,
+                // style: Theme.of(context).textTheme.bodyText2,
                 validator: (email) {
                   if (email.isEmpty) {
                     return "Email can't be empty";

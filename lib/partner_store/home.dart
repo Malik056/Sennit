@@ -250,7 +250,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                 ),
                 accountName: Text(
                   (Session.data['partnerStore'] as Store)?.storeName ?? '',
-                  style: Theme.of(context).textTheme.subhead.copyWith(
+                  style: Theme.of(context).textTheme.subtitle1.copyWith(
                         fontSize: 12,
                       ),
                 ),
@@ -300,7 +300,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                 // 'Signout',
                 // style: Theme.of(context)
                 //     .textTheme
-                //     .subhead
+                //     .subtitle1
                 //     .copyWith(color: Theme.of(context).primaryColor),
               ),
               onPressed: () async {
@@ -329,7 +329,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   ),
                   Text(
                     '  Pending Orders',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
                     height: 10,
@@ -345,7 +345,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   ),
                   Text(
                     '  Completed Orders',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
                     height: 10,
@@ -398,7 +398,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                     return Center(
                       child: Text(
                         'No Orders yet!',
-                        style: Theme.of(context).textTheme.title.copyWith(
+                        style: Theme.of(context).textTheme.headline6.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -489,7 +489,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                                               ),
                                               Text(
                                                 itemSnapshot.data['itemName'],
-                                                style: textTheme.title.copyWith(
+                                                style: textTheme.headline6.copyWith(
                                                     fontWeight:
                                                         FontWeight.bold),
                                               ),
@@ -500,14 +500,14 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                                                 children: <Widget>[
                                                   Text(
                                                     'Total Orders: ',
-                                                    style: textTheme.subhead
+                                                    style: textTheme.subtitle1
                                                         .copyWith(
                                                       fontSize: 16,
                                                     ),
                                                   ),
                                                   Text(
                                                     '$numberOfOrders',
-                                                    style: textTheme.subtitle
+                                                    style: textTheme.subtitle2
                                                         .copyWith(
                                                       fontSize: 16,
                                                     ),
@@ -525,14 +525,14 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                                                       'Price: ',
                                                       strutStyle:
                                                           StrutStyle(height: 1),
-                                                      style: textTheme.title
+                                                      style: textTheme.headline6
                                                           .copyWith(
                                                               // fontWeight: FontWeight.bold,
                                                               ),
                                                     ),
                                                     Text(
                                                       '${itemSnapshot.data['price']}  ',
-                                                      style: textTheme.title
+                                                      style: textTheme.headline6
                                                           .copyWith(
                                                               // fontSize: 18,
                                                               ),
@@ -572,7 +572,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                                 //           children: <Widget>[
                                 //             Text(
                                 //               'Total Orders',
-                                //               style: textTheme.subhead,
+                                //               style: textTheme.subtitle1,
                                 //             ),
                                 //             Text('$numberOfOrders'),
                                 //           ],
@@ -586,7 +586,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                                 //           children: <Widget>[
                                 //             Text(
                                 //               'Price: ',
-                                //               style: textTheme.subhead,
+                                //               style: textTheme.subtitle1,
                                 //             ),
                                 //             Text('${itemSnapshot.data['price']}'),
                                 //           ],
@@ -699,12 +699,12 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'ID: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
                                       keys[index],
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -717,7 +717,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Date Ordered: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
@@ -726,7 +726,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                           data[keys[index]]['dateOrdered'],
                                         ),
                                       ),
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -739,7 +739,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Date Delivered: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
@@ -748,7 +748,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                           data[keys[index]]['dateDelivered'],
                                         ),
                                       ),
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -761,12 +761,12 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Quantity: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
                                       '${data[keys[index]]['quantity']}',
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -780,13 +780,13 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Delivered To: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Expanded(
                                       child: Text(
                                         data[keys[index]]['deliveredTo'],
-                                        style: textTheme.subtitle
+                                        style: textTheme.subtitle2
                                             .copyWith(fontSize: 14),
                                       ),
                                     ),
@@ -802,13 +802,13 @@ class ItemOrdersRoute extends StatelessWidget {
                                     children: <Widget>[
                                       Text(
                                         'Price: ',
-                                        style: textTheme.title.copyWith(
+                                        style: textTheme.headline6.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       Text(
                                         '${data[keys[index]]['price']} per Item',
-                                        style: textTheme.subtitle
+                                        style: textTheme.subtitle2
                                             .copyWith(fontSize: 18),
                                       ),
                                     ],
@@ -941,7 +941,7 @@ class PastOrdersRoute extends StatelessWidget {
             // ),
             // Text(
             //   'Pending Orders',
-            //   style: Theme.of(context).textTheme.subhead,
+            //   style: Theme.of(context).textTheme.subtitle1,
             // ),
             // SizedBox(
             //   height: 10,

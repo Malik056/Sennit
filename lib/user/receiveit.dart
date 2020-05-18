@@ -26,7 +26,6 @@ import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
 import 'package:sennit/user/signin.dart';
-import 'package:sennit/user/signup.dart';
 import '../main.dart';
 import 'generic_tracking_screen.dart';
 
@@ -945,8 +944,9 @@ class StoreItem extends StatelessWidget {
                                       ),
                                       Text(
                                         store.storeItems[index].itemName,
-                                        style:
-                                            Theme.of(context).textTheme.subhead,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .subtitle1,
                                       ),
                                       SizedBox(
                                         height: 4,
@@ -1041,7 +1041,7 @@ class StoreMainPage extends StatelessWidget {
                     centerTitle: true,
                     title: Text(
                       store.storeName,
-                      style: Theme.of(context).textTheme.title,
+                      style: Theme.of(context).textTheme.headline6,
                     ),
                     background: Stack(
                       fit: StackFit.expand,
@@ -1216,7 +1216,7 @@ class MenuItem extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     item.itemName,
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
                     height: 4,
@@ -1300,7 +1300,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               ? CircularProgressIndicator()
               : Text(
                   isInCart ? 'Added to Cart' : 'Add to Cart',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
         ),
         onTap: () async {
@@ -1479,7 +1479,7 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
       //     child: FlatButton(
       //       child: Text(
       //         'Add to Cart',
-      //         style: Theme.of(context).textTheme.subhead,
+      //         style: Theme.of(context).textTheme.subtitle1,
       //       ),
       //       onPressed: () {},
       //     ),
@@ -1658,7 +1658,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                 centerTitle: true,
                 title: Text(
                   widget.item.itemName,
-                  style: Theme.of(context).textTheme.title,
+                  style: Theme.of(context).textTheme.headline6,
                 ),
                 collapseMode: CollapseMode.pin,
                 background: Stack(
@@ -1760,7 +1760,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                             children: <Widget>[
                               Text(
                                 'Price: R${widget.item.price.toInt()}',
-                                style: Theme.of(context).textTheme.title,
+                                style: Theme.of(context).textTheme.headline6,
                               ),
                               SizedBox(
                                 width: 20,
@@ -1774,7 +1774,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                       widget.item.description == ""
                                   ? 'No Description Available'
                                   : widget.item.description,
-                              style: Theme.of(context).textTheme.body1,
+                              style: Theme.of(context).textTheme.bodyText2,
                             ),
                           ),
                           SizedBox(
@@ -1910,7 +1910,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                                       '${review.reviewedBy}',
                                                       style: Theme.of(context)
                                                           .textTheme
-                                                          .subhead,
+                                                          .subtitle1,
                                                     ),
                                                     // mainAxisSize: MainAxisSize.max,
                                                     Text(
@@ -2665,7 +2665,7 @@ class ShoppingCartRoute extends StatelessWidget {
                   ),
                   Text(
                     'Login to Checkout',
-                    style: Theme.of(context).textTheme.title.copyWith(
+                    style: Theme.of(context).textTheme.headline6.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -2745,7 +2745,8 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
+      ..companyName =
+          Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
       ..staging = false
       ..isPreAuth = false
       ..displayFee = true;
@@ -2875,7 +2876,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Deliver To',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   Opacity(
                     opacity: 0,
@@ -3163,7 +3164,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             child: Text(
               'Cart is Empty',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headline,
+              style: Theme.of(context).textTheme.headline5,
             ),
           ),
         ),
@@ -3190,7 +3191,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             Center(
               child: Text(
                 'Items In Cart',
-                style: Theme.of(context).textTheme.headline,
+                style: Theme.of(context).textTheme.headline5,
               ),
             ),
             Column(
@@ -3394,7 +3395,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                   'Cancel',
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead,
+                                                      .subtitle1,
                                                 ),
                                               ],
                                             ),
@@ -3522,7 +3523,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                   'Yes',
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead
+                                                      .subtitle1
                                                       .copyWith(
                                                         color: Colors.red,
                                                       ),
@@ -3548,7 +3549,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Delivery\nCharges',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Container(
                     color: Theme.of(context).primaryColor,
@@ -3560,7 +3561,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     constraints: BoxConstraints(maxWidth: 180),
                     child: Text(
                       '''${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : ((ShoppingCartRoute._toAddress?.coordinates?.latitude ?? 0) == 0 && (ShoppingCartRoute._toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : getDeliveryCharges()}''',
-                      style: Theme.of(context).textTheme.subtitle,
+                      style: Theme.of(context).textTheme.subtitle2,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.visible,
                     ),
@@ -3573,7 +3574,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   ),
                   Text(
                     'Total\nR${totalDeliveryCharges.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -3584,7 +3585,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               alignment: Alignment.centerRight,
               child: Text(
                 'Total: R${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)}',
-                style: Theme.of(context).textTheme.title.copyWith(
+                style: Theme.of(context).textTheme.headline6.copyWith(
                       inherit: true,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3604,7 +3605,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     double total = 0;
     // int index = 0;
     Map<String, dynamic> uniqueStores = {};
-    Map<String, Map<String, dynamic>> deliveryCharges = {};
 
     for (var item in items) {
       if (uniqueStores.containsKey(item.latlng.toString())) {
@@ -3841,7 +3841,8 @@ class CartItemState extends State<CartItem> {
                                 children: [
                                   Text(
                                     widget.item.itemName,
-                                    style: Theme.of(context).textTheme.title,
+                                    style:
+                                        Theme.of(context).textTheme.headline6,
                                   ),
                                   Text(
                                     widget.item.description,
@@ -3945,7 +3946,7 @@ class CartItemState extends State<CartItem> {
                         Align(
                           child: Text(
                             'Price: R${widget.item.price.toInt()} per Item',
-                            style: Theme.of(context).textTheme.subhead,
+                            style: Theme.of(context).textTheme.subtitle1,
                           ),
                           alignment: Alignment.bottomRight,
                         ),

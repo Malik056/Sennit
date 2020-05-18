@@ -18,7 +18,7 @@ class HelpRoute extends StatelessWidget {
                 margin: EdgeInsets.only(top: 30),
                 child: Text(
                   'How Does It Work As a Driver? ',
-                  style: Theme.of(context).textTheme.headline,
+                  style: Theme.of(context).textTheme.headline5,
                 ),
               ),
             ),
@@ -35,7 +35,7 @@ class HelpRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Step 1: Register with Us',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Opacity(
                     opacity: 0,
@@ -60,7 +60,7 @@ class HelpRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Step 2: Wait for Validation',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Image.asset('assets/images/wait.png'),
                 ],
@@ -80,7 +80,7 @@ class HelpRoute extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Step 3: Start Delivering And Earn 75% Off The Profit Of Each Trip',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Image.asset('assets/images/deliver.png'),
                 ],
