@@ -841,14 +841,21 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                               coordinates.longitude,
                             );
                       LocationResult result = await Utils.showPlacePicker(
-                          context,
-                          initialLocation: latlng);
+                        context,
+                        initialLocation: latlng,
+                      );
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
-                            result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._fromAddress =
-                            (await Geocoder.google(await Utils.getAPIKey())
-                                .findAddressesFromCoordinates(coordinates))[0];
+                          result.latLng.latitude,
+                          result.latLng.longitude,
+                        );
+                        SendItCartRoute._fromAddress = Address(
+                          addressLine: result.address,
+                          coordinates: coordinates,
+                        );
+                        // SendItCartRoute._fromAddress =
+                        //     (await Geocoder.google(await Utils.getAPIKey())
+                        //         .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },
@@ -1011,9 +1018,13 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._toAddress =
-                            (await Geocoder.google(await Utils.getAPIKey())
-                                .findAddressesFromCoordinates(coordinates))[0];
+                        SendItCartRoute._toAddress = Address(
+                          addressLine: result.address,
+                          coordinates: coordinates,
+                        );
+                        // SendItCartRoute._toAddress =
+                        //     (await Geocoder.google(await Utils.getAPIKey())
+                        //         .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },

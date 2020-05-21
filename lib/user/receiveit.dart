@@ -3138,9 +3138,13 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
                                 result.latLng.latitude,
                                 result.latLng.longitude,
                               );
-                              toAddress = (await Geocoder.google(
-                                await Utils.getAPIKey(),
-                              ).findAddressesFromCoordinates(coordinates))[0];
+                              toAddress = Address(
+                                addressLine: result.address,
+                                coordinates: coordinates,
+                              );
+                              // toAddress = (await Geocoder.google(
+                              //   await Utils.getAPIKey(),
+                              // ).findAddressesFromCoordinates(coordinates))[0];
                               setState(() {});
                               widget.onAddressChange(toAddress);
                               // if (mounted) {
