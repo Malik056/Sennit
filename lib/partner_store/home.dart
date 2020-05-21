@@ -206,12 +206,15 @@ class OrderedItemsListState extends State<OrderedItemsList> {
   final _key = GlobalKey<ScaffoldState>();
   bool _buttonPressed = false;
   int selectedTab = 0;
+  Store store;
+  @override
+  void initState() {
+    super.initState();
+    store = Session.data['partnerStore'];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Future<DocumentSnapshot> futureStoreData = Firestore.instance
-    //     .collection('stores')
-    //     .document(Session.data['partnerStore']['storeId'])
-    //     .get();
     return WillPopScope(
       onWillPop: () async {
         if (!_buttonPressed) {
@@ -281,27 +284,70 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   setState(() {});
                 },
                 leading: Icon(Icons.receipt),
+                title: Text('Served Orders'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                selected: selectedTab == 2,
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 2;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
                 title: Text('Completed Orders By Items'),
                 trailing: Icon(
                   Icons.navigate_next,
                 ),
-              )
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 2;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text((store?.isOpened ?? false) ? 'Open' : 'Closed'),
+                trailing: Switch(
+                  value: store.isOpened ?? false,
+                  onChanged: (isOpen) async {
+                    store.isOpened = isOpen;
+                    setState(() {});
+                    await Firestore.instance
+                        .collection('stores')
+                        .document(store.storeId)
+                        .setData(
+                      {
+                        'isOpened': isOpen,
+                      },
+                      merge: true,
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
         key: _key,
         appBar: AppBar(
-          title: Text('Orders'),
+          title: Text(
+            selectedTab == 0
+                ? 'Pending Orders'
+                : selectedTab == 1 ? 'Served Orders' : 'Item Orders',
+          ),
           centerTitle: true,
           actions: <Widget>[
             FlatButton(
               child: Icon(
                 FontAwesomeIcons.signOutAlt,
-                // 'Signout',
-                // style: Theme.of(context)
-                //     .textTheme
-                //     .subtitle1
-                //     .copyWith(color: Theme.of(context).primaryColor),
               ),
               onPressed: () async {
                 Store store = Session.data['partnerStore'];
@@ -327,297 +373,299 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   SizedBox(
                     height: 10,
                   ),
-                  Text(
-                    '  Pending Orders',
-                    style: Theme.of(context).textTheme.subtitle1,
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
                   Expanded(
                     child: PastOrdersRoute(
                       partnerStoreId: Session.data['partnerStore'].storeId,
                       isCompleted: false,
                     ),
                   ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Text(
-                    '  Completed Orders',
-                    style: Theme.of(context).textTheme.subtitle1,
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Expanded(
-                    child: PastOrdersRoute(
-                      partnerStoreId: Session.data['partnerStore'].storeId,
-                      isCompleted: true,
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
                 ],
               )
-            : FutureBuilder<QuerySnapshot>(
-                future: Firestore.instance
-                    .collection('stores')
-                    .document((Session.data['partnerStore'] as Store).storeId)
-                    .collection('orderedItems')
-                    .getDocuments()
-                    .then(
-                  (value) async {
-                    if (!Session.data.containsKey('partnerStore')) {
-                      final partnerStoreId = await FirebaseAuth.instance
-                          .currentUser()
-                          .then((user) => user.uid);
-                      final data = await Firestore.instance
-                          .collection("partnerStores")
-                          .document(partnerStoreId)
-                          .get()
-                          .then(
-                            (dataSnapshot) => dataSnapshot.data,
-                          );
-                      Session.data.putIfAbsent(
-                        'partnerStore',
-                        () => Store.fromMap(data),
-                      );
-                    }
-                    // keys = Session.data['partnerStore'].keys;
-                    return value;
-                  },
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  } else if (snapshot.data.documents.length == 0) {
-                    return Center(
-                      child: Text(
-                        'No Orders yet!',
-                        style: Theme.of(context).textTheme.headline6.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+            : selectedTab == 1
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      SizedBox(
+                        height: 10,
                       ),
-                    );
-                  }
-                  List<DocumentSnapshot> data = snapshot.data.documents;
-                  TextTheme textTheme = Theme.of(context).textTheme;
-                  return ListView.builder(
-                      itemCount: data.length,
-                      itemBuilder: (context, index) {
-                        DocumentSnapshot snapshot = data[index];
-                        int numberOfOrders = snapshot.data.length;
-                        return FutureBuilder<Map<String, dynamic>>(
-                          future: Firestore.instance
-                              .collection('items')
-                              .document(snapshot.documentID)
+                      Expanded(
+                        child: PastOrdersRoute(
+                          partnerStoreId: Session.data['partnerStore'].storeId,
+                          isCompleted: true,
+                        ),
+                      ),
+                    ],
+                  )
+                : FutureBuilder<QuerySnapshot>(
+                    future: Firestore.instance
+                        .collection('stores')
+                        .document(
+                            (Session.data['partnerStore'] as Store).storeId)
+                        .collection('orderedItems')
+                        .getDocuments()
+                        .then(
+                      (value) async {
+                        if (!Session.data.containsKey('partnerStore')) {
+                          final partnerStoreId = await FirebaseAuth.instance
+                              .currentUser()
+                              .then((user) => user.uid);
+                          final data = await Firestore.instance
+                              .collection("partnerStores")
+                              .document(partnerStoreId)
                               .get()
-                              .then((data) {
-                            return data.data;
-                          }),
-                          builder: (context, itemSnapshot) {
-                            if (itemSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Container(
-                                margin: EdgeInsets.all(40),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                              .then(
+                                (dataSnapshot) => dataSnapshot.data,
                               );
-                            }
-                            return Card(
-                              elevation: 4,
-                              margin: EdgeInsets.only(
-                                top: 16,
-                                bottom: 14,
-                              ),
-                              child: Container(
-                                // padding: EdgeInsets.all(4),
-                                child: InkWell(
-                                  splashColor: Theme.of(context)
-                                      .primaryColor
-                                      .withAlpha(200),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) {
-                                          return ItemOrdersRoute(
-                                            data: data[index].data,
-                                            imageUrls: List<String>.from(
-                                              itemSnapshot.data['images'],
+                          Session.data.putIfAbsent(
+                            'partnerStore',
+                            () => Store.fromMap(data),
+                          );
+                        }
+                        // keys = Session.data['partnerStore'].keys;
+                        return value;
+                      },
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      } else if (snapshot.data.documents.length == 0) {
+                        return Center(
+                          child: Text(
+                            'No Orders yet!',
+                            style:
+                                Theme.of(context).textTheme.headline6.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                          ),
+                        );
+                      }
+                      List<DocumentSnapshot> data = snapshot.data.documents;
+                      TextTheme textTheme = Theme.of(context).textTheme;
+                      return ListView.builder(
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            DocumentSnapshot snapshot = data[index];
+                            int numberOfOrders = snapshot.data.length;
+                            return FutureBuilder<Map<String, dynamic>>(
+                              future: Firestore.instance
+                                  .collection('items')
+                                  .document(snapshot.documentID)
+                                  .get()
+                                  .then((data) {
+                                return data.data;
+                              }),
+                              builder: (context, itemSnapshot) {
+                                if (itemSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Container(
+                                    margin: EdgeInsets.all(40),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
+                                return Card(
+                                  elevation: 4,
+                                  margin: EdgeInsets.only(
+                                    top: 16,
+                                    bottom: 14,
+                                  ),
+                                  child: Container(
+                                    // padding: EdgeInsets.all(4),
+                                    child: InkWell(
+                                      splashColor: Theme.of(context)
+                                          .primaryColor
+                                          .withAlpha(200),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) {
+                                              return ItemOrdersRoute(
+                                                data: data[index].data,
+                                                imageUrls: List<String>.from(
+                                                  itemSnapshot.data['images'],
+                                                ),
+                                              );
+                                            },
+                                            maintainState: false,
+                                          ),
+                                        );
+                                      },
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Container(
+                                            color: Colors.black,
+                                            child: FadeInImage.assetNetwork(
+                                              placeholder:
+                                                  'assets/images/logo.png',
+                                              image: itemSnapshot.data['images']
+                                                  [0],
+                                              width: 90,
+                                              height: 90,
+                                              fit: BoxFit.contain,
                                             ),
-                                          );
-                                        },
-                                        maintainState: false,
-                                      ),
-                                    );
-                                  },
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Container(
-                                        color: Colors.black,
-                                        child: FadeInImage.assetNetwork(
-                                          placeholder: 'assets/images/logo.png',
-                                          image: itemSnapshot.data['images'][0],
-                                          width: 90,
-                                          height: 90,
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Container(
-                                        // color: Colors.pink,
-                                        child: Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.start,
-                                            // mainAxisSize: MainAxisSize.min,
-                                            children: <Widget>[
-                                              SizedBox(
-                                                height: 4,
-                                              ),
-                                              Text(
-                                                itemSnapshot.data['itemName'],
-                                                style: textTheme.headline6.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                              // SizedBox(
-                                              //   height: 2,
-                                              // ),
-                                              Row(
+                                          ),
+                                          SizedBox(
+                                            width: 10,
+                                          ),
+                                          Container(
+                                            // color: Colors.pink,
+                                            child: Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                // mainAxisSize: MainAxisSize.min,
                                                 children: <Widget>[
-                                                  Text(
-                                                    'Total Orders: ',
-                                                    style: textTheme.subtitle1
-                                                        .copyWith(
-                                                      fontSize: 16,
-                                                    ),
+                                                  SizedBox(
+                                                    height: 4,
                                                   ),
                                                   Text(
-                                                    '$numberOfOrders',
-                                                    style: textTheme.subtitle2
+                                                    itemSnapshot
+                                                        .data['itemName'],
+                                                    style: textTheme.headline6
                                                         .copyWith(
-                                                      fontSize: 16,
-                                                    ),
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
                                                   ),
+                                                  // SizedBox(
+                                                  //   height: 2,
+                                                  // ),
+                                                  Row(
+                                                    children: <Widget>[
+                                                      Text(
+                                                        'Total Orders: ',
+                                                        style: textTheme
+                                                            .subtitle1
+                                                            .copyWith(
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '$numberOfOrders',
+                                                        style: textTheme
+                                                            .subtitle2
+                                                            .copyWith(
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.bottomRight,
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment.end,
+                                                      children: <Widget>[
+                                                        Text(
+                                                          'Price: ',
+                                                          strutStyle:
+                                                              StrutStyle(
+                                                                  height: 1),
+                                                          style: textTheme
+                                                              .headline6
+                                                              .copyWith(
+                                                                  // fontWeight: FontWeight.bold,
+                                                                  ),
+                                                        ),
+                                                        Text(
+                                                          '${itemSnapshot.data['price']}  ',
+                                                          style: textTheme
+                                                              .headline6
+                                                              .copyWith(
+                                                                  // fontSize: 18,
+                                                                  ),
+                                                          strutStyle:
+                                                              StrutStyle(
+                                                                  height: 1.5),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
                                                 ],
                                               ),
-                                              Align(
-                                                alignment:
-                                                    Alignment.bottomRight,
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: <Widget>[
-                                                    Text(
-                                                      'Price: ',
-                                                      strutStyle:
-                                                          StrutStyle(height: 1),
-                                                      style: textTheme.headline6
-                                                          .copyWith(
-                                                              // fontWeight: FontWeight.bold,
-                                                              ),
-                                                    ),
-                                                    Text(
-                                                      '${itemSnapshot.data['price']}  ',
-                                                      style: textTheme.headline6
-                                                          .copyWith(
-                                                              // fontSize: 18,
-                                                              ),
-                                                      strutStyle: StrutStyle(
-                                                          height: 1.5),
-                                                    ),
-                                                  ],
-                                                ),
-                                              )
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
 
-                                // ListTile(
-                                //   contentPadding: EdgeInsets.all(0),
-                                //   leading: Container(
-                                //     height: 1000,
-                                //     color: Colors.black,
-                                //     child: FadeInImage.assetNetwork(
-                                //       placeholder: 'assets/images/logo.png',
-                                //       image: itemSnapshot.data['images'][0],
-                                //       width: 80,
-                                //       fit: BoxFit.fitWidth,
-                                //     ),
-                                //   ),
-                                //   title: Text(itemSnapshot.data['itemName']),
-                                //   subtitle: Container(
-                                //     child: Column(
-                                //       mainAxisSize: MainAxisSize.min,
-                                //       children: [
-                                //         Row(
-                                //           mainAxisSize: MainAxisSize.min,
-                                //           children: <Widget>[
-                                //             Text(
-                                //               'Total Orders',
-                                //               style: textTheme.subtitle1,
-                                //             ),
-                                //             Text('$numberOfOrders'),
-                                //           ],
-                                //         ),
-                                //         SizedBox(
-                                //           height: 10,
-                                //         ),
-                                //         Row(
-                                //           mainAxisSize: MainAxisSize.min,
-                                //           mainAxisAlignment: MainAxisAlignment.end,
-                                //           children: <Widget>[
-                                //             Text(
-                                //               'Price: ',
-                                //               style: textTheme.subtitle1,
-                                //             ),
-                                //             Text('${itemSnapshot.data['price']}'),
-                                //           ],
-                                //         ),
-                                //       ],
-                                //     ),
-                                //   ),
-                                //   trailing: Icon(Icons.navigate_next),
-                                //   onTap: () {
-                                //     Navigator.push(
-                                //       context,
-                                //       MaterialPageRoute(
-                                //         builder: (context) {
-                                //           return ItemOrdersRoute(
-                                //             data: data[index].data,
-                                //             imageUrls: List<String>.from(
-                                //               itemSnapshot.data['images'],
-                                //             ),
-                                //           );
-                                //         },
-                                //       ),
-                                //     );
-                                //   },
-                                // ),
-                              ),
+                                    // ListTile(
+                                    //   contentPadding: EdgeInsets.all(0),
+                                    //   leading: Container(
+                                    //     height: 1000,
+                                    //     color: Colors.black,
+                                    //     child: FadeInImage.assetNetwork(
+                                    //       placeholder: 'assets/images/logo.png',
+                                    //       image: itemSnapshot.data['images'][0],
+                                    //       width: 80,
+                                    //       fit: BoxFit.fitWidth,
+                                    //     ),
+                                    //   ),
+                                    //   title: Text(itemSnapshot.data['itemName']),
+                                    //   subtitle: Container(
+                                    //     child: Column(
+                                    //       mainAxisSize: MainAxisSize.min,
+                                    //       children: [
+                                    //         Row(
+                                    //           mainAxisSize: MainAxisSize.min,
+                                    //           children: <Widget>[
+                                    //             Text(
+                                    //               'Total Orders',
+                                    //               style: textTheme.subtitle1,
+                                    //             ),
+                                    //             Text('$numberOfOrders'),
+                                    //           ],
+                                    //         ),
+                                    //         SizedBox(
+                                    //           height: 10,
+                                    //         ),
+                                    //         Row(
+                                    //           mainAxisSize: MainAxisSize.min,
+                                    //           mainAxisAlignment: MainAxisAlignment.end,
+                                    //           children: <Widget>[
+                                    //             Text(
+                                    //               'Price: ',
+                                    //               style: textTheme.subtitle1,
+                                    //             ),
+                                    //             Text('${itemSnapshot.data['price']}'),
+                                    //           ],
+                                    //         ),
+                                    //       ],
+                                    //     ),
+                                    //   ),
+                                    //   trailing: Icon(Icons.navigate_next),
+                                    //   onTap: () {
+                                    //     Navigator.push(
+                                    //       context,
+                                    //       MaterialPageRoute(
+                                    //         builder: (context) {
+                                    //           return ItemOrdersRoute(
+                                    //             data: data[index].data,
+                                    //             imageUrls: List<String>.from(
+                                    //               itemSnapshot.data['images'],
+                                    //             ),
+                                    //           );
+                                    //         },
+                                    //       ),
+                                    //     );
+                                    //   },
+                                    // ),
+                                  ),
+                                );
+                              },
                             );
-                          },
-                        );
-                      });
-                },
-              ),
+                          });
+                    },
+                  ),
       ),
     );
   }
@@ -882,106 +930,52 @@ class PastOrdersRoute extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: BouncingScrollPhysics(),
-      child: Container(
-        padding: EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            StreamBuilder<QuerySnapshot>(
-              stream: Firestore.instance
-                  .collection('stores')
-                  .document(partnerStoreId)
-                  .collection(
-                      isCompleted ? 'servedOrders' : 'pendingOrderedItems')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(),
-                  );
-                } else if (snapshot.data == null ||
-                    !snapshot.hasData ||
-                    snapshot.data.documents == null ||
-                    snapshot.data.documents.isEmpty) {
-                  return Center(
-                    child: Text(
-                      isCompleted
-                          ? 'No Orders Served Yet'
-                          : 'No Pending Orders Yet',
-                    ),
-                  );
-                } else {
-                  final documents = snapshot.data.documents;
-                  return SingleChildScrollView(
-                    physics: BouncingScrollPhysics(),
-                    child: Column(
-                      children: List.generate(
-                        documents.length,
-                        (index) {
-                          return OrderTile(
-                            data: documents[index].data,
-                            isStore: true,
-                            isCompleted: isCompleted,
-                            status: isCompleted ? 'Served' : "Preparing",
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-            // Container(
-            //   margin: EdgeInsets.only(top: 10, bottom: 10),
-            //   width: MediaQuery.of(context).size.width - 20,
-            //   color: Colors.grey,
-            //   height: 1,
-            // ),
-            // Text(
-            //   'Pending Orders',
-            //   style: Theme.of(context).textTheme.subtitle1,
-            // ),
-            // SizedBox(
-            //   height: 10,
-            // ),
-            // FutureBuilder<QuerySnapshot>(
-            //   future: Firestore.instance
-            //       .collection("stores")
-            //       .document(partnerStoreId)
-            //       .collection('completedOrders')
-            //       .getDocuments(),
-            //   builder: (context, snapshot) {
-            //     if (snapshot.connectionState == ConnectionState.waiting) {
-            //       return Center(
-            //         child: CircularProgressIndicator(),
-            //       );
-            //     } else if (snapshot.data == null ||
-            //         !snapshot.hasData ||
-            //         snapshot.data.documents == null ||
-            //         snapshot.data.documents.isEmpty) {
-            //       return Center(
-            //         child: Text('No Past Orders Yet'),
-            //       );
-            //     } else {
-            //       final documents = snapshot.data.documents;
-            //       return SingleChildScrollView(
-            //         physics: BouncingScrollPhysics(),
-            //         child: Column(
-            //           children: List.generate(
-            //             documents.length,
-            //             (index) {
-            //               return OrderTile(data: documents[index].data);
-            //             },
-            //           ),
-            //         ),
-            //       );
-            //     }
-            //   },
-            // ),
-          ],
-        ),
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: Firestore.instance
+            .collection('stores')
+            .document(partnerStoreId)
+            .collection(isCompleted ? 'servedOrders' : 'pendingOrderedItems')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.data == null ||
+              !snapshot.hasData ||
+              snapshot.data.documents == null ||
+              snapshot.data.documents.isEmpty) {
+            return Center(
+              child: Text(
+                isCompleted ? 'No Orders Served Yet' : 'No Pending Orders Yet',
+              ),
+            );
+          } else {
+            final documents = snapshot.data.documents;
+            return SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              child: Column(
+                children: List.generate(
+                  documents.length,
+                  (index) {
+                    return OrderTile(
+                      data: documents[index].data,
+                      isStore: true,
+                      isCompleted: isCompleted,
+                      status: isCompleted ? 'Served' : "Preparing",
+                      userOrderRef: Firestore.instance
+                          .collection('users')
+                          .document(documents[index].data['userId'])
+                          .collection('orders')
+                          .document(documents[index].data['userId']),
+                    );
+                  },
+                ),
+              ),
+            );
+          }
+        },
       ),
     );
   }

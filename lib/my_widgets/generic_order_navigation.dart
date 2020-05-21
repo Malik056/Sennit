@@ -779,8 +779,11 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   SizedBox(height: 10),
-                  Text('OrderId: ${widget.data['orderId']}',
-                      style: Theme.of(context).textTheme.subtitle1),
+                  Text(
+                    'OrderId: ${widget.data['shortId']}',
+                    style: Theme.of(context).textTheme.subtitle1,
+                    textAlign: TextAlign.center,
+                  ),
                   SizedBox(
                     height: 40,
                   ),
@@ -2320,14 +2323,16 @@ class _OrderTile extends StatelessWidget {
         return Card(
           margin: EdgeInsets.all(8.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               SizedBox(
                 height: 8,
               ),
               Text(
-                'OrderId: ${data['orderId']}',
+                'OrderId: ${data['shortId']}',
                 style: Theme.of(context).textTheme.subtitle1,
+                textAlign: TextAlign.center,
               ),
               SizedBox(
                 height: 10,
@@ -2539,8 +2544,10 @@ class _OrderTile extends StatelessWidget {
               Text(
                 '''${(data['numberOfBoxes'] == null || data['numberOfBoxes'] <= 0) ? '' : '${data['numberOfBoxes']} Box(s)'}
               ${(data['numberOfSleevesNeeded'] == null || data['numberOfSleevesNeeded'] <= 0) ? '' : '${(data['numberOfBoxes'] != null && data['numberOfBoxes'] > 0) ? ', ' : ''}${data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-                style:
-                    Theme.of(context).textTheme.subtitle1.copyWith(fontSize: 18),
+                style: Theme.of(context)
+                    .textTheme
+                    .subtitle1
+                    .copyWith(fontSize: 18),
               ),
             ],
           ),

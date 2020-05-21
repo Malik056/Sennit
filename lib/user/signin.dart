@@ -425,11 +425,12 @@ class _UserSignInState extends State<UserSignIn> {
           return cart;
         },
       );
-      return Firestore.instance.collection('carts').document(userId).setData(
-        {
-          'itemsData': {},
-        },
-      );
+      return;
+      // Firestore.instance.collection('carts').document(userId).setData(
+      //   {
+      //     'itemsData': {},
+      //   },
+      // );
     }
     UserCart cart = UserCart.fromMap(value.data);
     List<StoreItem> storeItems = [];

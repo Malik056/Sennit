@@ -35,6 +35,7 @@ import 'package:sennit/user/home.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
+import 'package:shortid/shortid.dart';
 import 'database/mydatabase.dart';
 import 'driver/signup.dart';
 import 'models/models.dart';
@@ -58,6 +59,8 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   // await locationInitializer();
+  shortid.characters('ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-');
+  shortid.seed(DateTime.now().millisecondsSinceEpoch / 100000);
   await databaseInitializer();
   Utils.getFCMServerKey();
   Utils.getAPIKey();
@@ -977,6 +980,7 @@ class Utils {
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,
                 ),
+                maintainState: true,
               ),
             )) ??
             {});

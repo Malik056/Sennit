@@ -1,7 +1,7 @@
 name: sennit
 description: Send Anything Anywhere
 
-version: 2.2.5+45
+version: 2.2.6+46
 
 environment:
   sdk: ">=2.6.0 <3.0.0"
@@ -59,6 +59,7 @@ dependencies:
   flutter_full_pdf_viewer: ^1.0.6
   path_provider: ^1.6.5
   open_appstore: ^1.0.2
+  shortid: ^0.1.1
 
 dev_dependencies:
   flutter_test:

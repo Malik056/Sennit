@@ -12,6 +12,7 @@ import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/user/generic_tracking_screen.dart';
+import 'package:shortid/shortid.dart';
 
 enum SourcePage { addressSelectionFrom, addressSelectionDestination, receiveIt }
 
@@ -576,6 +577,8 @@ class SendItCartRoute extends StatelessWidget {
               }
               {
                 // if (true) {
+                String shortId = shortid.generate();
+                sennitOrder.shortId = shortId;
                 Map<String, dynamic> orderData = sennitOrder.toMap()
                   ..putIfAbsent('otp', () => otp);
 
@@ -711,7 +714,8 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
       ..staging = false
-      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
+      ..companyName =
+          Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
       ..isPreAuth = true
       ..displayFee = true;
 

@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:sennit/main.dart';
-import 'package:sennit/models/models.dart';
 import 'package:sennit/user/receiveit.dart';
 
 class UserHomeRoute extends StatelessWidget {
@@ -38,19 +37,19 @@ class UserHomeRoute extends StatelessWidget {
 
   UserHomeRoute({Key key, this.initializeCart = false}) : super(key: key) {
     initializeNotifications();
-    if (initializeCart) {
-      FirebaseAuth.instance.currentUser().then((user) async {
-        String userId = user.uid;
-        final snapshot =
-            await Firestore.instance.collection('carts').document(userId).get();
-        final cart = UserCart.fromMap(snapshot.data);
-        Session.data.update('cart', (data) {
-          return cart;
-        }, ifAbsent: () {
-          return cart;
-        });
-      });
-    }
+    // if (initializeCart) {
+    //   FirebaseAuth.instance.currentUser().then((user) async {
+    //     String userId = user.uid;
+    //     final snapshot =
+    //         await Firestore.instance.collection('carts').document(userId).get();
+    //     final cart = UserCart.fromMap(snapshot.data);
+    //     Session.data.update('cart', (data) {
+    //       return cart;
+    //     }, ifAbsent: () {
+    //       return cart;
+    //     });
+    //   });
+    // }
   }
 
   @override

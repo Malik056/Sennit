@@ -850,7 +850,7 @@ class _MySolidBottomSheetForReceiveItState
                     height: 8,
                   ),
                   Text(
-                    'OrderId: ${widget.data['orderId']}',
+                    'OrderId: ${widget.data['shortId']}',
                     style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
@@ -1460,7 +1460,7 @@ class _OrderTileState extends State<_OrderTile> {
             height: 8,
           ),
           Text(
-            'OrderId: ${widget.data['orderId']}',
+            'OrderId: ${widget.data['shortId']}',
             style: Theme.of(context).textTheme.subtitle1,
           ),
           SizedBox(
