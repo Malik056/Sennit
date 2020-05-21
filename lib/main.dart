@@ -695,7 +695,8 @@ class Utils {
         });
   }
 
-  static showSnackBarError(BuildContext context, String message) {
+  static showSnackBarError(BuildContext context, String message,
+      {Duration duration}) {
     // SnackBar snackBar = SnackBar(
     //   backgroundColor: Colors.red.shade500,
     //   content: Text(
@@ -706,27 +707,33 @@ class Utils {
     // );
 
     // Scaffold.of(context).showSnackBar(snackBar);
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return Container(
-        color: Colors.white,
-        width: MediaQuery.of(context).size.width,
-        height: kToolbarHeight,
-        child: Row(
-          children: <Widget>[
-            Expanded(
-                child: Icon(
-              Icons.error,
-              color: Colors.red,
-            )),
-            Expanded(
-              flex: 3,
-              child: Text('$message'),
-            ),
-            Spacer(),
-          ],
-        ),
-      );
-    });
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return Container(
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width,
+          height: kToolbarHeight,
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                  child: Icon(
+                Icons.error,
+                color: Colors.red,
+              )),
+              Expanded(
+                flex: 3,
+                child: Text('$message'),
+              ),
+              Spacer(),
+            ],
+          ),
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
 
     // BotToast.showNotification(
     //   title: (_) {
@@ -749,8 +756,8 @@ class Utils {
     // );
   }
 
-  static showSnackBarErrorUsingKey(
-      GlobalKey<ScaffoldState> key, String message) {
+  static showSnackBarErrorUsingKey(GlobalKey<ScaffoldState> key, String message,
+      {Duration duration}) {
     // SnackBar snackBar = SnackBar(
     //   backgroundColor: Colors.red.shade500,
     //   content: Text(
@@ -762,17 +769,23 @@ class Utils {
 
     // key.currentState.showSnackBar(snackBar);
 
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(
-          Icons.error,
-          color: Colors.red,
-        ),
-        color: Colors.white,
-        title: 'Error',
-        subtitle: '$message',
-      );
-    });
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.error,
+            color: Colors.red,
+          ),
+          color: Colors.white,
+          title: 'Error',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
 
     // BotToast.showNotification(
     //   title: (_) {
@@ -795,18 +808,25 @@ class Utils {
     // );
   }
 
-  static showSnackBarWarning(BuildContext context, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(
-          Icons.warning,
-          color: Colors.yellow[400],
-        ),
-        color: Colors.white,
-        title: 'Warning',
-        subtitle: '$message',
-      );
-    });
+  static showSnackBarWarning(BuildContext context, String message,
+      [Duration duration]) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.warning,
+            color: Colors.yellow[400],
+          ),
+          color: Colors.white,
+          title: 'Warning',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 4,
+          ),
+    );
   }
 
   static showSnackBarWarningUsingKey(
@@ -830,33 +850,47 @@ class Utils {
             ));
   }
 
-  static showSnackBarSuccess(BuildContext context, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(
-          Icons.check_circle,
-          color: Colors.green,
-        ),
-        color: Colors.white,
-        title: 'Success',
-        subtitle: '$message',
-      );
-    });
+  static showSnackBarSuccess(BuildContext context, String message,
+      {Duration duration}) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.check_circle,
+            color: Colors.green,
+          ),
+          color: Colors.white,
+          title: 'Success',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
   }
 
   static showSnackBarSuccessUsingKey(
-      GlobalKey<ScaffoldState> key, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(
-          Icons.check_circle,
-          color: Colors.green,
-        ),
-        color: Colors.white,
-        title: 'Success',
-        subtitle: '$message',
-      );
-    });
+      GlobalKey<ScaffoldState> key, String message,
+      {Duration duration}) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.check_circle,
+            color: Colors.green,
+          ),
+          color: Colors.white,
+          title: 'Success',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
   }
 
   static void showSuccessDialog(String message) {

@@ -710,23 +710,26 @@ class StoresRouteState extends State<StoresRoute> {
                       children: List.generate(
                         filtered.length,
                         (index) {
-                          return InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) {
-                                    return StoreMainPage(
-                                      store: filtered[index],
-                                      demo: widget.isDemo ?? false,
-                                    );
-                                  },
+                          return IgnorePointer(
+                            ignoring: !filtered[index].isOpened,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return StoreMainPage(
+                                        store: filtered[index],
+                                        demo: widget.isDemo ?? false,
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: EdgeInsets.only(bottom: 10),
+                                child: StoreItem(
+                                  store: filtered[index],
                                 ),
-                              );
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(bottom: 10),
-                              child: StoreItem(
-                                store: filtered[index],
                               ),
                             ),
                           );
@@ -1017,10 +1020,19 @@ class StoreItem extends StatelessWidget {
                   bottom: 0,
                   child: Container(
                     alignment: Alignment.center,
-                    color: Colors.white70,
-                    child: Text(
-                      'Store is Closed',
-                      style: Theme.of(context).textTheme.headline6,
+                    color: Colors.grey[100].withAlpha(120),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      color: Colors.grey,
+                      height: 40.0,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Store is Closed',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline6
+                            .copyWith(color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
@@ -2498,7 +2510,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                         //     _key, 'Successfully Message Sent');
                         // if (true) {
                         var now = DateTime.now().toUtc();
-                        String orderId = '${user.userId}${now.millisecondsSinceEpoch}';
+                        String orderId =
+                            '${user.userId}${now.millisecondsSinceEpoch}';
                         order.orderId = orderId;
                         String shortId = shortid.generate();
                         order.shortId = shortId;
@@ -3074,6 +3087,9 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
       Utils.showSnackBarWarning(
         context,
         '''Removed Some Items from Cart, Because their respective Store is Closed''',
+        Duration(
+          seconds: 6,
+        ),
       );
     }
     return;
