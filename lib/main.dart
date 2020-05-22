@@ -27,14 +27,15 @@ import 'package:sennit/driver/home.dart';
 import 'package:sennit/driver/signin.dart';
 import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/review.dart';
+import 'package:sennit/my_widgets/update_notice.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
 import 'package:sennit/start_page.dart';
 import 'package:sennit/user/home.dart';
-import 'package:sennit/user/receiveit.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
+import 'package:shortid/shortid.dart';
 import 'database/mydatabase.dart';
 import 'driver/signup.dart';
 import 'models/models.dart';
@@ -58,6 +59,8 @@ main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   // await locationInitializer();
+  shortid.characters('ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-');
+  shortid.seed(DateTime.now().millisecondsSinceEpoch / 100000);
   await databaseInitializer();
   Utils.getFCMServerKey();
   Utils.getAPIKey();
@@ -112,14 +115,24 @@ main() async {
             partnerStoreResult.data != null &&
             partnerStoreResult.data.length > 0 &&
             partnerStoreResult.exists) {
-          Session.data.update('partnerStore', (a) {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          }, ifAbsent: () {
-            return Store.fromMap(partnerStoreResult.data)
-              ..storeId = partnerStoreResult.documentID;
-          });
+          var data = await Firestore.instance
+              .collection('stores')
+              .document(partnerStoreResult.data['storeId'])
+              .get();
+          if (data != null &&
+              data.exists &&
+              data.data != null &&
+              data.data.length > 0) {
+            Session.data.update('partnerStore', (a) {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            }, ifAbsent: () {
+              return Store.fromMap(data.data)..storeId = data.documentID;
+            });
+          }
           MyApp.initialRoute = MyApp.partnerStoreHome;
+        } else {
+          await FirebaseAuth.instance.signOut();
+          MyApp.initialRoute = MyApp.startPage;
         }
       }
     }
@@ -134,6 +147,20 @@ databaseInitializer() async {
 class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String startPage = 'startPage';
   static String initialRoute = startPage;
+  static Address dummyAddress = Address(
+    addressLine: 'NULL',
+    adminArea: 'Null',
+    coordinates: Coordinates(0, 0),
+    countryName: 'Null',
+    countryCode: 'Null',
+    featureName: 'Null',
+    locality: 'Null',
+    postalCode: 'Null',
+    subAdminArea: 'Null',
+    subLocality: 'Null',
+    subThoroughfare: 'NULL',
+    thoroughfare: 'NULL',
+  );
   // static const String searchPage = 'searchPage';
   static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
@@ -189,7 +216,9 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     var initializationSettingsAndroid =
         new AndroidInitializationSettings('logo');
-    var initializationSettingsIOS = new IOSInitializationSettings();
+    var initializationSettingsIOS = new IOSInitializationSettings(
+      onDidReceiveLocalNotification: (a, b, c, d) async {},
+    );
     var initializationSettings = new InitializationSettings(
         initializationSettingsAndroid, initializationSettingsIOS);
     flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
@@ -249,11 +278,17 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static Future showNotificationWithDefaultSound(
       Map<String, dynamic> jsonData) async {
     var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
-        'orderCompleteChannel',
-        'OrderComplete',
-        'When The Order is Delivered this channel will show the notifications',
-        importance: Importance.Max,
-        priority: Priority.High);
+      'orderCompleteChannel',
+      'OrderComplete',
+      'When The Order is Delivered this channel will show the notifications',
+      importance: Importance.Max,
+      priority: Priority.High,
+      enableLights: true,
+      enableVibration: true,
+      autoCancel: true,
+      color: Colors.green,
+      playSound: true,
+    );
     var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
@@ -306,60 +341,75 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
           Duration(
             milliseconds: 10,
           ), () {
+        Utils.getMyLocation();
         MyApp._initialLocation = LatLng(0, 0);
-        MyApp._address = Address(
-          addressLine: '',
-        );
+        MyApp._address = MyApp.dummyAddress;
         return MyApp._initialLocation;
       });
     }
   }
 
-  Future<void> initialize() async {
+  Future<Map<String, dynamic>> initialize() async {
+    final ref = Firestore.instance.collection('versions');
+    Function catchError;
+    catchError = (_) async {
+      final querySnapshot = await ref.getDocuments().catchError(catchError);
+      return querySnapshot;
+    };
+    final querySnapshot = await ref.getDocuments().catchError(catchError);
+    num version = querySnapshot.documents.first.data['version'];
+    String versionName = querySnapshot.documents.first.data['versionName'];
+    num compulsoryIfNewVersion =
+        querySnapshot.documents.first.data['compulsoryIfLessThan'];
+    if (Session.version < version) {
+      bool compulsory = false;
+      if (compulsoryIfNewVersion > Session.version) {
+        compulsory = true;
+      }
+      return {
+        'compulsory': compulsory,
+        'update': true,
+        'version': version,
+        'versionName': versionName,
+      };
+    }
     await locationInitializer().timeout(
       Duration(
         seconds: 10,
       ),
       onTimeout: () {},
     );
-    await MyApp._lastKnowLocation.then((data) async {
-      MyApp._initialLocation = data;
-      MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-          .findAddressesFromCoordinates(
-              Coordinates(data.latitude, data.longitude)))[0];
-    }).timeout(Duration(seconds: 5), onTimeout: () async {
+    if (MyApp._lastKnowLocation == null) {
+      Utils.getMyLocation();
       MyApp._initialLocation = LatLng(0, 0);
-      MyApp._address = Address();
+      MyApp._address = MyApp.dummyAddress;
+      return null;
+    }
+    await MyApp._lastKnowLocation?.then((data) async {
+      MyApp._initialLocation = data;
+      final listOfAddress = (await Geocoder.google(await Utils.getAPIKey())
+          .findAddressesFromCoordinates(
+              Coordinates(data.latitude, data.longitude)));
+      if (listOfAddress == null || listOfAddress.length <= 0) {
+        Utils.getMyLocation();
+        MyApp._initialLocation = LatLng(0, 0);
+        MyApp._address = MyApp.dummyAddress;
+      }
+    })?.timeout(Duration(seconds: 5), onTimeout: () async {
+      Utils.getMyLocation();
+      MyApp._initialLocation = LatLng(0, 0);
+      MyApp._address = MyApp.dummyAddress;
       return MyApp._initialLocation;
     });
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return BotToastInit(
-      child: FutureBuilder<void>(
+      child: FutureBuilder<Map<String, dynamic>>(
           future: initialize(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return MaterialApp(
-                theme: ThemeData(
-                  backgroundColor: Colors.white,
-                  fontFamily: 'ArchivoNarrow',
-                  primaryColor: MyApp.secondaryColor,
-                  accentColor: MyApp.secondaryColor,
-                ),
-                home: Scaffold(
-                    appBar: AppBar(
-                      backgroundColor: Colors.white,
-                      title: Text(
-                        'Sennit',
-                        style: Theme.of(context).textTheme.subhead,
-                      ),
-                      centerTitle: true,
-                    ),
-                    body: Center(child: CircularProgressIndicator())),
-              );
-            }
             return MaterialApp(
               navigatorKey: navigatorKey,
               localizationsDelegates: const [
@@ -375,7 +425,6 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
               navigatorObservers: [BotToastNavigatorObserver()],
               initialRoute: MyApp.initialRoute,
               routes: {
-                // '/': (context) => StartPage(),
                 MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
                       OpenAs.NAVIGATION,
                       fromCoordinate: LatLng(31, 74),
@@ -400,7 +449,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 //       key: GlobalKey<StoresRouteState>(),
                 //       address: MyApp._address,
                 //     ),
-                MyApp.storeMainPage: (context) => StoreMainPage(),
+                // MyApp.storeMainPage: (context) => StoreMainPage(),
                 MyApp.partnerStoreHome: (context) => OrderedItemsList(),
                 // activeOrderBody: (context) => ActiveOrder(),
                 // MyApp.searchPage: (context) => SearchWidget(demo: true,),
@@ -433,7 +482,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   ),
                   color: Colors.white,
                   textTheme: TextTheme(
-                    title: TextStyle(
+                    headline6: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontFamily: 'ArchivoNarrow',
                       fontSize: 22,
@@ -445,46 +494,58 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   color: MyApp.secondaryColor,
                 ),
                 textTheme: TextTheme(
-                    title: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.normal,
-                    ),
-                    headline: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    subhead: TextStyle(
-                      color: MyApp.secondaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                    subtitle: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                    ),
-                    body1: TextStyle(
-                      fontSize: 14,
-                      decorationColor: Colors.black,
-                      fontFamily: 'Roboto',
-                    ),
-                    body2: TextStyle(
-                      fontSize: 14,
-                      decorationColor: Colors.black,
-                      fontFamily: 'Roboto',
-                      fontStyle: FontStyle.italic,
-                    ),
-                    button: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                    display1: TextStyle(
-                      fontSize: 26,
-                      color: MyApp.secondaryColor,
-                      fontWeight: FontWeight.bold,
-                    )),
+                  headline6: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.normal,
+                  ),
+                  headline5: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  subtitle1: TextStyle(
+                    color: MyApp.secondaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  subtitle2: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                  ),
+                  bodyText2: TextStyle(
+                    fontSize: 14,
+                    decorationColor: Colors.black,
+                    fontFamily: 'Roboto',
+                  ),
+                  button: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  headline4: TextStyle(
+                    fontSize: 26,
+                    color: MyApp.secondaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
+              home: snapshot.connectionState == ConnectionState.waiting
+                  ? Scaffold(
+                      appBar: AppBar(
+                        backgroundColor: Colors.white,
+                        title: Text(
+                          'Sennit',
+                          style: Theme.of(context).textTheme.subtitle1,
+                        ),
+                        centerTitle: true,
+                      ),
+                      body: Center(child: CircularProgressIndicator()))
+                  : snapshot.data != null
+                      ? UpdateNoticeRoute(
+                          snapshot.data['compulsory'],
+                          snapshot.data['versionName'],
+                        )
+                      : null,
             );
           }),
     );
@@ -540,14 +601,14 @@ class SnackbarLayout extends StatelessWidget {
               children: <Widget>[
                 Text(
                   title ?? '',
-                  style: Theme.of(context).textTheme.subhead,
+                  style: Theme.of(context).textTheme.subtitle1,
                 ),
                 SizedBox(
                   height: 8,
                 ),
                 Text(
                   subtitle ?? '',
-                  style: Theme.of(context).textTheme.subtitle,
+                  style: Theme.of(context).textTheme.subtitle2,
                 ),
               ],
             ),
@@ -634,7 +695,8 @@ class Utils {
         });
   }
 
-  static showSnackBarError(BuildContext context, String message) {
+  static showSnackBarError(BuildContext context, String message,
+      {Duration duration}) {
     // SnackBar snackBar = SnackBar(
     //   backgroundColor: Colors.red.shade500,
     //   content: Text(
@@ -645,26 +707,33 @@ class Utils {
     // );
 
     // Scaffold.of(context).showSnackBar(snackBar);
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return Container(
-        color: Colors.red,
-        width: MediaQuery.of(context).size.width,
-        height: kToolbarHeight,
-        child: Row(
-          children: <Widget>[
-            Expanded(
-                child: Icon(
-              Icons.error,
-            )),
-            Expanded(
-              flex: 3,
-              child: Text('$message'),
-            ),
-            Spacer(),
-          ],
-        ),
-      );
-    });
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return Container(
+          color: Colors.white,
+          width: MediaQuery.of(context).size.width,
+          height: kToolbarHeight,
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                  child: Icon(
+                Icons.error,
+                color: Colors.red,
+              )),
+              Expanded(
+                flex: 3,
+                child: Text('$message'),
+              ),
+              Spacer(),
+            ],
+          ),
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
 
     // BotToast.showNotification(
     //   title: (_) {
@@ -687,8 +756,8 @@ class Utils {
     // );
   }
 
-  static showSnackBarErrorUsingKey(
-      GlobalKey<ScaffoldState> key, String message) {
+  static showSnackBarErrorUsingKey(GlobalKey<ScaffoldState> key, String message,
+      {Duration duration}) {
     // SnackBar snackBar = SnackBar(
     //   backgroundColor: Colors.red.shade500,
     //   content: Text(
@@ -700,14 +769,23 @@ class Utils {
 
     // key.currentState.showSnackBar(snackBar);
 
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(Icons.error),
-        color: Colors.red,
-        title: 'Error',
-        subtitle: '$message',
-      );
-    });
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.error,
+            color: Colors.red,
+          ),
+          color: Colors.white,
+          title: 'Error',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
 
     // BotToast.showNotification(
     //   title: (_) {
@@ -730,15 +808,25 @@ class Utils {
     // );
   }
 
-  static showSnackBarWarning(BuildContext context, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(Icons.warning),
-        color: Colors.yellow[400],
-        title: 'Warning',
-        subtitle: '$message',
-      );
-    });
+  static showSnackBarWarning(BuildContext context, String message,
+      [Duration duration]) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.warning,
+            color: Colors.yellow[400],
+          ),
+          color: Colors.white,
+          title: 'Warning',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 4,
+          ),
+    );
   }
 
   static showSnackBarWarningUsingKey(
@@ -747,9 +835,12 @@ class Utils {
     BotToast.showCustomNotification(
         toastBuilder: (fn) {
           return SnackbarLayout(
-            leading: Icon(Icons.error),
-            color: Colors.red,
-            title: 'Error',
+            leading: Icon(
+              Icons.warning,
+              color: Colors.yellow[400],
+            ),
+            color: Colors.white,
+            title: 'Warning',
             subtitle: '$message',
           );
         },
@@ -759,27 +850,47 @@ class Utils {
             ));
   }
 
-  static showSnackBarSuccess(BuildContext context, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
-        title: 'Success',
-        subtitle: '$message',
-      );
-    });
+  static showSnackBarSuccess(BuildContext context, String message,
+      {Duration duration}) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.check_circle,
+            color: Colors.green,
+          ),
+          color: Colors.white,
+          title: 'Success',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
   }
 
   static showSnackBarSuccessUsingKey(
-      GlobalKey<ScaffoldState> key, String message) {
-    BotToast.showCustomNotification(toastBuilder: (fn) {
-      return SnackbarLayout(
-        leading: Icon(Icons.check_circle),
-        color: Colors.green,
-        title: 'Success',
-        subtitle: '$message',
-      );
-    });
+      GlobalKey<ScaffoldState> key, String message,
+      {Duration duration}) {
+    BotToast.showCustomNotification(
+      toastBuilder: (fn) {
+        return SnackbarLayout(
+          leading: Icon(
+            Icons.check_circle,
+            color: Colors.green,
+          ),
+          color: Colors.white,
+          title: 'Success',
+          subtitle: '$message',
+        );
+      },
+      duration: duration ??
+          Duration(
+            seconds: 3,
+          ),
+    );
   }
 
   static void showSuccessDialog(String message) {
@@ -896,11 +1007,14 @@ class Utils {
                 builder: (context) => LocationPicker(
                   apiKey,
                   automaticallyAnimateToCurrentLocation: false,
-                  initialCenter: initialLocation ?? Utils.getLastKnowLocation(),
+                  initialCenter: initialLocation ??
+                      Utils.getLastKnowLocation() ??
+                      LatLng(0, 0),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,
                 ),
+                maintainState: true,
               ),
             )) ??
             {});
@@ -915,6 +1029,14 @@ class Utils {
       {location.LocationAccuracy accuracy =
           location.LocationAccuracy.BALANCED}) async {
     final _location = Location()..changeSettings(accuracy: accuracy);
+    if (await _location.hasPermission() != PermissionStatus.GRANTED) {
+      var result = await _location.requestPermission();
+      if (result != PermissionStatus.GRANTED) {
+        Utils.showSnackBarError(null,
+            'This App Needs Location Permission to work. Please give permission.');
+      }
+      return null;
+    }
     MyApp._lastKnowLocation = _location.getLocation().then((data) {
       return LatLng(data.latitude, data.longitude);
     });
@@ -1087,7 +1209,7 @@ class Utils {
               !userData.exists ||
               userData.data == null ||
               userData.data.length <= 0) {
-            MyAppState?.navigatorKey?.currentState.pop();
+            MyAppState?.navigatorKey?.currentState?.pop();
             Utils.showSnackBarError(
               null,
               "User not found",
@@ -1188,6 +1310,7 @@ class Utils {
 
 class Session {
   static Map<String, dynamic> data = Map<String, dynamic>();
+  static num version = 45;
   static getCart() {
     if (data.containsKey('cart')) {
       return data['cart'];

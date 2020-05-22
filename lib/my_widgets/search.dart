@@ -135,7 +135,7 @@ class SearchWidgetState extends State<SearchWidget>
                   return Center(
                       child: Text(
                     'No Items Found Near You!',
-                    style: Theme.of(context).textTheme.title.copyWith(
+                    style: Theme.of(context).textTheme.headline6.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ));
@@ -169,7 +169,7 @@ class SearchWidgetState extends State<SearchWidget>
                             emptyWidget: Center(
                               child: Text(
                                 'No Store Found',
-                                style: Theme.of(context).textTheme.title,
+                                style: Theme.of(context).textTheme.headline6,
                               ),
                             ),
                             loader: Center(
@@ -220,7 +220,7 @@ class SearchWidgetState extends State<SearchWidget>
                             emptyWidget: Center(
                               child: Text(
                                 'No Items Found',
-                                style: Theme.of(context).textTheme.title,
+                                style: Theme.of(context).textTheme.headline6,
                               ),
                             ),
                             loader: Center(
@@ -239,6 +239,7 @@ class SearchWidgetState extends State<SearchWidget>
                                         MaterialPageRoute(builder: (context) {
                                       return ItemDetailsRoute(
                                         item: items[index],
+                                        isDemo: widget.demo,
                                       );
                                     }));
                                   },
@@ -255,6 +256,7 @@ class SearchWidgetState extends State<SearchWidget>
                                       builder: (context) {
                                         return ItemDetailsRoute(
                                           item: items[index],
+                                          isDemo: widget.demo,
                                         );
                                       },
                                     ),

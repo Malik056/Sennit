@@ -741,7 +741,7 @@
 //                                                       [index]['itemName'],
 //                                                   style: Theme.of(context)
 //                                                       .textTheme
-//                                                       .subhead,
+//                                                       .subtitle1,
 //                                                 ),
 //                                                 SizedBox(
 //                                                   height: 4,
@@ -1542,7 +1542,7 @@
 //             ),
 //             Text(
 //               'Confirmation Key',
-//               style: Theme.of(context).textTheme.display1,
+//               style: Theme.of(context).textTheme.headline4,
 //             ),
 //             SizedBox(
 //               height: 3,
@@ -1577,7 +1577,7 @@
 //                     'Invalid Code! Try Again',
 //                     style: Theme.of(context)
 //                         .textTheme
-//                         .body1
+//                         .bodyText2
 //                         .copyWith(color: Colors.red),
 //                   )
 //                 : Opacity(
@@ -1671,14 +1671,14 @@
 //               ),
 //               Text(
 //                 'Exit',
-//                 style: Theme.of(context).textTheme.display1,
+//                 style: Theme.of(context).textTheme.headline4,
 //               ),
 //               SizedBox(
 //                 height: 5,
 //               ),
 //               Text(
 //                 'Are you sure you wanna cancel the delivery? ',
-//                 style: Theme.of(context).textTheme.subtitle,
+//                 style: Theme.of(context).textTheme.subtitle2,
 //               ),
 //               SizedBox(
 //                 height: 2,
@@ -1793,7 +1793,7 @@
 //             ),
 //             Text(
 //               'Accept the order?',
-//               style: Theme.of(context).textTheme.title,
+//               style: Theme.of(context).textTheme.headline6,
 //             ),
 //             SizedBox(
 //               height: 10,

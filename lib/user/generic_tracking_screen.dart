@@ -102,7 +102,7 @@ class _OrderTrackingState extends State<OrderTracking> {
       ),
       key: scaffoldKey,
       appBar: _MyStatefulAppBar(
-        title: 'R ${(widget.data['price'] as double).toStringAsFixed(2)}',
+        title: 'R${(widget.data['price'] as double).toStringAsFixed(2)}',
         onDonePressed: () {
           _Body._key?.currentState?.showPopup();
         },
@@ -573,7 +573,7 @@ class __BodyState extends State<_Body> {
                                             'Not Registered',
                                         style: Theme.of(context)
                                             .textTheme
-                                            .title
+                                            .headline6
                                             .copyWith(
                                               fontWeight: FontWeight.bold,
                                               color: Theme.of(context)
@@ -597,7 +597,7 @@ class __BodyState extends State<_Body> {
                                       //             '${time / 60} minutes, ${time % 60} seconds',
                                       //         style: Theme.of(context)
                                       //             .textTheme
-                                      //             .body1,
+                                      //             .bodyText2,
                                       //       ),
                                       //     ],
                                       //   ),
@@ -612,14 +612,14 @@ class __BodyState extends State<_Body> {
                                               text: 'Phone: ',
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .subtitle,
+                                                  .subtitle2,
                                             ),
                                             TextSpan(
                                               text: driverPhoneNumber ??
                                                   'Not Available',
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .body1,
+                                                  .bodyText2,
                                             ),
                                           ],
                                         ),
@@ -658,7 +658,7 @@ class __BodyState extends State<_Body> {
                                             'Go',
                                             style: Theme.of(context)
                                                 .textTheme
-                                                .subhead,
+                                                .subtitle1,
                                           ),
                                         ],
                                       ),
@@ -679,7 +679,7 @@ class __BodyState extends State<_Body> {
                                     ' Finding Your Driver .... ',
                                     style: Theme.of(context)
                                         .textTheme
-                                        .title
+                                        .headline6
                                         .copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -749,7 +749,8 @@ class _MySolidBottomSheetForReceiveItState
 
   Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, double> itemsData = Map<String, double>.from(data['itemsData']);
+    Map<String, Map<String, dynamic>> itemsData =
+        Map<String, Map<String, dynamic>>.from(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> result = {};
     final keys = itemsData.keys;
@@ -846,7 +847,14 @@ class _MySolidBottomSheetForReceiveItState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   SizedBox(
-                    height: 40,
+                    height: 8,
+                  ),
+                  Text(
+                    'OrderId: ${widget.data['shortId']}',
+                    style: Theme.of(context).textTheme.subtitle1,
+                  ),
+                  SizedBox(
+                    height: 10,
                   ),
                   Container(
                     color: Theme.of(context).primaryColor,
@@ -926,7 +934,7 @@ class _MySolidBottomSheetForReceiveItState
                                                       [index]['itemName'],
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead,
+                                                      .subtitle1,
                                                 ),
                                                 SizedBox(
                                                   height: 4,
@@ -937,7 +945,7 @@ class _MySolidBottomSheetForReceiveItState
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,
@@ -1335,7 +1343,7 @@ class _VerificationCodePopUpState extends State<_VerificationCodePopUp> {
                         child: Text(
                           'Verification Code\n' + widget.verificationCode,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.title.copyWith(
+                          style: Theme.of(context).textTheme.headline6.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
@@ -1450,6 +1458,10 @@ class _OrderTileState extends State<_OrderTile> {
         children: <Widget>[
           SizedBox(
             height: 8,
+          ),
+          Text(
+            'OrderId: ${widget.data['shortId']}',
+            style: Theme.of(context).textTheme.subtitle1,
           ),
           SizedBox(
             height: 10,
@@ -1651,7 +1663,7 @@ class _OrderTileState extends State<_OrderTile> {
           Text(
             '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'}
               ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-            style: Theme.of(context).textTheme.subhead.copyWith(fontSize: 20),
+            style: Theme.of(context).textTheme.subtitle1.copyWith(fontSize: 16),
           ),
         ],
       ),

@@ -109,7 +109,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         user.firstName = firstName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       maxLines: 1,
@@ -122,7 +122,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         user.lastName = lastName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       keyboardType: TextInputType.emailAddress,
@@ -150,7 +150,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         // user.email = email;
                         // return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       controller: passwordController,
@@ -165,7 +165,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       obscureText: true,
@@ -179,7 +179,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     Opacity(
                       opacity: 0,
@@ -301,7 +301,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                         user.phoneNumber = cellNum;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     // ListTile(
                     //   leading: Icon(
@@ -487,7 +487,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                     batch.commit().timeout(
                                         Duration(seconds: 20), onTimeout: () {
                                       Navigator.pop(context);
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       pressed = false;
                                       Utils.showSnackBarError(
                                           context, 'Request Timeout');
@@ -540,7 +540,7 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });

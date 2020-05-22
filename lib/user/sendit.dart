@@ -12,6 +12,7 @@ import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/user/generic_tracking_screen.dart';
+import 'package:shortid/shortid.dart';
 
 enum SourcePage { addressSelectionFrom, addressSelectionDestination, receiveIt }
 
@@ -206,7 +207,7 @@ class AddressAddingState extends State<AddressAddingBody> {
                             ? coordinates =
                                 AddressAddingRoute._toAddress?.coordinates
                             : coordinates =
-                                AddressAddingRoute._fromAddress.coordinates;
+                                AddressAddingRoute._fromAddress?.coordinates;
 
                         LatLng latlng = coordinates == null
                             ? null
@@ -576,6 +577,8 @@ class SendItCartRoute extends StatelessWidget {
               }
               {
                 // if (true) {
+                String shortId = shortid.generate();
+                sennitOrder.shortId = shortId;
                 Map<String, dynamic> orderData = sennitOrder.toMap()
                   ..putIfAbsent('otp', () => otp);
 
@@ -685,12 +688,12 @@ class SendItCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-        )
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = false
@@ -710,8 +713,9 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = true
-      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
+      ..staging = false
+      ..companyName =
+          Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
       ..isPreAuth = true
       ..displayFee = true;
 
@@ -818,7 +822,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Pick From',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   Opacity(
                     opacity: 0,
@@ -837,14 +841,21 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                               coordinates.longitude,
                             );
                       LocationResult result = await Utils.showPlacePicker(
-                          context,
-                          initialLocation: latlng);
+                        context,
+                        initialLocation: latlng,
+                      );
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
-                            result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._fromAddress =
-                            (await Geocoder.google(await Utils.getAPIKey())
-                                .findAddressesFromCoordinates(coordinates))[0];
+                          result.latLng.latitude,
+                          result.latLng.longitude,
+                        );
+                        SendItCartRoute._fromAddress = Address(
+                          addressLine: result.address,
+                          coordinates: coordinates,
+                        );
+                        // SendItCartRoute._fromAddress =
+                        //     (await Geocoder.google(await Utils.getAPIKey())
+                        //         .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },
@@ -982,7 +993,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Deliver To',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   ),
                   Opacity(
                     opacity: 0,
@@ -1007,9 +1018,13 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       if (result != null) {
                         Coordinates coordinates = Coordinates(
                             result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._toAddress =
-                            (await Geocoder.google(await Utils.getAPIKey())
-                                .findAddressesFromCoordinates(coordinates))[0];
+                        SendItCartRoute._toAddress = Address(
+                          addressLine: result.address,
+                          coordinates: coordinates,
+                        );
+                        // SendItCartRoute._toAddress =
+                        //     (await Geocoder.google(await Utils.getAPIKey())
+                        //         .findAddressesFromCoordinates(coordinates))[0];
                         setState(() {});
                       }
                     },
@@ -1150,7 +1165,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                 children: <Widget>[
                   Text(
                     ' Distance ',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Spacer(),
                   Text(
@@ -1173,7 +1188,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                   Center(
                       child: Text(
                     'Package Details',
-                    style: Theme.of(context).textTheme.headline,
+                    style: Theme.of(context).textTheme.headline5,
                   )),
                   ListTile(
                     title: Text('Required # of boxes'),
@@ -1320,7 +1335,7 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       children: <Widget>[
                         Text(
                           'Delivery Charges: R${getCharges()}',
-                          style: Theme.of(context).textTheme.subhead,
+                          style: Theme.of(context).textTheme.subtitle1,
                         ),
                       ],
                     ),

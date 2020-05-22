@@ -33,7 +33,7 @@ class UserNotificationWidget extends StatelessWidget {
             return Center(
               child: Text(
                 'No Notifications Available',
-                style: Theme.of(context).textTheme.title,
+                style: Theme.of(context).textTheme.headline6,
               ),
             );
           } else {
@@ -114,7 +114,7 @@ class UserNotificationWidget extends StatelessWidget {
                                   : data.data['message'],
                               style: Theme.of(context)
                                   .textTheme
-                                  .subhead
+                                  .subtitle1
                                   .copyWith(fontSize: 14),
                             ),
                             trailing: Text(

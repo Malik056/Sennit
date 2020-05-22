@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
-import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,12 +13,10 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/order_details.dart';
 
-class OrderedItemsList extends StatelessWidget {
-  static bool _buttonPressed;
-  final _key = GlobalKey<ScaffoldState>();
+class OrderedItemsList extends StatefulWidget {
   final FirebaseMessaging _fcm = FirebaseMessaging();
+
   OrderedItemsList() {
-    _buttonPressed = false;
     _fcm.configure(
       onMessage: (data) async {
         print(data);
@@ -32,7 +28,26 @@ class OrderedItemsList extends StatelessWidget {
         //     color: Theme.of(context).primaryColor,
         //   ),
         // );
-        MyAppState.showNotificationWithDefaultSound(data['notification']);
+        // await showNotificationWithDefaultSound(data['notification']);
+        var jsonData = data['notification'];
+        var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+            'orderArriveChannel',
+            'OrderArrived',
+            'When The Order is Posted this channel will show the notifications',
+            importance: Importance.Max,
+            priority: Priority.High);
+        var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+        var platformChannelSpecifics = new NotificationDetails(
+            androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+        await flutterLocalNotificationsPlugin.show(
+          DateTime.now().millisecondsSinceEpoch ~/ 10000,
+          jsonData['title'] ?? 'Order',
+          jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+          platformChannelSpecifics,
+          payload: json.encode(
+            jsonData,
+          ),
+        );
       },
       onBackgroundMessage: Platform.isIOS ? null : _backgroundMessageHandler,
       onResume: _onResume,
@@ -91,7 +106,7 @@ class OrderedItemsList extends StatelessWidget {
   Future<dynamic> _onLaunch(payload) async {
     final uid = (await FirebaseAuth.instance.currentUser()).uid;
     final data = Platform.isIOS ? payload : payload['data'];
-    BotToast.showText(text: 'onLaunch: $data');
+    // BotToast.showText(text: 'onLaunch: $data');
     // if (uid == data['userId']) {
     //   Firestore.instance.collection('users').document(uid).get().then(
     //     (userData) async {
@@ -137,7 +152,26 @@ class OrderedItemsList extends StatelessWidget {
   static Future<dynamic> _backgroundMessageHandler(
       Map<String, dynamic> message) async {
     print(message);
-    showNotificationWithDefaultSound(message);
+    // showNotificationWithDefaultSound(message);
+    var jsonData = message;
+    var androidPlatformChannelSpecifics = new AndroidNotificationDetails(
+        'orderArriveChannel',
+        'OrderArrived',
+        'When The Order is Posted this channel will show the notifications',
+        importance: Importance.Max,
+        priority: Priority.High);
+    var iOSPlatformChannelSpecifics = new IOSNotificationDetails();
+    var platformChannelSpecifics = new NotificationDetails(
+        androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch,
+      jsonData['title'] ?? 'Order',
+      jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
+      platformChannelSpecifics,
+      payload: json.encode(
+        jsonData,
+      ),
+    );
   }
 
   static Future showNotificationWithDefaultSound(
@@ -152,7 +186,7 @@ class OrderedItemsList extends StatelessWidget {
     var platformChannelSpecifics = new NotificationDetails(
         androidPlatformChannelSpecifics, iOSPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-      0,
+      DateTime.now().millisecondsSinceEpoch,
       jsonData['title'] ?? 'Order',
       jsonData['message'] ?? 'An Order is Arrived. Start Preparing it.',
       platformChannelSpecifics,
@@ -163,11 +197,24 @@ class OrderedItemsList extends StatelessWidget {
   }
 
   @override
+  State<StatefulWidget> createState() {
+    return OrderedItemsListState();
+  }
+}
+
+class OrderedItemsListState extends State<OrderedItemsList> {
+  final _key = GlobalKey<ScaffoldState>();
+  bool _buttonPressed = false;
+  int selectedTab = 0;
+  Store store;
+  @override
+  void initState() {
+    super.initState();
+    store = Session.data['partnerStore'];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Future<DocumentSnapshot> futureStoreData = Firestore.instance
-    //     .collection('stores')
-    //     .document(Session.data['partnerStore']['storeId'])
-    //     .get();
     return WillPopScope(
       onWillPop: () async {
         if (!_buttonPressed) {
@@ -184,46 +231,127 @@ class OrderedItemsList extends StatelessWidget {
         }
       },
       child: Scaffold(
-        // drawer: Drawer(
-        //   child: Column(
-        //     children: <Widget>[
-        //       UserAccountsDrawerHeader(
-        //         accountName: FutureBuilder<DocumentSnapshot>(
-        //           future: futureStoreData,
-        //           builder: (context, snapshot) {
-        //             if (snapshot.connectionState == ConnectionState.waiting) {
-        //               return Center(
-        //                 child: CircularProgressIndicator(
-        //                   strokeWidth: 2,
-        //                 ),
-        //               );
-        //             } else {
-        //               return Text(snapshot.data.data['storeName']);
-        //             }
-        //           },
-        //         ),
-        //         accountEmail: null,
-        //       )
-        //     ],
-        //   ),
-        // ),
+        drawer: Drawer(
+          child: Column(
+            children: <Widget>[
+              UserAccountsDrawerHeader(
+                arrowColor: Theme.of(context).primaryColor,
+                currentAccountPicture: CircleAvatar(
+                  backgroundImage: NetworkImage(
+                    (Session.data['partnerStore'] as Store)?.storeImage ?? '',
+                  ),
+                  backgroundColor: Theme.of(context).primaryColor,
+                ),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(
+                      (Session.data['partnerStore'] as Store)?.storeImage ?? '',
+                    ),
+                    fit: BoxFit.cover,
+                  ),
+                  color: Colors.white,
+                ),
+                accountName: Text(
+                  (Session.data['partnerStore'] as Store)?.storeName ?? '',
+                  style: Theme.of(context).textTheme.subtitle1.copyWith(
+                        fontSize: 12,
+                      ),
+                ),
+                accountEmail: Text(''),
+              ),
+              SizedBox(height: 10),
+              ListTile(
+                selected: selectedTab == 0,
+                onTap: () {
+                  selectedTab = 0;
+                  Navigator.pop(context);
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text('Current Orders'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                selected: selectedTab == 1,
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 1;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text('Served Orders'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                selected: selectedTab == 2,
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 2;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text('Completed Orders By Items'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 2;
+                  setState(() {});
+                },
+                leading: Icon(Icons.receipt),
+                title: Text((store?.isOpened ?? false) ? 'Open' : 'Closed'),
+                trailing: Switch(
+                  value: store.isOpened ?? false,
+                  onChanged: (isOpen) async {
+                    store.isOpened = isOpen;
+                    setState(() {});
+                    await Firestore.instance
+                        .collection('stores')
+                        .document(store.storeId)
+                        .setData(
+                      {
+                        'isOpened': isOpen,
+                      },
+                      merge: true,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         key: _key,
         appBar: AppBar(
-          title: Text('Orders'),
+          title: Text(
+            selectedTab == 0
+                ? 'Pending Orders'
+                : selectedTab == 1 ? 'Served Orders' : 'Item Orders',
+          ),
           centerTitle: true,
           actions: <Widget>[
             FlatButton(
               child: Icon(
                 FontAwesomeIcons.signOutAlt,
-                // 'Signout',
-                // style: Theme.of(context)
-                //     .textTheme
-                //     .subhead
-                //     .copyWith(color: Theme.of(context).primaryColor),
               ),
               onPressed: () async {
                 Store store = Session.data['partnerStore'];
-                String token = await _fcm.getToken();
+                String token = await widget._fcm.getToken();
                 store.deviceTokens.removeWhere((value) => value == token);
                 Firestore.instance
                     .collection('stores')
@@ -238,328 +366,306 @@ class OrderedItemsList extends StatelessWidget {
             )
           ],
         ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            SizedBox(
-              height: 10,
-            ),
-            Text(
-              '  Pending Orders',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Expanded(
-              child: PastOrdersRoute(
-                partnerStoreId: Session.data['partnerStore'].storeId,
-              ),
-              // child: FutureBuilder<QuerySnapshot>(
-              //   future: Firestore.instance
-              //       .collection('stores')
-              //       .document(Session.data['partnerStore']['storeId'])
-              //       .collection('pendingOrderedItems')
-              //       .getDocuments(),
-              //   builder: (context, snapshot) {
-              //     if (snapshot.connectionState == ConnectionState.waiting) {
-              //       return Center(
-              //         child: CircularProgressIndicator(),
-              //       );
-              //     }
-              //     if (snapshot.data.documents == null ||
-              //         snapshot.data.documents.length <= 0) {
-              //       return Center(
-              //         child: Text(
-              //           'No Pending Orders',
-              //           style: Theme.of(context).textTheme.title.copyWith(
-              //                 fontWeight: FontWeight.bold,
-              //               ),
-              //         ),
-              //       );
-              //     }
-              //     return ListView.builder(
-              //       itemCount: snapshot.data.documents.length,
-              //       itemBuilder: (context, index) {
-              //         return
-              //       },
-              //     );
-              //   },
-              // ),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Text(
-              '  Completed Orders',
-              style: Theme.of(context).textTheme.subhead,
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Expanded(
-              child: FutureBuilder<QuerySnapshot>(
-                future: Firestore.instance
-                    .collection('stores')
-                    .document((Session.data['partnerStore'] as Store).storeId)
-                    .collection('orderedItems')
-                    .getDocuments()
-                    .then(
-                  (value) async {
-                    if (!Session.data.containsKey('partnerStore')) {
-                      final partnerStoreId = await FirebaseAuth.instance
-                          .currentUser()
-                          .then((user) => user.uid);
-                      final data = await Firestore.instance
-                          .collection("partnerStores")
-                          .document(partnerStoreId)
-                          .get()
-                          .then(
-                            (dataSnapshot) => dataSnapshot.data,
-                          );
-                      Session.data.putIfAbsent(
-                        'partnerStore',
-                        () => Store.fromMap(data),
-                      );
-                    }
-                    // keys = Session.data['partnerStore'].keys;
-                    return value;
-                  },
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  } else if (snapshot.data.documents.length == 0) {
-                    return Center(
-                      child: Text(
-                        'No Orders yet!',
-                        style: Theme.of(context).textTheme.title.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+        body: selectedTab == 0
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Expanded(
+                    child: PastOrdersRoute(
+                      partnerStoreId: Session.data['partnerStore'].storeId,
+                      isCompleted: false,
+                    ),
+                  ),
+                ],
+              )
+            : selectedTab == 1
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      SizedBox(
+                        height: 10,
                       ),
-                    );
-                  }
-                  List<DocumentSnapshot> data = snapshot.data.documents;
-                  TextTheme textTheme = Theme.of(context).textTheme;
-                  return ListView.builder(
-                      itemCount: data.length,
-                      itemBuilder: (context, index) {
-                        DocumentSnapshot snapshot = data[index];
-                        int numberOfOrders = snapshot.data.length;
-                        return FutureBuilder<Map<String, dynamic>>(
-                          future: Firestore.instance
-                              .collection('items')
-                              .document(snapshot.documentID)
+                      Expanded(
+                        child: PastOrdersRoute(
+                          partnerStoreId: Session.data['partnerStore'].storeId,
+                          isCompleted: true,
+                        ),
+                      ),
+                    ],
+                  )
+                : FutureBuilder<QuerySnapshot>(
+                    future: Firestore.instance
+                        .collection('stores')
+                        .document(
+                            (Session.data['partnerStore'] as Store).storeId)
+                        .collection('orderedItems')
+                        .getDocuments()
+                        .then(
+                      (value) async {
+                        if (!Session.data.containsKey('partnerStore')) {
+                          final partnerStoreId = await FirebaseAuth.instance
+                              .currentUser()
+                              .then((user) => user.uid);
+                          final data = await Firestore.instance
+                              .collection("partnerStores")
+                              .document(partnerStoreId)
                               .get()
-                              .then((data) {
-                            return data.data;
-                          }),
-                          builder: (context, itemSnapshot) {
-                            if (itemSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Container(
-                                margin: EdgeInsets.all(40),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                              .then(
+                                (dataSnapshot) => dataSnapshot.data,
                               );
-                            }
-                            return Card(
-                              elevation: 4,
-                              margin: EdgeInsets.only(
-                                top: 16,
-                                bottom: 14,
-                              ),
-                              child: Container(
-                                // padding: EdgeInsets.all(4),
-                                child: InkWell(
-                                  splashColor: Theme.of(context)
-                                      .primaryColor
-                                      .withAlpha(200),
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) {
-                                          return ItemOrdersRoute(
-                                            data: data[index].data,
-                                            imageUrls: List<String>.from(
-                                              itemSnapshot.data['images'],
+                          Session.data.putIfAbsent(
+                            'partnerStore',
+                            () => Store.fromMap(data),
+                          );
+                        }
+                        // keys = Session.data['partnerStore'].keys;
+                        return value;
+                      },
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      } else if (snapshot.data.documents.length == 0) {
+                        return Center(
+                          child: Text(
+                            'No Orders yet!',
+                            style:
+                                Theme.of(context).textTheme.headline6.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                          ),
+                        );
+                      }
+                      List<DocumentSnapshot> data = snapshot.data.documents;
+                      TextTheme textTheme = Theme.of(context).textTheme;
+                      return ListView.builder(
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            DocumentSnapshot snapshot = data[index];
+                            int numberOfOrders = snapshot.data.length;
+                            return FutureBuilder<Map<String, dynamic>>(
+                              future: Firestore.instance
+                                  .collection('items')
+                                  .document(snapshot.documentID)
+                                  .get()
+                                  .then((data) {
+                                return data.data;
+                              }),
+                              builder: (context, itemSnapshot) {
+                                if (itemSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Container(
+                                    margin: EdgeInsets.all(40),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
+                                return Card(
+                                  elevation: 4,
+                                  margin: EdgeInsets.only(
+                                    top: 16,
+                                    bottom: 14,
+                                  ),
+                                  child: Container(
+                                    // padding: EdgeInsets.all(4),
+                                    child: InkWell(
+                                      splashColor: Theme.of(context)
+                                          .primaryColor
+                                          .withAlpha(200),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) {
+                                              return ItemOrdersRoute(
+                                                data: data[index].data,
+                                                imageUrls: List<String>.from(
+                                                  itemSnapshot.data['images'],
+                                                ),
+                                              );
+                                            },
+                                            maintainState: false,
+                                          ),
+                                        );
+                                      },
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Container(
+                                            color: Colors.black,
+                                            child: FadeInImage.assetNetwork(
+                                              placeholder:
+                                                  'assets/images/logo.png',
+                                              image: itemSnapshot.data['images']
+                                                  [0],
+                                              width: 90,
+                                              height: 90,
+                                              fit: BoxFit.contain,
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      Container(
-                                        color: Colors.black,
-                                        child: FadeInImage.assetNetwork(
-                                          placeholder: 'assets/images/logo.png',
-                                          image: itemSnapshot.data['images'][0],
-                                          width: 90,
-                                          height: 90,
-                                          fit: BoxFit.contain,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Container(
-                                        // color: Colors.pink,
-                                        child: Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.start,
-                                            // mainAxisSize: MainAxisSize.min,
-                                            children: <Widget>[
-                                              SizedBox(
-                                                height: 4,
-                                              ),
-                                              Text(
-                                                itemSnapshot.data['itemName'],
-                                                style: textTheme.title.copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                              // SizedBox(
-                                              //   height: 2,
-                                              // ),
-                                              Row(
+                                          ),
+                                          SizedBox(
+                                            width: 10,
+                                          ),
+                                          Container(
+                                            // color: Colors.pink,
+                                            child: Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                // mainAxisSize: MainAxisSize.min,
                                                 children: <Widget>[
-                                                  Text(
-                                                    'Total Orders: ',
-                                                    style: textTheme.subhead
-                                                        .copyWith(
-                                                      fontSize: 16,
-                                                    ),
+                                                  SizedBox(
+                                                    height: 4,
                                                   ),
                                                   Text(
-                                                    '$numberOfOrders',
-                                                    style: textTheme.subtitle
+                                                    itemSnapshot
+                                                        .data['itemName'],
+                                                    style: textTheme.headline6
                                                         .copyWith(
-                                                      fontSize: 16,
-                                                    ),
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
                                                   ),
+                                                  // SizedBox(
+                                                  //   height: 2,
+                                                  // ),
+                                                  Row(
+                                                    children: <Widget>[
+                                                      Text(
+                                                        'Total Orders: ',
+                                                        style: textTheme
+                                                            .subtitle1
+                                                            .copyWith(
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '$numberOfOrders',
+                                                        style: textTheme
+                                                            .subtitle2
+                                                            .copyWith(
+                                                          fontSize: 16,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.bottomRight,
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment.end,
+                                                      children: <Widget>[
+                                                        Text(
+                                                          'Price: ',
+                                                          strutStyle:
+                                                              StrutStyle(
+                                                                  height: 1),
+                                                          style: textTheme
+                                                              .headline6
+                                                              .copyWith(
+                                                                  // fontWeight: FontWeight.bold,
+                                                                  ),
+                                                        ),
+                                                        Text(
+                                                          '${itemSnapshot.data['price']}  ',
+                                                          style: textTheme
+                                                              .headline6
+                                                              .copyWith(
+                                                                  // fontSize: 18,
+                                                                  ),
+                                                          strutStyle:
+                                                              StrutStyle(
+                                                                  height: 1.5),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
                                                 ],
                                               ),
-                                              Align(
-                                                alignment:
-                                                    Alignment.bottomRight,
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: <Widget>[
-                                                    Text(
-                                                      'Price: ',
-                                                      strutStyle:
-                                                          StrutStyle(height: 1),
-                                                      style: textTheme.title
-                                                          .copyWith(
-                                                              // fontWeight: FontWeight.bold,
-                                                              ),
-                                                    ),
-                                                    Text(
-                                                      '${itemSnapshot.data['price']}  ',
-                                                      style: textTheme.title
-                                                          .copyWith(
-                                                              // fontSize: 18,
-                                                              ),
-                                                      strutStyle: StrutStyle(
-                                                          height: 1.5),
-                                                    ),
-                                                  ],
-                                                ),
-                                              )
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
 
-                                // ListTile(
-                                //   contentPadding: EdgeInsets.all(0),
-                                //   leading: Container(
-                                //     height: 1000,
-                                //     color: Colors.black,
-                                //     child: FadeInImage.assetNetwork(
-                                //       placeholder: 'assets/images/logo.png',
-                                //       image: itemSnapshot.data['images'][0],
-                                //       width: 80,
-                                //       fit: BoxFit.fitWidth,
-                                //     ),
-                                //   ),
-                                //   title: Text(itemSnapshot.data['itemName']),
-                                //   subtitle: Container(
-                                //     child: Column(
-                                //       mainAxisSize: MainAxisSize.min,
-                                //       children: [
-                                //         Row(
-                                //           mainAxisSize: MainAxisSize.min,
-                                //           children: <Widget>[
-                                //             Text(
-                                //               'Total Orders',
-                                //               style: textTheme.subhead,
-                                //             ),
-                                //             Text('$numberOfOrders'),
-                                //           ],
-                                //         ),
-                                //         SizedBox(
-                                //           height: 10,
-                                //         ),
-                                //         Row(
-                                //           mainAxisSize: MainAxisSize.min,
-                                //           mainAxisAlignment: MainAxisAlignment.end,
-                                //           children: <Widget>[
-                                //             Text(
-                                //               'Price: ',
-                                //               style: textTheme.subhead,
-                                //             ),
-                                //             Text('${itemSnapshot.data['price']}'),
-                                //           ],
-                                //         ),
-                                //       ],
-                                //     ),
-                                //   ),
-                                //   trailing: Icon(Icons.navigate_next),
-                                //   onTap: () {
-                                //     Navigator.push(
-                                //       context,
-                                //       MaterialPageRoute(
-                                //         builder: (context) {
-                                //           return ItemOrdersRoute(
-                                //             data: data[index].data,
-                                //             imageUrls: List<String>.from(
-                                //               itemSnapshot.data['images'],
-                                //             ),
-                                //           );
-                                //         },
-                                //       ),
-                                //     );
-                                //   },
-                                // ),
-                              ),
+                                    // ListTile(
+                                    //   contentPadding: EdgeInsets.all(0),
+                                    //   leading: Container(
+                                    //     height: 1000,
+                                    //     color: Colors.black,
+                                    //     child: FadeInImage.assetNetwork(
+                                    //       placeholder: 'assets/images/logo.png',
+                                    //       image: itemSnapshot.data['images'][0],
+                                    //       width: 80,
+                                    //       fit: BoxFit.fitWidth,
+                                    //     ),
+                                    //   ),
+                                    //   title: Text(itemSnapshot.data['itemName']),
+                                    //   subtitle: Container(
+                                    //     child: Column(
+                                    //       mainAxisSize: MainAxisSize.min,
+                                    //       children: [
+                                    //         Row(
+                                    //           mainAxisSize: MainAxisSize.min,
+                                    //           children: <Widget>[
+                                    //             Text(
+                                    //               'Total Orders',
+                                    //               style: textTheme.subtitle1,
+                                    //             ),
+                                    //             Text('$numberOfOrders'),
+                                    //           ],
+                                    //         ),
+                                    //         SizedBox(
+                                    //           height: 10,
+                                    //         ),
+                                    //         Row(
+                                    //           mainAxisSize: MainAxisSize.min,
+                                    //           mainAxisAlignment: MainAxisAlignment.end,
+                                    //           children: <Widget>[
+                                    //             Text(
+                                    //               'Price: ',
+                                    //               style: textTheme.subtitle1,
+                                    //             ),
+                                    //             Text('${itemSnapshot.data['price']}'),
+                                    //           ],
+                                    //         ),
+                                    //       ],
+                                    //     ),
+                                    //   ),
+                                    //   trailing: Icon(Icons.navigate_next),
+                                    //   onTap: () {
+                                    //     Navigator.push(
+                                    //       context,
+                                    //       MaterialPageRoute(
+                                    //         builder: (context) {
+                                    //           return ItemOrdersRoute(
+                                    //             data: data[index].data,
+                                    //             imageUrls: List<String>.from(
+                                    //               itemSnapshot.data['images'],
+                                    //             ),
+                                    //           );
+                                    //         },
+                                    //       ),
+                                    //     );
+                                    //   },
+                                    // ),
+                                  ),
+                                );
+                              },
                             );
-                          },
-                        );
-                      });
-                },
-              ),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-          ],
-        ),
+                          });
+                    },
+                  ),
       ),
     );
   }
@@ -641,12 +747,12 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'ID: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
                                       keys[index],
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -659,7 +765,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Date Ordered: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
@@ -668,7 +774,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                           data[keys[index]]['dateOrdered'],
                                         ),
                                       ),
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -681,7 +787,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Date Delivered: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
@@ -690,7 +796,7 @@ class ItemOrdersRoute extends StatelessWidget {
                                           data[keys[index]]['dateDelivered'],
                                         ),
                                       ),
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -703,12 +809,12 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Quantity: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Text(
                                       '${data[keys[index]]['quantity']}',
-                                      style: textTheme.subtitle
+                                      style: textTheme.subtitle2
                                           .copyWith(fontSize: 14),
                                     ),
                                   ],
@@ -722,13 +828,13 @@ class ItemOrdersRoute extends StatelessWidget {
                                   children: <Widget>[
                                     Text(
                                       'Delivered To: ',
-                                      style: textTheme.subhead
+                                      style: textTheme.subtitle1
                                           .copyWith(fontSize: 16),
                                     ),
                                     Expanded(
                                       child: Text(
                                         data[keys[index]]['deliveredTo'],
-                                        style: textTheme.subtitle
+                                        style: textTheme.subtitle2
                                             .copyWith(fontSize: 14),
                                       ),
                                     ),
@@ -744,13 +850,13 @@ class ItemOrdersRoute extends StatelessWidget {
                                     children: <Widget>[
                                       Text(
                                         'Price: ',
-                                        style: textTheme.title.copyWith(
+                                        style: textTheme.headline6.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       Text(
                                         '${data[keys[index]]['price']} per Item',
-                                        style: textTheme.subtitle
+                                        style: textTheme.subtitle2
                                             .copyWith(fontSize: 18),
                                       ),
                                     ],
@@ -817,103 +923,59 @@ class ItemOrdersRoute extends StatelessWidget {
 
 class PastOrdersRoute extends StatelessWidget {
   final String partnerStoreId;
-  PastOrdersRoute({this.partnerStoreId});
+  final bool isCompleted;
+  PastOrdersRoute({
+    this.partnerStoreId,
+    @required this.isCompleted,
+  });
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: BouncingScrollPhysics(),
-      child: Container(
-        padding: EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            FutureBuilder<QuerySnapshot>(
-              future: Firestore.instance
-                  .collection('stores')
-                  .document(partnerStoreId)
-                  .collection('pendingOrderedItems')
-                  .getDocuments(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(),
-                  );
-                } else if (snapshot.data == null ||
-                    !snapshot.hasData ||
-                    snapshot.data.documents == null ||
-                    snapshot.data.documents.isEmpty) {
-                  return Center(
-                    child: Text('No Pending Orders Yet'),
-                  );
-                } else {
-                  final documents = snapshot.data.documents;
-                  return SingleChildScrollView(
-                    physics: BouncingScrollPhysics(),
-                    child: Column(
-                      children: List.generate(
-                        documents.length,
-                        (index) {
-                          return OrderTile(
-                            data: documents[index].data,
-                            isStore: true,
-                            status: "Preparing",
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-            // Container(
-            //   margin: EdgeInsets.only(top: 10, bottom: 10),
-            //   width: MediaQuery.of(context).size.width - 20,
-            //   color: Colors.grey,
-            //   height: 1,
-            // ),
-            // Text(
-            //   'Pending Orders',
-            //   style: Theme.of(context).textTheme.subhead,
-            // ),
-            // SizedBox(
-            //   height: 10,
-            // ),
-            // FutureBuilder<QuerySnapshot>(
-            //   future: Firestore.instance
-            //       .collection("stores")
-            //       .document(partnerStoreId)
-            //       .collection('completedOrders')
-            //       .getDocuments(),
-            //   builder: (context, snapshot) {
-            //     if (snapshot.connectionState == ConnectionState.waiting) {
-            //       return Center(
-            //         child: CircularProgressIndicator(),
-            //       );
-            //     } else if (snapshot.data == null ||
-            //         !snapshot.hasData ||
-            //         snapshot.data.documents == null ||
-            //         snapshot.data.documents.isEmpty) {
-            //       return Center(
-            //         child: Text('No Past Orders Yet'),
-            //       );
-            //     } else {
-            //       final documents = snapshot.data.documents;
-            //       return SingleChildScrollView(
-            //         physics: BouncingScrollPhysics(),
-            //         child: Column(
-            //           children: List.generate(
-            //             documents.length,
-            //             (index) {
-            //               return OrderTile(data: documents[index].data);
-            //             },
-            //           ),
-            //         ),
-            //       );
-            //     }
-            //   },
-            // ),
-          ],
-        ),
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: Firestore.instance
+            .collection('stores')
+            .document(partnerStoreId)
+            .collection(isCompleted ? 'servedOrders' : 'pendingOrderedItems')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.data == null ||
+              !snapshot.hasData ||
+              snapshot.data.documents == null ||
+              snapshot.data.documents.isEmpty) {
+            return Center(
+              child: Text(
+                isCompleted ? 'No Orders Served Yet' : 'No Pending Orders Yet',
+              ),
+            );
+          } else {
+            final documents = snapshot.data.documents;
+            return SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              child: Column(
+                children: List.generate(
+                  documents.length,
+                  (index) {
+                    return OrderTile(
+                      data: documents[index].data,
+                      isStore: true,
+                      isCompleted: isCompleted,
+                      status: isCompleted ? 'Served' : "Preparing",
+                      userOrderRef: Firestore.instance
+                          .collection('users')
+                          .document(documents[index].data['userId'])
+                          .collection('orders')
+                          .document(documents[index].data['userId']),
+                    );
+                  },
+                ),
+              ),
+            );
+          }
+        },
       ),
     );
   }

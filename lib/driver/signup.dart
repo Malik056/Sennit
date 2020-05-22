@@ -107,7 +107,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.firstName = firstName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       maxLines: 1,
@@ -120,7 +120,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.lastName = lastName;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       keyboardType: TextInputType.emailAddress,
@@ -148,7 +148,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         // driver.email = email;
                         // return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       controller: passwordController,
@@ -163,7 +163,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
                       obscureText: true,
@@ -177,7 +177,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         }
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     Opacity(
                       opacity: 0,
@@ -298,7 +298,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                         driver.phoneNumber = cellNum;
                         return null;
                       },
-                      style: Theme.of(context).textTheme.body1,
+                      style: Theme.of(context).textTheme.bodyText2,
                     ),
                     // ListTile(
                     //   leading: Icon(
@@ -485,7 +485,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         Duration(seconds: 20), onTimeout: () {
                                       Navigator.pop(context);
                                       pressed = false;
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Utils.showSnackBarError(
                                           context, 'Request Time out');
                                     }).then((a) async {
@@ -541,7 +541,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                         ),
                                         backgroundColor: Colors.red,
                                       );
-                                      firebaseUser.delete();
+                                      // firebaseUser.delete();
                                       Scaffold.of(context)
                                           .showSnackBar(snackBar);
                                     });
@@ -549,9 +549,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 });
                               } on dynamic catch (_) {
                                 onSignUpError();
-                                FirebaseAuth.instance
-                                    .currentUser()
-                                    .then((user) => user?.delete());
+                                // FirebaseAuth.instance
+                                //     .currentUser()
+                                //     .then((user) => user?.delete());
                               }
                             } else if (driver.homeLocationLatLng == null
                                 // ||

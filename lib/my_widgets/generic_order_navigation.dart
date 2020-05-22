@@ -208,7 +208,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
       child: Scaffold(
         appBar: _MyAppBar(
           title:
-              "${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}R",
+              "R${(widget.data['price'] as num).toDouble().toStringAsFixed(2)}",
           onDonePressed: () {
             _Body._key?.currentState?.widget?.showDeliveryCompleteDialogue();
           },
@@ -378,8 +378,9 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                   List<Map<String, dynamic>> itemDetails =
                       (await ReceiveItSolidBottomSheet
                           ._key.currentState.items)['itemDetails'];
-                  Map<String, double> itemsData =
-                      Map<String, double>.from(widget.data['itemsData']);
+                  Map<String, Map<String, dynamic>> itemsData =
+                      Map<String, Map<String, dynamic>>.from(
+                          widget.data['itemsData']);
                   int index = 0;
                   final keys = itemsData.keys;
                   for (String itemKey in keys) {
@@ -413,7 +414,8 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                                   ? ''
                                   : widget.data['house'] + ', ') +
                               address,
-                          'quantity': itemsData[itemKey],
+                          'quantity': itemsData[itemKey]['quantity'],
+                          'flavour': itemsData[itemKey]['flavour'],
                           'userEmail': widget.data['email'],
                           'price': itemDetails[index++]['price'],
                         },
@@ -485,7 +487,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                         ifAbsent: () => driver.profilePicture);
                     data.update(
                         ('driverPhoneNumber'), (old) => driver.phoneNumber,
-                        ifAbsent: () => driver.profilePicture);
+                        ifAbsent: () => driver.phoneNumber);
                     data.update(
                       ('driverLicencePlateNumber'),
                       (old) => driver.licencePlateNumber,
@@ -564,7 +566,6 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
 
                   var batch = Firestore.instance.batch();
 
-                  
                   var driverRef = Firestore.instance
                       .collection('drivers')
                       .document(driver.driverId)
@@ -576,18 +577,17 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                       .collection('orders')
                       .document(widget.data['orderId']);
 
-
-                      batch.setData(
-                        driverRef,
-                        dataToUpload,
-                        merge: true,
-                      );
-                      batch.setData(
-                        userRef,
-                        dataToUpload,
-                        merge: true,
-                      );
-                      batch.commit();
+                  batch.setData(
+                    driverRef,
+                    dataToUpload,
+                    merge: true,
+                  );
+                  batch.setData(
+                    userRef,
+                    dataToUpload,
+                    merge: true,
+                  );
+                  batch.commit();
                 });
                 // await Firestore.instance
                 //     .collection('postedOrders')
@@ -688,7 +688,8 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
 
   Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, double> itemsData = Map<String, double>.from(data['itemsData']);
+    Map<String, Map<String, dynamic>> itemsData =
+        Map<String, Map<String, dynamic>>.from(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> finalResult = {};
     final keys = itemsData.keys;
@@ -777,6 +778,12 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  SizedBox(height: 10),
+                  Text(
+                    'OrderId: ${widget.data['shortId']}',
+                    style: Theme.of(context).textTheme.subtitle1,
+                    textAlign: TextAlign.center,
+                  ),
                   SizedBox(
                     height: 40,
                   ),
@@ -858,7 +865,7 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                                                       [index]['itemName'],
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead,
+                                                      .subtitle1,
                                                 ),
                                                 SizedBox(
                                                   height: 4,
@@ -869,7 +876,7 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                                                   alignment:
                                                       Alignment.centerRight,
                                                   child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]}",
+                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                     maxLines: 1,
@@ -1894,7 +1901,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
             ),
             Text(
               'Confirmation Key',
-              style: Theme.of(context).textTheme.display1,
+              style: Theme.of(context).textTheme.headline6,
             ),
             SizedBox(
               height: 3,
@@ -1929,7 +1936,7 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
                     'Invalid Code! Try Again',
                     style: Theme.of(context)
                         .textTheme
-                        .body1
+                        .bodyText2
                         .copyWith(color: Colors.red),
                   )
                 : Opacity(
@@ -2035,14 +2042,14 @@ class _CancelOrderPopUpStateRevised extends State<_CancelOrderPopUp> {
               ),
               Text(
                 'Exit',
-                style: Theme.of(context).textTheme.display1,
+                style: Theme.of(context).textTheme.headline4,
               ),
               SizedBox(
                 height: 5,
               ),
               Text(
                 'Are you sure you wanna cancel the delivery? ',
-                style: Theme.of(context).textTheme.subtitle,
+                style: Theme.of(context).textTheme.subtitle2,
               ),
               SizedBox(
                 height: 2,
@@ -2167,7 +2174,7 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
             ),
             Text(
               'Accept the order?',
-              style: Theme.of(context).textTheme.title,
+              style: Theme.of(context).textTheme.headline6,
             ),
             SizedBox(
               height: 10,
@@ -2316,10 +2323,16 @@ class _OrderTile extends StatelessWidget {
         return Card(
           margin: EdgeInsets.all(8.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               SizedBox(
                 height: 8,
+              ),
+              Text(
+                'OrderId: ${data['shortId']}',
+                style: Theme.of(context).textTheme.subtitle1,
+                textAlign: TextAlign.center,
               ),
               SizedBox(
                 height: 10,
@@ -2531,8 +2544,10 @@ class _OrderTile extends StatelessWidget {
               Text(
                 '''${(data['numberOfBoxes'] == null || data['numberOfBoxes'] <= 0) ? '' : '${data['numberOfBoxes']} Box(s)'}
               ${(data['numberOfSleevesNeeded'] == null || data['numberOfSleevesNeeded'] <= 0) ? '' : '${(data['numberOfBoxes'] != null && data['numberOfBoxes'] > 0) ? ', ' : ''}${data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-                style:
-                    Theme.of(context).textTheme.subhead.copyWith(fontSize: 18),
+                style: Theme.of(context)
+                    .textTheme
+                    .subtitle1
+                    .copyWith(fontSize: 18),
               ),
             ],
           ),

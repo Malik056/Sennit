@@ -26,6 +26,7 @@ import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
 import 'package:sennit/user/past_orders.dart';
 import 'package:sennit/user/signin.dart';
+import 'package:shortid/shortid.dart';
 import '../main.dart';
 import 'generic_tracking_screen.dart';
 
@@ -89,6 +90,7 @@ class ReceiveItRoute extends StatelessWidget {
             StoresRoute(
               key: storesRouteKey,
               address: null,
+              isDemo: demo,
             ),
           )
           ..add(SearchWidget(
@@ -102,6 +104,7 @@ class ReceiveItRoute extends StatelessWidget {
           StoresRoute(
             key: storesRouteKey,
             address: null,
+            isDemo: demo,
           ),
         )
         ..add(SearchWidget(
@@ -205,12 +208,14 @@ class ReceiveItRoute extends StatelessWidget {
           Icons.shopping_cart,
           color: Colors.white,
         ),
-        onPressed: () {
+        onPressed: () async {
+          Address address = Utils.getLastKnowAddress();
           Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => ShoppingCartRoute(
-                  null,
+                  // onAddressChange: (address) {},
+                  toAddress: address,
                   demo: this.demo,
                 ),
               ));
@@ -632,7 +637,12 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
 
 class StoresRoute extends StatefulWidget {
   final Address address;
-  StoresRoute({@required key, @required this.address}) : super(key: key);
+  final bool isDemo;
+  StoresRoute({
+    @required key,
+    @required this.address,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -700,22 +710,26 @@ class StoresRouteState extends State<StoresRoute> {
                       children: List.generate(
                         filtered.length,
                         (index) {
-                          return InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) {
-                                    return StoreMainPage(
-                                      store: filtered[index],
-                                    );
-                                  },
+                          return IgnorePointer(
+                            ignoring: !filtered[index].isOpened,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return StoreMainPage(
+                                        store: filtered[index],
+                                        demo: widget.isDemo ?? false,
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: EdgeInsets.only(bottom: 10),
+                                child: StoreItem(
+                                  store: filtered[index],
                                 ),
-                              );
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(bottom: 10),
-                              child: StoreItem(
-                                store: filtered[index],
                               ),
                             ),
                           );
@@ -778,30 +792,32 @@ class StoresRouteState extends State<StoresRoute> {
       return latlng ?? LatLng(0, 0);
     });
     for (var documentSnapshot in querySnapshot.documents) {
-      Store store;
-      var storeId = documentSnapshot.documentID;
-      var storeAsMap = documentSnapshot.data;
-      storeAsMap.putIfAbsent('storeId', () {
-        return storeId;
-      });
-      store = Store.fromMap(storeAsMap);
+      if (documentSnapshot.data.containsKey('storeName')) {
+        Store store;
+        var storeId = documentSnapshot.documentID;
+        var storeAsMap = documentSnapshot.data;
+        storeAsMap.putIfAbsent('storeId', () {
+          return storeId;
+        });
+        store = Store.fromMap(storeAsMap);
 
-      if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
-        var itemIds = storeAsMap['items'];
-        List<Future<DocumentSnapshot>> requests = [];
-        for (String itemId in itemIds) {
-          var request =
-              Firestore.instance.collection('items').document(itemId).get();
-          requests.add(request);
+        if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
+          var itemIds = storeAsMap['items'];
+          List<Future<DocumentSnapshot>> requests = [];
+          for (String itemId in itemIds) {
+            var request =
+                Firestore.instance.collection('items').document(itemId).get();
+            requests.add(request);
+          }
+          for (var request in requests) {
+            var item = await request;
+            model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
+            storeItem.store = store;
+            store.storeItems.add(storeItem);
+          }
+          stores.add(store);
+          filtered.add(store);
         }
-        for (var request in requests) {
-          var item = await request;
-          model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
-          storeItem.store = store;
-          store.storeItems.add(storeItem);
-        }
-        stores.add(store);
-        filtered.add(store);
       }
     }
     return;
@@ -822,167 +838,204 @@ class StoresRouteState extends State<StoresRoute> {
 class StoreItem extends StatelessWidget {
   // final bool dummyPic;
   final Store store;
-  StoreItem({this.store});
+  final demo;
+  StoreItem({this.store, this.demo});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
+    return IgnorePointer(
+      ignoring: !(store?.isOpened ?? false),
+      child: Stack(
+        alignment: Alignment.center,
         children: <Widget>[
-          Stack(
-            children: <Widget>[
-              store.storeImage == null
-                  ? Icon(
-                      Icons.store,
-                      size: MediaQuery.of(context).size.width,
-                      color: Theme.of(context).primaryColor,
-                    )
-                  : FadeInImage.assetNetwork(
-                      placeholder: 'assets/images/logo.png',
-                      image: '${store.storeImage}',
-                      width: MediaQuery.of(context).size.width,
-                      height: 200,
-                      fit: BoxFit.fitWidth,
-                    ),
-              Positioned(
-                top: 0,
-                child: Container(
-                  padding: EdgeInsets.only(left: 20, top: 20, bottom: 20),
-                  decoration: BoxDecoration(
-                    // Box decoration takes a gradient
-                    gradient: LinearGradient(
-                      // Where the linear gradient begins and ends
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      // Add one stop for each color. Stops should increase from 0 to 1
-                      stops: [0, 0.8, 1],
-                      colors: [
-                        // Colors are easy thanks to Flutter's Colors class.
-                        Colors.white,
-                        Colors.white24,
-                        Color.fromARGB(0, 255, 255, 255),
-                      ],
-                    ),
-                  ),
-                  width: MediaQuery.of(context).size.width,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        store.storeName,
-                        style: TextStyle(
-                          color: Theme.of(context).primaryColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'BebasNeue',
+          Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Stack(
+                  children: <Widget>[
+                    store.storeImage == null
+                        ? Icon(
+                            Icons.store,
+                            size: MediaQuery.of(context).size.width,
+                            color: Theme.of(context).primaryColor,
+                          )
+                        : FadeInImage.assetNetwork(
+                            placeholder: 'assets/images/logo.png',
+                            image: '${store.storeImage}',
+                            width: MediaQuery.of(context).size.width,
+                            height: 200,
+                            fit: BoxFit.fitWidth,
+                          ),
+                    Positioned(
+                      top: 0,
+                      child: Container(
+                        padding: EdgeInsets.only(left: 20, top: 20, bottom: 20),
+                        decoration: BoxDecoration(
+                          // Box decoration takes a gradient
+                          gradient: LinearGradient(
+                            // Where the linear gradient begins and ends
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            // Add one stop for each color. Stops should increase from 0 to 1
+                            stops: [0, 0.8, 1],
+                            colors: [
+                              // Colors are easy thanks to Flutter's Colors class.
+                              Colors.white,
+                              Colors.white24,
+                              Color.fromARGB(0, 255, 255, 255),
+                            ],
+                          ),
+                        ),
+                        width: MediaQuery.of(context).size.width,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              store.storeName,
+                              style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'BebasNeue',
+                              ),
+                            ),
+                            Text(
+                              store.storeMotto ?? '',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.black),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        store.storeMotto ?? '',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
-                      ),
-                    ],
-                  ),
+                    )
+                  ],
                 ),
-              )
-            ],
-          ),
-          Container(
-            padding: EdgeInsets.only(bottom: 2, top: 10),
-            height: 100,
-            child: store.items.length <= 0
-                ? Opacity(
-                    opacity: 0,
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.only(right: 20),
-                    scrollDirection: Axis.horizontal,
-                    physics: BouncingScrollPhysics(),
-                    itemCount: store.items.length > 5 ? 5 : store.items.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        child: Card(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(5),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Container(
-                                  color: Colors.black,
-                                  child: FadeInImage.assetNetwork(
-                                    placeholder: 'assets/images/logo.png',
-                                    image:
-                                        '${(store.storeItems[index].images == null || store.storeItems[index].images.length == 0) ? '' : store.storeItems[index].images[0]}',
-                                    height: 100,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: 8,
-                                ),
-                                Container(
-                                  width: 100,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                Container(
+                  padding: EdgeInsets.only(bottom: 2, top: 10),
+                  height: 100,
+                  child: store.items.length <= 0
+                      ? Opacity(
+                          opacity: 0,
+                        )
+                      : ListView.builder(
+                          padding: EdgeInsets.only(right: 20),
+                          scrollDirection: Axis.horizontal,
+                          physics: BouncingScrollPhysics(),
+                          itemCount:
+                              store.items.length > 5 ? 5 : store.items.length,
+                          itemBuilder: (context, index) {
+                            return GestureDetector(
+                              child: Card(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: <Widget>[
+                                      Container(
+                                        color: Colors.black,
+                                        child: FadeInImage.assetNetwork(
+                                          placeholder: 'assets/images/logo.png',
+                                          image:
+                                              '${(store.storeItems[index].images == null || store.storeItems[index].images.length == 0) ? '' : store.storeItems[index].images[0]}',
+                                          height: 100,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
                                       SizedBox(
-                                        height: 4,
+                                        width: 8,
                                       ),
-                                      Text(
-                                        store.storeItems[index].itemName,
-                                        style:
-                                            Theme.of(context).textTheme.subhead,
+                                      Container(
+                                        width: 100,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            SizedBox(
+                                              height: 4,
+                                            ),
+                                            Text(
+                                              store.storeItems[index].itemName,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .subtitle1,
+                                            ),
+                                            SizedBox(
+                                              height: 4,
+                                            ),
+                                            Text(
+                                              "R${store.storeItems[index].price.toInt()}",
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                              style: TextStyle(fontSize: 20),
+                                            )
+                                          ],
+                                        ),
                                       ),
                                       SizedBox(
-                                        height: 4,
+                                        width: 8,
                                       ),
-                                      Text(
-                                        "R${store.storeItems[index].price.toInt()}",
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                        style: TextStyle(fontSize: 20),
-                                      )
                                     ],
                                   ),
                                 ),
-                                SizedBox(
-                                  width: 8,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        onTap: () async {
-                          Utils.showLoadingDialog(context);
-                          Navigator.pop(context);
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) {
-                                return ItemDetailsRoute(
-                                  item: store.storeItems[index],
+                              ),
+                              onTap: () async {
+                                Utils.showLoadingDialog(context);
+                                Navigator.pop(context);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) {
+                                      return ItemDetailsRoute(
+                                          item: store.storeItems[index],
+                                          isDemo: demo);
+                                    },
+                                    maintainState: false,
+                                  ),
                                 );
                               },
-                              maintainState: false,
-                            ),
-                          );
-                        },
-                      );
-                    },
+                            );
+                          },
+                        ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Click to View',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                    Icon(Icons.navigate_next),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          (store?.isOpened ?? false)
+              ? Opacity(opacity: 0)
+              : Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    alignment: Alignment.center,
+                    color: Colors.grey[100].withAlpha(120),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      color: Colors.grey,
+                      height: 40.0,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Store is Closed',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline6
+                            .copyWith(color: Colors.white),
+                      ),
+                    ),
                   ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                'Click to View',
-                style: TextStyle(fontSize: 15),
-              ),
-              Icon(Icons.navigate_next),
-            ],
-          ),
+                ),
         ],
       ),
     );
@@ -994,7 +1047,7 @@ class StoreMainPage extends StatelessWidget {
   final bool demo;
   StoreMainPage({
     this.store,
-    this.demo,
+    @required this.demo,
   });
 
   @override
@@ -1009,7 +1062,7 @@ class StoreMainPage extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => ShoppingCartRoute(
-                  null,
+                  toAddress: Utils.getLastKnowAddress(),
                   demo: this.demo,
                 ),
               ));
@@ -1029,7 +1082,7 @@ class StoreMainPage extends StatelessWidget {
                     centerTitle: true,
                     title: Text(
                       store.storeName,
-                      style: Theme.of(context).textTheme.title,
+                      style: Theme.of(context).textTheme.headline6,
                     ),
                     background: Stack(
                       fit: StackFit.expand,
@@ -1068,9 +1121,7 @@ class StoreMainPage extends StatelessWidget {
         body: SingleChildScrollView(
           child: Column(
             children: <Widget>[
-              StoreMenu(
-                store: store,
-              ),
+              StoreMenu(store: store, isDemo: demo),
               SizedBox(
                 height: 20,
               ),
@@ -1084,7 +1135,12 @@ class StoreMainPage extends StatelessWidget {
 
 class StoreMenu extends StatefulWidget {
   final Store store;
-  const StoreMenu({Key key, @required this.store}) : super(key: key);
+  final isDemo;
+  const StoreMenu({
+    Key key,
+    @required this.store,
+    @required this.isDemo,
+  }) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return StoreMenuState();
@@ -1131,6 +1187,7 @@ class StoreMenuState extends State<StoreMenu> {
         ),
         MenuCategorize(
           items: widget.store.storeItems,
+          isDemo: widget.isDemo ?? false,
         ),
       ],
     );
@@ -1139,7 +1196,12 @@ class StoreMenuState extends State<StoreMenu> {
 
 class MenuCategorize extends StatelessWidget {
   final List<model.StoreItem> items;
-  MenuCategorize({Key key, @required this.items}) : super(key: key);
+  final bool isDemo;
+  MenuCategorize({
+    Key key,
+    @required this.items,
+    @required this.isDemo,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1153,7 +1215,10 @@ class MenuCategorize extends StatelessWidget {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) {
-                  return ItemDetailsRoute(item: items[index]);
+                  return ItemDetailsRoute(
+                    item: items[index],
+                    isDemo: isDemo ?? false,
+                  );
                 },
               ),
             );
@@ -1192,7 +1257,7 @@ class MenuItem extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     item.itemName,
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   SizedBox(
                     height: 4,
@@ -1244,8 +1309,13 @@ class BottomSheetButton extends StatefulWidget {
 class BottomSheetButtonState extends State<BottomSheetButton> {
   bool addingToCart = false;
   bool isInCart;
-  BottomSheetButtonState() {
+  Future<DocumentSnapshot> refreshStore;
+  BottomSheetButtonState();
+  @override
+  void initState() {
+    super.initState();
     isInCart = searchItemInCart();
+    refreshStore = initialize();
   }
 
   searchItemInCart() {
@@ -1261,109 +1331,181 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
     return found;
   }
 
+  Future<DocumentSnapshot> initialize() async {
+    return await Firestore.instance
+        .collection('stores')
+        .document(ItemDetailsRoute._item.storeId)
+        .get(
+          source: Source.server,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all(0),
-      child: InkWell(
-        child: Container(
-          color: isInCart ? Colors.green : Colors.white,
-          padding: EdgeInsets.all(10),
-          alignment: Alignment.center,
-          width: MediaQuery.of(context).size.width,
-          height: 50,
-          child: addingToCart
-              ? CircularProgressIndicator()
-              : Text(
-                  isInCart ? 'Added to Cart' : 'Add to Cart',
-                  style: Theme.of(context).textTheme.subhead,
-                ),
-        ),
-        onTap: () async {
-          setState(() {
-            addingToCart = true;
-          });
-          User user = Session.data['user'];
-          UserCart cart = Session.data['cart'];
-          if (cart == null) {
-            Session.data.putIfAbsent('cart', () {
-              return UserCart(itemsData: {});
-            });
-          }
-          if (!isInCart) {
-            Firestore.instance
-                .collection('carts')
-                .document(user.userId)
-                .setData(
-              {
-                'itemsData': {ItemDetailsRoute._item.itemId: 1.0},
-              },
-              merge: true,
-            ).catchError((error) {
-              Utils.showSnackBarError(
-                  context, "Network Problem Occurred! Try Again");
-              setState(() {
-                addingToCart = false;
-              });
-            }).then((_) {
-              cart.itemsData.update(
-                ItemDetailsRoute._item.itemId,
-                (x) => 1.0,
-                ifAbsent: () => 1.0,
-              );
-              cart.items.add(ItemDetailsRoute._item);
-              setState(() {
-                addingToCart = false;
-                isInCart = true;
-              });
-            });
-          } else {
-            var itemsData = Map<String, double>.from(cart.itemsData);
-            // var quantities = List.from(cart.quantities);
-            // itemsData.removeWhere(
-            //   (Map<String, double> e) {
-            //     return e.containsKey(ItemDetailsRoute._item.itemId);
-            //   },
-            // );
-
-            // itemsData.remove(ItemDetailsRoute._item);
-            itemsData.removeWhere(
-              (key, value) => key == ItemDetailsRoute._item.itemId,
+    return FutureBuilder<DocumentSnapshot>(
+        future: refreshStore,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Container(
+              width: MediaQuery.of(context).size.width,
+              height: 50,
+              child: Center(
+                child: Text('Loading.....'),
+              ),
             );
-            // quantities.removeAt(index);
-            Firestore.instance
-                .collection('carts')
-                .document(user.userId)
-                .setData(
-              {
-                'itemsData': itemsData,
-                // 'quantities': quantities,
-              },
-            ).catchError((error) {
-              Utils.showSnackBarError(context, error.toString());
-              setState(() {
-                addingToCart = false;
-              });
-            }).then((_) {
-              cart.items.removeWhere(
-                (item) => item.itemId == ItemDetailsRoute._item.itemId,
-              );
-              cart.itemsData.removeWhere((key, value) {
-                if (key == ItemDetailsRoute._item.itemId) {
-                  return true;
-                }
-                return false;
-              });
-              // cart.quantities.removeAt(index);
-              setState(() {
-                addingToCart = false;
-                isInCart = false;
-              });
-            });
           }
-        },
-      ),
-    );
+          return Padding(
+            padding: EdgeInsets.all(0),
+            child: InkWell(
+              child: Container(
+                color: (((snapshot?.data?.data ?? {})['isOpened']) ?? false)
+                    ? isInCart ? Colors.green : Colors.white
+                    : Colors.red,
+                padding: EdgeInsets.all(10),
+                alignment: Alignment.center,
+                width: MediaQuery.of(context).size.width,
+                height: 50,
+                child: addingToCart
+                    ? CircularProgressIndicator()
+                    : Text(
+                        (((snapshot?.data?.data ?? {})['isOpened']) ?? false)
+                            ? isInCart ? 'Added to Cart' : 'Add to Cart'
+                            : 'Store is Closed',
+                        style: Theme.of(context).textTheme.subtitle1,
+                      ),
+              ),
+              onTap: () async {
+                if (!((snapshot?.data?.data ?? {})['isOpened']) ?? false) {
+                  return;
+                }
+                setState(() {
+                  addingToCart = true;
+                });
+                // FirebaseUser fUser = await FirebaseAuth.instance.currentUser();
+                // User user = Session.data['user'] ??
+                //     User(
+                //       email: fUser.email,
+                //       userId: fUser.uid,
+                //     );
+
+                UserCart cart = Session.data['cart'];
+                if (cart == null) {
+                  cart = UserCart(itemsData: {});
+                  Session.data.putIfAbsent('cart', () {
+                    return cart;
+                  });
+                }
+                if (!isInCart) {
+                  cart.itemsData.update(
+                    ItemDetailsRoute._item.itemId,
+                    (x) => {
+                      'quantity': 1,
+                      'flavour': '',
+                    },
+                    ifAbsent: () => {
+                      'quantity': 1,
+                      'flavour': '',
+                    },
+                  );
+                  cart.items.add(ItemDetailsRoute._item);
+                  setState(() {
+                    addingToCart = false;
+                    isInCart = true;
+                  });
+                  //Note: Storing Cart Item on Firebase
+                  // Firestore.instance
+                  //     .collection('carts')
+                  //     .document(user.userId)
+                  //     .setData(
+                  //   {
+                  //     'itemsData': {
+                  //       ItemDetailsRoute._item.itemId: {
+                  //         'quantity': 1,
+                  //         'flavour': '',
+                  //       }
+                  //     },
+                  //   },
+                  //   merge: true,
+                  // ).catchError((error) {
+                  //   Utils.showSnackBarError(
+                  //       context, "Network Problem Occurred! Try Again");
+                  //   setState(() {
+                  //     addingToCart = false;
+                  //   });
+                  // }).then((_) {
+                  //   cart.itemsData.update(
+                  //     ItemDetailsRoute._item.itemId,
+                  //     (x) => {
+                  //       'quantity': 1,
+                  //       'flavour': '',
+                  //     },
+                  //     ifAbsent: () => {
+                  //       'quantity': 1,
+                  //       'flavour': '',
+                  //     },
+                  //   );
+                  //   cart.items.add(ItemDetailsRoute._item);
+                  //   setState(() {
+                  //     addingToCart = false;
+                  //     isInCart = true;
+                  //   });
+                  // });
+
+                } else {
+                  // var itemsData =
+                  //     Map<String, Map<String, dynamic>>.from(cart.itemsData);
+                  cart.items.removeWhere(
+                    (item) => item.itemId == ItemDetailsRoute._item.itemId,
+                  );
+                  cart.itemsData.removeWhere(
+                      (key, value) => key == ItemDetailsRoute._item.itemId);
+                  // cart.quantities.removeAt(index);
+                  setState(() {
+                    addingToCart = false;
+                    isInCart = false;
+                  });
+                  // var quantities = List.from(cart.quantities);
+                  // itemsData.removeWhere(
+                  //   (Map<String, double> e) {
+                  //     return e.containsKey(ItemDetailsRoute._item.itemId);
+                  //   },
+                  // );
+
+                  // itemsData.remove(ItemDetailsRoute._item);
+                  // itemsData.removeWhere(
+                  //   (key, value) => key == ItemDetailsRoute._item.itemId,
+                  // );
+                  // quantities.removeAt(index);
+                  // Firestore.instance
+                  //     .collection('carts')
+                  //     .document(user.userId)
+                  //     .setData(
+                  //   {
+                  //     'itemsData': itemsData,
+                  //     // 'quantities': quantities,
+                  //   },
+                  // ).catchError((error) {
+                  //   Utils.showSnackBarError(context, error.toString());
+                  //   setState(() {
+                  //     addingToCart = false;
+                  //   });
+                  // }).then((_) {
+                  //   cart.items.removeWhere(
+                  //     (item) => item.itemId == ItemDetailsRoute._item.itemId,
+                  //   );
+                  //   cart.itemsData.removeWhere(
+                  //       (key, value) => key == ItemDetailsRoute._item.itemId);
+                  //   // cart.quantities.removeAt(index);
+                  //   setState(() {
+                  //     addingToCart = false;
+                  //     isInCart = false;
+                  //   });
+                  // });
+                }
+              },
+            ),
+          );
+        });
   }
 }
 
@@ -1371,8 +1513,10 @@ class ItemDetailsRoute extends StatefulWidget {
   static GlobalKey<ItemDetailsRouteState> _key =
       GlobalKey<ItemDetailsRouteState>();
   static model.StoreItem _item;
+  final bool isDemo;
   ItemDetailsRoute({
     @required model.StoreItem item,
+    @required this.isDemo,
   }) : super(key: _key) {
     _item = item;
   }
@@ -1395,6 +1539,41 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
         elevation: 40,
         onClosing: () {},
         builder: (context) {
+          //When Demo Following code can show login and sign in buttons instead of Add to Cart Button
+          // if (widget.isDemo) {
+          //   return GestureDetector(
+          //     child: Card(
+          //       child: Padding(
+          //         padding: const EdgeInsets.all(4),
+          //         child: Row(
+          //           children: <Widget>[
+          //             FlatButton(
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignup,
+          //                 );
+          //               },
+          //               child: Text('Signup'),
+          //             ),
+          //             Spacer(),
+          //             FlatButton(
+          //               color: Theme.of(context).primaryColor,
+          //               onPressed: () {
+          //                 Navigator.pushNamed(
+          //                   context,
+          //                   MyApp.userSignIn,
+          //                 );
+          //               },
+          //               child: Text('Login'),
+          //             ),
+          //             Spacer(),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   );
+          // }
           return BottomSheetButton();
         },
       ),
@@ -1404,17 +1583,21 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
       //     child: FlatButton(
       //       child: Text(
       //         'Add to Cart',
-      //         style: Theme.of(context).textTheme.subhead,
+      //         style: Theme.of(context).textTheme.subtitle1,
       //       ),
       //       onPressed: () {},
       //     ),
       //   ),
       // ],
       floatingActionButton: FloatingMenu(
+        onRouteChange: () {
+          setState(() {});
+        },
         itemId: ItemDetailsRoute._item.itemId,
         // onComeBack: () {
         //   setState(() {});
         // }
+        demo: widget.isDemo,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       body: itemDetailsBody,
@@ -1426,10 +1609,12 @@ class FloatingMenu extends StatefulWidget {
   final itemId;
   // final Function() onComeBack;
   final bool demo;
+  final Function() onRouteChange;
   FloatingMenu({
     Key key,
+    @required this.onRouteChange,
     this.itemId,
-    this.demo,
+    @required this.demo,
     // this.onComeBack,
   }) : super(key: key);
 
@@ -1470,18 +1655,22 @@ class _FloatingMenuState extends State<FloatingMenu> {
           foregroundColor: Theme.of(context).primaryColor,
           label: 'Review',
           labelStyle: TextStyle(fontSize: 18.0),
-          onTap: () async {
-            await Navigator.of(context)
-                .push(MaterialPageRoute(builder: (context) {
-              return ReviewWidget(
-                orderId: "",
-                user: Session.data['user'],
-                itemId: widget.itemId,
-              );
-            }));
-            // setState(() {
-            // });
-          },
+          onTap: widget.demo ?? false
+              ? () {
+                  Utils.showSnackBarWarning(context, 'Login to Review');
+                }
+              : () async {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (context) {
+                    return ReviewWidget(
+                      orderId: "",
+                      user: Session.data['user'],
+                      itemId: widget.itemId,
+                    );
+                  }));
+                  // setState(() {
+                  // });
+                },
         ),
         SpeedDialChild(
           child: Icon(Icons.shopping_cart),
@@ -1490,14 +1679,19 @@ class _FloatingMenuState extends State<FloatingMenu> {
           label: 'Goto Cart',
           labelStyle: TextStyle(fontSize: 18.0),
           onTap: () async {
+            Address address = Utils.getLastKnowAddress();
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    ShoppingCartRoute(null, demo: widget.demo),
+                builder: (context) => ShoppingCartRoute(
+                  toAddress: address,
+                  demo: widget.demo,
+                  // onAddressChange: (address) {},
+                ),
                 maintainState: false,
               ),
             );
+            widget.onRouteChange();
             // setState(() {});
           },
         ),
@@ -1578,7 +1772,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                 centerTitle: true,
                 title: Text(
                   widget.item.itemName,
-                  style: Theme.of(context).textTheme.title,
+                  style: Theme.of(context).textTheme.headline6,
                 ),
                 collapseMode: CollapseMode.pin,
                 background: Stack(
@@ -1680,7 +1874,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                             children: <Widget>[
                               Text(
                                 'Price: R${widget.item.price.toInt()}',
-                                style: Theme.of(context).textTheme.title,
+                                style: Theme.of(context).textTheme.headline6,
                               ),
                               SizedBox(
                                 width: 20,
@@ -1694,7 +1888,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                       widget.item.description == ""
                                   ? 'No Description Available'
                                   : widget.item.description,
-                              style: Theme.of(context).textTheme.body1,
+                              style: Theme.of(context).textTheme.bodyText2,
                             ),
                           ),
                           SizedBox(
@@ -1830,7 +2024,7 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                                       '${review.reviewedBy}',
                                                       style: Theme.of(context)
                                                           .textTheme
-                                                          .subhead,
+                                                          .subtitle1,
                                                     ),
                                                     // mainAxisSize: MainAxisSize.max,
                                                     Text(
@@ -2034,25 +2228,28 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
   }
 }
 
-class ShoppingCartRoute extends StatelessWidget {
-  // static Address _fromAddress;
-  static Address _toAddress;
+class ShoppingCartRoute extends StatefulWidget {
+  final Address toAddress;
   final bool demo;
   final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
 
-  final _shoppingCartRouteBodyKey = GlobalKey<ShoppingCartRouteState>();
-  ShoppingCartRoute(
-    toAddress, {
+  ShoppingCartRoute({
+    @required this.toAddress,
     @required this.demo,
-  }) {
-    // _fromAddress = fromAddress;
-
-    if (toAddress != null) {
-      _toAddress = toAddress;
-    } else if (_toAddress == null) {
-      _toAddress = Utils.getLastKnowAddress();
-    }
+    // @required this.onAddressChange,
+  });
+  @override
+  State<StatefulWidget> createState() {
+    return ShoppingCartRouteState(toAddress: toAddress);
   }
+}
+
+class ShoppingCartRouteState extends State<ShoppingCartRoute> {
+  Address toAddress;
+  ShoppingCartRouteState({this.toAddress});
+  var _shoppingCartRouteBodyKey = GlobalKey<ShoppingCartRouteBodyState>();
+  // static Address _fromAddress;
+  // final Function(Address) onAddressChange;
   // : body = ShoppingCartRouteBody(demo: demo) {
   //   // _fromAddress = fromAddress;
 
@@ -2066,18 +2263,29 @@ class ShoppingCartRoute extends StatelessWidget {
   // final ShoppingCartRouteBody body;
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _shoppingCartRouteBodyKey = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _key,
+      key: widget._key,
       appBar: AppBar(
         actions: <Widget>[
-          (demo == null || !demo)
+          (widget.demo == null || !widget.demo)
               ? FlatButton(
                   onPressed: () async {
                     try {
                       Utils.showLoadingDialog(context);
                       NavigatorState navigator = Navigator.of(context);
-                      ShoppingCartRouteState state =
+                      ShoppingCartRouteBodyState state =
                           _shoppingCartRouteBodyKey.currentState;
                       String email = state._emailController?.text?.trim() ?? '';
                       String phoneNumber =
@@ -2086,14 +2294,14 @@ class ShoppingCartRoute extends StatelessWidget {
                       UserCart cart = Session.data['cart'];
                       if (email == null || email.isEmpty) {
                         Utils.showSnackBarErrorUsingKey(
-                          _key,
+                          null,
                           'Please Provide your email Address',
                         );
                         Navigator.pop(context);
                         return;
                       } else if (phoneNumber == "" || phoneNumber == null) {
                         Utils.showSnackBarErrorUsingKey(
-                          _key,
+                          null,
                           'Please Provide your Phone Number',
                         );
                         Navigator.pop(context);
@@ -2101,14 +2309,14 @@ class ShoppingCartRoute extends StatelessWidget {
                       } else if (phoneNumber.length != 10 ||
                           !phoneNumber.startsWith('0')) {
                         Utils.showSnackBarErrorUsingKey(
-                          _key,
+                          null,
                           'The Phone number Should start with 0 and Should Contain total of 10 digits',
                         );
                         Navigator.pop(context);
                         return;
                       } else if (!Utils.isEmailCorrect(email)) {
                         Utils.showSnackBarErrorUsingKey(
-                          _key,
+                          null,
                           'Invalid Email Format',
                         );
                         Navigator.pop(context);
@@ -2141,7 +2349,9 @@ class ShoppingCartRoute extends StatelessWidget {
                         // BotToast.showText(
                         //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
                         return;
-                      } else if (ShoppingCartRoute._toAddress == null) {
+                      } else if (toAddress == null ||
+                          ((toAddress.coordinates?.latitude ?? 0) == 0 &&
+                              (toAddress.coordinates?.longitude ?? 0) == 0)) {
                         BotToast.showText(
                             text: 'Please Select a Destination First!',
                             duration: Duration(seconds: 2));
@@ -2163,19 +2373,19 @@ class ShoppingCartRoute extends StatelessWidget {
 
                       if (result['status'] == RaveStatus.cancelled) {
                         Utils.showSnackBarWarningUsingKey(
-                            _key, 'Payment Cancelled');
+                            null, 'Payment Cancelled');
                         navigator.pop();
                         return;
                       } else if (result['status'] == RaveStatus.error) {
                         Utils.showSnackBarErrorUsingKey(
-                          _key,
+                          null,
                           result['errorMessage'],
                         );
                         navigator.pop();
                         return;
                       } else {
                         Utils.showSnackBarSuccessUsingKey(
-                            _key, 'Payment Successful');
+                            null, 'Payment Successful');
                       }
 
                       User user = Session.data['user'];
@@ -2185,7 +2395,8 @@ class ShoppingCartRoute extends StatelessWidget {
                       double price = totalCharges;
 
                       List<LatLng> pickups = [];
-                      Map<String, double> itemsData = cart.itemsData;
+                      Map<String, Map<String, dynamic>> itemsData =
+                          cart.itemsData;
                       order.pickups = pickups;
                       List<String> stores = [];
                       List<double> pricePerItem = [];
@@ -2197,7 +2408,8 @@ class ShoppingCartRoute extends StatelessWidget {
                         stores.add(item.storeName);
                         pricePerItem.add(item.price);
                         totalPricePerItem.add(
-                          (item.price * itemsData[item.itemId] as num)
+                          (item.price * itemsData[item.itemId]['quantity']
+                                  as num)
                               .toDouble(),
                         );
                       }
@@ -2213,8 +2425,8 @@ class ShoppingCartRoute extends StatelessWidget {
                       order.price = price;
                       order.status = 'Pending';
                       order.destination = LatLng(
-                        ShoppingCartRoute._toAddress.coordinates.latitude,
-                        ShoppingCartRoute._toAddress.coordinates.longitude,
+                        toAddress?.coordinates?.latitude ?? 0,
+                        toAddress?.coordinates?.longitude ?? 0,
                       );
                       String otp = randomAlphaNumeric(6).toUpperCase();
                       var url =
@@ -2238,7 +2450,7 @@ class ShoppingCartRoute extends StatelessWidget {
                             count < 0) {
                           count++;
                           Utils.showSnackBarErrorUsingKey(
-                              _key, 'Unable to send OTP! Retrying!');
+                              null, 'Unable to send OTP! Retrying!');
                           BotToast.showNotification(
                             title: (_) {
                               return Text("Otp Sending Failed");
@@ -2297,237 +2509,290 @@ class ShoppingCartRoute extends StatelessWidget {
                         // Utils.showSnackBarSuccessUsingKey(
                         //     _key, 'Successfully Message Sent');
                         // if (true) {
+                        var now = DateTime.now().toUtc();
+                        String orderId =
+                            '${user.userId}${now.millisecondsSinceEpoch}';
+                        order.orderId = orderId;
+                        String shortId = shortid.generate();
+                        order.shortId = shortId;
+                        // var today12AM = DateTime.utc(now.year, now.month, now.day);
+                        // if(user.firstName == '' || user.firstName.length < 3) {
+                        //   shortId = 'ANY${}';
+                        // }
+                        // else {
+                        //   shortId = '${user.firstName.substring(0, 3)}';
+                        // }
+
                         Map<String, dynamic> orderData = order.toMap()
                           ..putIfAbsent('otp', () => otp);
-                        Firestore.instance
+                        var postedOrderRef = Firestore.instance
                             .collection('postedOrders')
-                            .add(orderData)
-                            .catchError((error) {
-                          Utils.showSnackBarErrorUsingKey(
-                              _key, 'Error Posting Order');
-                        }).then((data) async {
-                          orderData.update('orderId', (old) => data.documentID,
-                              ifAbsent: () => data.documentID);
-                          var batch = Firestore.instance.batch();
-                          var userOrderRef = Firestore.instance
-                              .collection("users")
-                              .document(user.userId)
-                              .collection('orders')
-                              .document(data.documentID);
+                            .document(orderId);
+                        // .setData(orderData);
+                        //     .catchError((error) {
+                        //   Utils.showSnackBarErrorUsingKey(
+                        //     _key,
+                        //     'Error Posting Order',
+                        //   );
+                        // });
+                        // .then((data) async {
+                        // orderData.update('orderId', (old) => orderId,
+                        //     ifAbsent: () => orderId);
+                        var batch = Firestore.instance.batch();
+                        batch.setData(postedOrderRef, orderData);
+                        var userOrderRef = Firestore.instance
+                            .collection("users")
+                            .document(user.userId)
+                            .collection('orders')
+                            .document(orderId);
+
+                        batch.setData(
+                          userOrderRef,
+                          orderData,
+                          merge: true,
+                        );
+                        // await Firestore.instance
+                        //     .collection("verificationCodes")
+                        //     .document(data.documentID)
+                        //     .setData(
+                        //   {
+                        //     "key": otp,
+                        //   },
+                        // );
+
+                        // print('Response status: ${response.statusCode}');
+                        // print('Response body: ${response.body}');
+                        // print('Response reason: ${response.reasonPhrase}');
+                        // print('${response.request.url}');
+
+                        Map<String, dynamic> storeOrders = {};
+                        List<String> deviceIds = [];
+
+                        for (model.StoreItem item in items) {
+                          final itemKey = item.itemId;
+                          if (storeOrders.containsKey(item.storeId)) {
+                            double price = storeOrders[item.storeId]['price'];
+                            price +=
+                                item.price * itemsData[item.itemId]['quantity'];
+                            storeOrders[item.storeId].update(
+                                'price', (old) => price,
+                                ifAbsent: () => price);
+                            storeOrders[item.storeId]['pricePerItem']
+                                .add(item.price);
+                            storeOrders[item.storeId]['totalPricePerItem'].add(
+                                item.price *
+                                    itemsData[item.itemId]['quantity']);
+                            (storeOrders[item.storeId]['itemsData']
+                                    as Map<String, Map<String, dynamic>>)
+                                .putIfAbsent(
+                              itemKey,
+                              () => itemsData[itemKey],
+                            );
+                          } else {
+                            if (item.store == null) {
+                              var snapshot = await Firestore.instance
+                                  .collection('stores')
+                                  .document(item.storeId)
+                                  .get();
+                              item.store = Store.fromMap(snapshot.data);
+                              deviceIds.addAll(item.store.deviceTokens);
+                            } else if (item?.store?.deviceTokens != null &&
+                                item.store.deviceTokens.length > 0) {
+                              deviceIds.addAll(item.store.deviceTokens);
+                            } else {
+                              var snapshot = await Firestore.instance
+                                  .collection('stores')
+                                  .document(item.storeId)
+                                  .get();
+                              item.store = Store.fromMap(snapshot.data);
+                              deviceIds.addAll(item.store.deviceTokens);
+                            }
+                            OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
+                              destination: Utils.latLngFromString(
+                                  orderData['destination']),
+                              date: now,
+                              deliveryTime: null,
+                              email: order.email,
+                              house: order.house,
+                              price: item.price *
+                                  itemsData[item.itemId]['quantity'],
+                              orderId: orderId,
+                              pricePerItem: [item.price],
+                              totalPricePerItem: [
+                                item.price * itemsData[item.itemId]['quantity']
+                              ],
+                              itemsData: {
+                                itemKey: itemsData[itemKey],
+                              },
+                              phoneNumber: order.phoneNumber,
+                              userId: order.userId,
+                            );
+                            Map<String, dynamic> tempOrder = receiveIt.toMap();
+                            tempOrder.putIfAbsent(
+                              'storeId',
+                              () => item.storeId,
+                            );
+                            tempOrder.putIfAbsent(
+                                'storeName', () => item.storeName);
+                            tempOrder.putIfAbsent(
+                                'storeAddress', () => item.storeAddress);
+                            tempOrder.putIfAbsent(
+                              'storeLatLng',
+                              () =>
+                                  Utils.latLngToString(item.store.storeLatLng),
+                            );
+                            storeOrders.putIfAbsent(
+                              item.storeId,
+                              () {
+                                return tempOrder;
+                              },
+                            );
+                          }
+                          // Map<String, dynamic> item = (await Firestore
+                          //         .instance
+                          //         .collection('items')
+                          //         .document(itemKey)
+                          //         .get())
+                          // .data;
+                          // LatLng latLng = Utils.latLngFromString(
+                          //     orderData['destination']);
+                          // String address = (await Geocoder.google(
+                          //             await Utils.getAPIKey())
+                          //         .findAddressesFromCoordinates(Coordinates(
+                          //             latLng.latitude, latLng.longitude)))[0]
+                          //     .addressLine;
+                        }
+                        Future<Response> request;
+                        final _fcmServerKey = await Utils.getFCMServerKey();
+                        storeOrders.forEach((k, v) {
+                          var storeOrderRef = Firestore.instance
+                              .collection('stores')
+                              .document(k)
+                              .collection('pendingOrderedItems')
+                              .document(orderData['orderId']);
 
                           batch.setData(
-                            userOrderRef,
-                            orderData,
+                            storeOrderRef,
+                            v,
                             merge: true,
                           );
-                          // await Firestore.instance
-                          //     .collection("verificationCodes")
-                          //     .document(data.documentID)
-                          //     .setData(
-                          //   {
-                          //     "key": otp,
-                          //   },
-                          // );
 
-                          // print('Response status: ${response.statusCode}');
-                          // print('Response body: ${response.body}');
-                          // print('Response reason: ${response.reasonPhrase}');
-                          // print('${response.request.url}');
-                          var now = DateTime.now();
-
-                          Map<String, dynamic> storeOrders = {};
-                          List<String> deviceIds = [];
-
-                          for (model.StoreItem item in items) {
-                            final itemKey = item.itemId;
-                            if (storeOrders.containsKey(item.storeId)) {
-                              double price = storeOrders[item.storeId]['price'];
-                              price += item.price * itemsData[item.itemId];
-                              storeOrders[item.storeId].update(
-                                  'price', (old) => price,
-                                  ifAbsent: () => price);
-                              storeOrders[item.storeId]['pricePerItem']
-                                  .add(item.price);
-                              storeOrders[item.storeId]['totalPricePerItem']
-                                  .add(item.price * itemsData[item.itemId]);
-                              (storeOrders[item.storeId]['itemsData']
-                                      as Map<String, double>)
-                                  .putIfAbsent(
-                                itemKey,
-                                () => itemsData[itemKey],
-                              );
-                            } else {
-                              if (item.store == null) {
-                                var snapshot = await Firestore.instance
-                                    .collection('stores')
-                                    .document(item.storeId)
-                                    .get();
-                                item.store = Store.fromMap(snapshot.data);
-                                deviceIds.addAll(item.store.deviceTokens);
-                              } else if (item?.store?.deviceTokens != null &&
-                                  item.store.deviceTokens.length > 0) {
-                                deviceIds.addAll(item.store.deviceTokens);
-                              } else {
-                                var snapshot = await Firestore.instance
-                                    .collection('stores')
-                                    .document(item.storeId)
-                                    .get();
-                                item.store = Store.fromMap(snapshot.data);
-                                deviceIds.addAll(item.store.deviceTokens);
-                              }
-                              OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
-                                destination: Utils.latLngFromString(
-                                    orderData['destination']),
-                                date: now,
-                                deliveryTime: null,
-                                email: order.email,
-                                house: order.house,
-                                price: item.price * itemsData[item.itemId],
-                                orderId: orderData['orderId'],
-                                pricePerItem: [item.price],
-                                totalPricePerItem: [
-                                  item.price * itemsData[item.itemId]
-                                ],
-                                itemsData: {
-                                  itemKey: itemsData[itemKey],
+                          // deviceIds.forEach((id) {
+                          request = post(
+                            'https://fcm.googleapis.com/fcm/send',
+                            headers: <String, String>{
+                              'Content-Type': 'application/json',
+                              'Authorization': 'key=$_fcmServerKey',
+                            },
+                            body: jsonEncode(
+                              <String, dynamic>{
+                                'notification': <String, dynamic>{
+                                  'body': 'An Order is just Arrived',
+                                  'title': 'Order'
                                 },
-                                phoneNumber: order.phoneNumber,
-                                userId: order.userId,
-                              );
-                              Map<String, dynamic> tempOrder =
-                                  receiveIt.toMap();
-                              tempOrder.putIfAbsent(
-                                'storeId',
-                                () => item.storeId,
-                              );
-                              tempOrder.putIfAbsent(
-                                  'storeName', () => item.storeName);
-                              tempOrder.putIfAbsent(
-                                  'storeAddress', () => item.storeAddress);
-                              tempOrder.putIfAbsent(
-                                'storeLatLng',
-                                () => Utils.latLngToString(
-                                    item.store.storeLatLng),
-                              );
-                              storeOrders.putIfAbsent(
-                                item.storeId,
-                                () {
-                                  return tempOrder;
+                                'type': 'partnerStoreOrder',
+                                'priority': 'high',
+                                'data': <String, dynamic>{
+                                  'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                                  'orderId': '${order.orderId}',
+                                  'status': 'posted',
+                                  'userId': order.userId,
                                 },
-                              );
-                            }
-                            // Map<String, dynamic> item = (await Firestore
-                            //         .instance
-                            //         .collection('items')
-                            //         .document(itemKey)
-                            //         .get())
-                            // .data;
-                            // LatLng latLng = Utils.latLngFromString(
-                            //     orderData['destination']);
-                            // String address = (await Geocoder.google(
-                            //             await Utils.getAPIKey())
-                            //         .findAddressesFromCoordinates(Coordinates(
-                            //             latLng.latitude, latLng.longitude)))[0]
-                            //     .addressLine;
-                          }
-                          Future<Response> request;
-                          final _fcmServerKey = await Utils.getFCMServerKey();
-                          storeOrders.forEach((k, v) {
-                            var storeOrderRef = Firestore.instance
-                                .collection('stores')
-                                .document(k)
-                                .collection('pendingOrderedItems')
-                                .document(order.orderId);
-
-                            batch.setData(
-                              storeOrderRef,
-                              v,
-                              merge: true,
-                            );
-
-                            // deviceIds.forEach((id) {
-                            request = post(
-                              'https://fcm.googleapis.com/fcm/send',
-                              headers: <String, String>{
-                                'Content-Type': 'application/json',
-                                'Authorization': 'key=$_fcmServerKey',
+                                'registration_ids': deviceIds,
                               },
-                              body: jsonEncode(
-                                <String, dynamic>{
-                                  'notification': <String, dynamic>{
-                                    'body': 'An Order is just Arrived',
-                                    'title': 'Order'
-                                  },
-                                  'type': 'partnerStoreOrder',
-                                  'priority': 'high',
-                                  'data': <String, dynamic>{
-                                    'click_action':
-                                        'FLUTTER_NOTIFICATION_CLICK',
-                                    'orderId': '${order.orderId}',
-                                    'status': 'posted',
-                                    'userId': order.userId,
-                                  },
-                                  'registration_ids': deviceIds,
-                                },
-                              ),
-                            );
-                            // });
-                          });
-                          var cartRef = Firestore.instance
-                              .collection('carts')
-                              .document(user.userId);
-                          batch.delete(cartRef);
-                          batch.commit().catchError((error) {
-                            Utils.showSnackBarErrorUsingKey(
-                                _key, 'error clearing cart');
-                          }).then(
-                            (_) async {
-                              await Firestore.instance
-                                  .collection('carts')
-                                  .document(user.userId)
-                                  .setData({}).catchError((error) {
-                                Utils.showSnackBarErrorUsingKey(
-                                    _key, 'error re initializing cart');
-                              });
-                              await request;
-                              // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                              // Navigator.pop(context);
-                              Session.data['cart'] = UserCart(itemsData: {});
-                              Utils.showSuccessDialog(
-                                  'Your Order is on its way!');
-                              Future.delayed(Duration(seconds: 2)).then((_) {
-                                BotToast.cleanAll();
-                              });
-                              try {
-                                navigator.pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) {
-                                      return OrderTracking(
-                                        type: OrderTrackingType.RECEIVE_IT,
-                                        data: orderData,
-                                      );
-                                    },
-                                    settings:
-                                        RouteSettings(name: OrderTracking.NAME),
-                                  ),
-                                  (route) {
-                                    if (route?.settings?.name == null) {
-                                      return false;
-                                    }
-                                    return route.settings.name == 'receiveIt';
-                                  },
+                            ),
+                          );
+                          // });
+                        });
+                        var _ = await request;
+                        // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                        // Navigator.pop(context);
+                        Session.data['cart'] = UserCart(itemsData: {});
+                        Utils.showSuccessDialog('Your Order is on its way!');
+                        Future.delayed(Duration(seconds: 2)).then((_) {
+                          BotToast.cleanAll();
+                        });
+                        try {
+                          navigator.pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return OrderTracking(
+                                  type: OrderTrackingType.RECEIVE_IT,
+                                  data: orderData,
                                 );
-                              } on dynamic catch (_) {
-                                navigator.pop();
-                                BotToast.showText(
-                                    text: _.toString(),
-                                    duration: Duration(
-                                      seconds: 10,
-                                    ));
+                              },
+                              settings: RouteSettings(name: OrderTracking.NAME),
+                            ),
+                            (route) {
+                              if (route?.settings?.name == null) {
+                                return false;
                               }
+                              return route.settings.name == 'receiveIt';
                             },
                           );
-                        });
+                        } on dynamic catch (_) {
+                          navigator.pop();
+                          BotToast.showText(
+                              text: _.toString(),
+                              duration: Duration(
+                                seconds: 10,
+                              ));
+                        }
+                        // var cartRef = Firestore.instance
+                        //     .collection('carts')
+                        //     .document(user.userId);
+                        // batch.delete(cartRef);
+                        // batch.commit().catchError((error) {
+                        //   Utils.showSnackBarErrorUsingKey(
+                        //       _key, 'error clearing cart');
+                        // }).then(
+                        //   (_) async {
+                        // await Firestore.instance
+                        //     .collection('carts')
+                        //     .document(user.userId)
+                        //     .setData({}).catchError((error) {
+                        //   Utils.showSnackBarErrorUsingKey(
+                        //       _key, 'error re initializing cart');
+                        // });
+                        // await request;
+                        // // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                        // // Navigator.pop(context);
+                        // Session.data['cart'] = UserCart(itemsData: {});
+                        // Utils.showSuccessDialog(
+                        //     'Your Order is on its way!');
+                        // Future.delayed(Duration(seconds: 2)).then((_) {
+                        //   BotToast.cleanAll();
+                        // });
+                        // try {
+                        //   navigator.pushAndRemoveUntil(
+                        //     MaterialPageRoute(
+                        //       builder: (context) {
+                        //         return OrderTracking(
+                        //           type: OrderTrackingType.RECEIVE_IT,
+                        //           data: orderData,
+                        //         );
+                        //       },
+                        //       settings:
+                        //           RouteSettings(name: OrderTracking.NAME),
+                        //     ),
+                        //     (route) {
+                        //       if (route?.settings?.name == null) {
+                        //         return false;
+                        //       }
+                        //       return route.settings.name == 'receiveIt';
+                        //     },
+                        //   );
+                        // } on dynamic catch (_) {
+                        //   navigator.pop();
+                        //   BotToast.showText(
+                        //       text: _.toString(),
+                        //       duration: Duration(
+                        //         seconds: 10,
+                        //       ));
+                        // }
+                        // },
+                        // );
+                        // });
                       }
                     } on dynamic catch (ex) {
                       BotToast.showText(
@@ -2553,8 +2818,16 @@ class ShoppingCartRoute extends StatelessWidget {
         centerTitle: true,
         // backgroundColor: Theme.of(context).accentColor,
       ),
-      body: ShoppingCartRouteBody(demo: demo, key: _shoppingCartRouteBodyKey),
-      bottomSheet: (demo != null && demo)
+      body: ShoppingCartRouteBody(
+        onAddressChange: (address) {
+          toAddress = address;
+          setState(() {});
+        },
+        toAddress: toAddress,
+        demo: widget.demo,
+        key: _shoppingCartRouteBodyKey,
+      ),
+      bottomSheet: (widget.demo != null && widget.demo)
           ? BottomAppBar(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2564,7 +2837,7 @@ class ShoppingCartRoute extends StatelessWidget {
                   ),
                   Text(
                     'Login to Checkout',
-                    style: Theme.of(context).textTheme.title.copyWith(
+                    style: Theme.of(context).textTheme.headline6.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -2619,12 +2892,12 @@ class ShoppingCartRoute extends StatelessWidget {
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
-        amount: amount,
-        publicKey: //'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-            'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-        encryptionKey: //'eded539f04b38a2af712eb7d',
-            '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
-        )
+      amount: amount,
+      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
+      encryptionKey: 'eded539f04b38a2af712eb7d',
+      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+    )
       ..country = "ZA"
       ..currency = "ZAR"
       ..displayEmail = true
@@ -2644,8 +2917,9 @@ class ShoppingCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..companyName = Text('Sennit', style: Theme.of(context).textTheme.subhead)
-      ..staging = true
+      ..companyName =
+          Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
+      ..staging = false
       ..isPreAuth = false
       ..displayFee = true;
 
@@ -2671,15 +2945,26 @@ class ShoppingCartRoute extends StatelessWidget {
 
 class ShoppingCartRouteBody extends StatefulWidget {
   final bool demo;
-  ShoppingCartRouteBody({Key key, @required this.demo}) : super(key: key);
+  final GlobalKey<ShoppingCartRouteBodyState> key;
+  final toAddress;
+  final Function(Address) onAddressChange;
+  ShoppingCartRouteBody({
+    this.key,
+    @required this.demo,
+    @required this.toAddress,
+    @required this.onAddressChange,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
-    return ShoppingCartRouteState();
+    return ShoppingCartRouteBodyState(
+      toAddress: toAddress,
+      demo: demo,
+    );
   }
 }
 
-class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
+class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   bool pickFromDoor = true;
   bool deliverToDoor = true;
   double cardMargin = 10;
@@ -2687,6 +2972,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   double groupMargin = 30;
   double itemMargin = 10;
   List<TextEditingController> _controllers;
+  List<TextEditingController> _flavourControllers;
   TextEditingController _emailController;
   TextEditingController _houseController;
   TextEditingController _phoneNumberController;
@@ -2695,6 +2981,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   bool boxSizeLarge = false;
   bool sleeveNeeded = false;
   bool demo;
+  Address toAddress;
 
   List<bool> isAnimationVisibleList = [];
   List<bool> isItemDeleteConfirmationVisibleList = [];
@@ -2703,8 +2990,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
 
   var isLoadingBarVisibleList = [];
 
-  ShoppingCartRouteState() {
+  Future removeUnnecessaryItemsAndInitialize;
+
+  ShoppingCartRouteBodyState({
+    @required this.demo,
+    @required this.toAddress,
+  }) {
     _controllers = [];
+    _flavourControllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
@@ -2713,6 +3006,24 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
   @override
   void initState() {
     super.initState();
+    removeUnnecessaryItemsAndInitialize = checkStoresAvailability();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    totalDeliveryCharges = 0;
+    totalPrice = 0;
+    // _emailController.dispose();
+    // _houseController.dispose();
+    // _phoneNumberController.dispose();
+    // _controllers.forEach((c) => c.dispose());
+    // _controllers = null;
+  }
+
+  Map<String, model.Store> stores = {};
+
+  Future<void> checkStoresAvailability() async {
     if (demo == null || !widget.demo) {
       User user = Session.data['user'];
       _emailController.text = user.email;
@@ -2730,288 +3041,354 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     UserCart cart = Session.getCart();
     for (var key in cart.itemsData.keys) {
       final TextEditingController controller = TextEditingController();
+      final TextEditingController flavourController = TextEditingController();
       _controllers.add(controller);
-      controller.text = cart.itemsData[key].toInt().toString();
+      _flavourControllers.add(flavourController);
+      controller.text = cart.itemsData[key]['quantity'].toInt().toString();
+      flavourController.text = cart.itemsData[key]['flavour'];
       isAnimationVisibleList.add(false);
       isItemDeleteConfirmationVisibleList.add(false);
       isButtonActiveList.add(false);
       isLoadingBarVisibleList.add(false);
     }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    totalDeliveryCharges = 0;
-    totalPrice = 0;
-    // _emailController.dispose();
-    // _houseController.dispose();
-    // _phoneNumberController.dispose();
-    // _controllers.forEach((c) => c.dispose());
-    // _controllers = null;
+    bool removed = false;
+    // UserCart cart = Session.data['cart'];
+    final itemsData = cart.itemsData;
+    final items = cart.items;
+    if (items == null || items.length <= 0) {
+      return;
+    }
+    List<Future<DocumentSnapshot>> requests = [];
+    Map<String, String> idsDone = {};
+    for (var storeItem in items) {
+      if (!idsDone.containsKey(storeItem.storeId)) {
+        var request = Firestore.instance
+            .collection('stores')
+            .document(storeItem.storeId)
+            .get(source: Source.server);
+        requests.add(request);
+        idsDone.putIfAbsent(storeItem.storeId, () => 'done');
+      }
+    }
+    for (var request in requests) {
+      var snapshot = await request;
+      stores.putIfAbsent(
+          snapshot.documentID, () => model.Store.fromMap(snapshot.data));
+    }
+    final tempStoreItems = List<model.StoreItem>.from(items);
+    for (int i = 0; i < tempStoreItems.length; i++) {
+      if (!((stores[tempStoreItems[i].storeId]?.isOpened) ?? false)) {
+        items.remove(tempStoreItems[i]);
+        itemsData.remove(tempStoreItems[i].itemId);
+        removed = true;
+      }
+    }
+    if (removed) {
+      Utils.showSnackBarWarning(
+        context,
+        '''Removed Some Items from Cart, Because their respective Store is Closed''',
+        Duration(
+          seconds: 6,
+        ),
+      );
+    }
+    return;
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          Card(
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.only(top: cardPadding),
-              child: Column(
-                children: <Widget>[
-                  Text(
-                    'Deliver To',
-                    style: Theme.of(context).textTheme.headline,
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: itemMargin,
-                    ),
-                  ),
-                  ListTile(
-                    onTap: () async {
-                      Coordinates destination =
-                          ShoppingCartRoute._toAddress?.coordinates;
-                      LatLng latlng = destination == null
-                          ? null
-                          : LatLng(destination.latitude, destination.longitude);
-                      LocationResult result = await Utils.showPlacePicker(
-                        context,
-                        initialLocation: latlng,
-                      );
-                      if (result != null) {
-                        Coordinates coordinates = Coordinates(
-                          result.latLng.latitude,
-                          result.latLng.longitude,
-                        );
-                        ShoppingCartRoute._toAddress = (await Geocoder.google(
-                          await Utils.getAPIKey(),
-                        ).findAddressesFromCoordinates(coordinates))[0];
-                        if (mounted) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            setState(() {});
-                          });
-                        }
-                      }
-                    },
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text(
-                      ShoppingCartRoute._toAddress?.addressLine ??
-                          'Address Not Set',
-                      style: TextStyle(
-                        color: Theme.of(context).accentColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.edit,
-                      color: Theme.of(context).accentColor,
-                      size: 18,
-                    ),
-                  ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: itemMargin,
-                    ),
-                  ),
-                  GestureDetector(
-                    child: ListTile(
-                      leading: Icon(
-                        deliverToDoor
-                            ? FontAwesomeIcons.doorOpen
-                            : FontAwesomeIcons.doorClosed,
-                        color: deliverToDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                      title: Text(
-                        'Deliver to Door',
-                        style: TextStyle(
-                          color: deliverToDoor
-                              ? Theme.of(context).accentColor
-                              : Colors.grey,
-                        ),
-                      ),
-                      trailing: Icon(
-                        deliverToDoor
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        color: deliverToDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        deliverToDoor = true;
-                      });
-                    },
-                  ),
-                  GestureDetector(
-                    child: ListTile(
-                      leading: Icon(
-                        deliverToDoor
-                            ? FontAwesomeIcons.taxi
-                            : FontAwesomeIcons.truckPickup,
-                        color: !deliverToDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                      title: Text(
-                        'Meet at Vehicle',
-                        style: TextStyle(
-                          color: !deliverToDoor
-                              ? Theme.of(context).accentColor
-                              : Colors.grey,
-                        ),
-                      ),
-                      trailing: Icon(
-                        !deliverToDoor
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked,
-                        color: !deliverToDoor
-                            ? Theme.of(context).accentColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        deliverToDoor = false;
-                      });
-                    },
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(itemMargin),
+    return FutureBuilder<void>(
+        future: removeUnnecessaryItemsAndInitialize,
+        builder: (context, snapshot) {
+          return SingleChildScrollView(
+            physics: BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                Card(
+                  elevation: 5,
+                  child: Container(
+                    padding: EdgeInsets.only(top: cardPadding),
                     child: Column(
                       children: <Widget>[
-                        TextField(
-                          decoration: InputDecoration(
-                            labelText: 'Apt/Suite/Floor/Building Name',
-                          ),
-                          controller: _houseController,
+                        Text(
+                          'Deliver To',
+                          style: Theme.of(context).textTheme.headline5,
                         ),
-                        TextField(
-                          decoration: InputDecoration(
-                            labelText: 'Phone Number',
-                            helperText: 'e.g. 0812345678',
+                        Opacity(
+                          opacity: 0,
+                          child: Container(
+                            height: itemMargin,
                           ),
-                          maxLength: 10,
-                          maxLines: 1,
-                          keyboardType: TextInputType.phone,
-                          controller: _phoneNumberController,
                         ),
-                        TextField(
-                          decoration: InputDecoration(labelText: 'Email'),
-                          keyboardType: TextInputType.emailAddress,
-                          controller: _emailController,
+                        ListTile(
+                          onTap: () async {
+                            Coordinates destination = toAddress?.coordinates;
+                            LatLng latlng = destination == null
+                                ? null
+                                : LatLng(
+                                    destination.latitude,
+                                    destination.longitude,
+                                  );
+                            LocationResult result = await Utils.showPlacePicker(
+                              context,
+                              initialLocation: latlng,
+                            );
+                            if (result != null) {
+                              Coordinates coordinates = Coordinates(
+                                result.latLng.latitude,
+                                result.latLng.longitude,
+                              );
+                              toAddress = Address(
+                                addressLine: result.address,
+                                coordinates: coordinates,
+                              );
+                              // toAddress = (await Geocoder.google(
+                              //   await Utils.getAPIKey(),
+                              // ).findAddressesFromCoordinates(coordinates))[0];
+                              setState(() {});
+                              widget.onAddressChange(toAddress);
+                              // if (mounted) {
+                              // WidgetsBinding.instance.addPostFrameCallback((_) {
+                              // if (mounted) {
+                              // try {
+                              //   widget.key.currentState.setState(() {});
+                              // } catch (ex) {
+                              //   print('Error Error Error');
+                              //   print('Error Error Error');
+                              //   print('Error Error Error');
+                              //   print('Error Error Error');
+                              //   print('Error Error Error');
+                              //   debugPrint(ex.toString());
+                              // }
+                              //   debugPrint(ex.toString());
+                              //   Future.delayed(Duration(seconds: 3), () {
+                              //     if (mounted) {
+                              //       setState(() {});
+                              //     }
+                              //   });
+                              // }
+                              // }
+                              // });
+                              // }
+                            }
+                          },
+                          leading: Icon(
+                            Icons.location_on,
+                            color: Theme.of(context).accentColor,
+                          ),
+                          title: Text(
+                            ((toAddress?.coordinates?.latitude ?? 0) == 0 &&
+                                    (toAddress?.coordinates?.longitude ?? 0) ==
+                                        0)
+                                ? 'Address Not Set'
+                                : toAddress?.addressLine ?? 'Address Not Set',
+                            style: TextStyle(
+                              color: Theme.of(context).accentColor,
+                              fontSize: 16,
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.edit,
+                            color: Theme.of(context).accentColor,
+                            size: 18,
+                          ),
+                        ),
+                        Opacity(
+                          opacity: 0,
+                          child: Container(
+                            height: itemMargin,
+                          ),
+                        ),
+                        GestureDetector(
+                          child: ListTile(
+                            leading: Icon(
+                              deliverToDoor
+                                  ? FontAwesomeIcons.doorOpen
+                                  : FontAwesomeIcons.doorClosed,
+                              color: deliverToDoor
+                                  ? Theme.of(context).accentColor
+                                  : Colors.grey,
+                            ),
+                            title: Text(
+                              'Deliver to Door',
+                              style: TextStyle(
+                                color: deliverToDoor
+                                    ? Theme.of(context).accentColor
+                                    : Colors.grey,
+                              ),
+                            ),
+                            trailing: Icon(
+                              deliverToDoor
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              color: deliverToDoor
+                                  ? Theme.of(context).accentColor
+                                  : Colors.grey,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              deliverToDoor = true;
+                            });
+                          },
+                        ),
+                        GestureDetector(
+                          child: ListTile(
+                            leading: Icon(
+                              deliverToDoor
+                                  ? FontAwesomeIcons.taxi
+                                  : FontAwesomeIcons.truckPickup,
+                              color: !deliverToDoor
+                                  ? Theme.of(context).accentColor
+                                  : Colors.grey,
+                            ),
+                            title: Text(
+                              'Meet at Vehicle',
+                              style: TextStyle(
+                                color: !deliverToDoor
+                                    ? Theme.of(context).accentColor
+                                    : Colors.grey,
+                              ),
+                            ),
+                            trailing: Icon(
+                              !deliverToDoor
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              color: !deliverToDoor
+                                  ? Theme.of(context).accentColor
+                                  : Colors.grey,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              deliverToDoor = false;
+                            });
+                          },
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(itemMargin),
+                          child: Column(
+                            children: <Widget>[
+                              TextField(
+                                decoration: InputDecoration(
+                                  labelText: 'Apt/Suite/Floor/Building Name',
+                                ),
+                                controller: _houseController,
+                              ),
+                              TextField(
+                                decoration: InputDecoration(
+                                  labelText: 'Phone Number',
+                                  helperText: 'e.g. 0812345678',
+                                ),
+                                maxLength: 10,
+                                maxLines: 1,
+                                keyboardType: TextInputType.phone,
+                                controller: _phoneNumberController,
+                              ),
+                              TextField(
+                                decoration: InputDecoration(labelText: 'Email'),
+                                keyboardType: TextInputType.emailAddress,
+                                controller: _emailController,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Opacity(
+                          opacity: 0,
+                          child: Container(
+                            height: 10,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Opacity(
-                    opacity: 0,
-                    child: Container(
-                      height: 10,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                _getCartItems(),
+                SizedBox(
+                  height: 140,
+                ),
+                // SizedBox(
+                //   height: 10,
+                // ),
+                // FutureBuilder(
+                //   future: getDeliveryCharges(),
+                //   builder: (context, snapshot) {
+
+                //   },
+                // ),
+                // FutureBuilder<Widget>(
+                //   future: _getCartItems(),
+                //   builder: (context, snapshot) {
+                //     if (snapshot.connectionState == ConnectionState.waiting) {
+                //       return Center(
+                //         child: CircularProgressIndicator(),
+                //       );
+                //     } else if(snapshot.data != null){
+                //       return snapshot.data;
+                //     }
+                //     else {
+                //       return Center(child: Text('No Item in Cart'));
+                //     }
+                //   },
+                // // ),
+
+                /***************************************************** */
+                //*****************Payment Methods*******************
+                //*************************************************** */
+
+                // Card(
+                //   margin: EdgeInsets.only(
+                //     top: 10,
+                //   ), //, left: cardMargin, right: cardMargin),
+                //   elevation: 5,
+                //   child: Container(
+                //     padding: EdgeInsets.only(top: cardPadding),
+                //     child: Column(
+                //       children: <Widget>[
+                //         Row(
+                //           children: [
+                //             Text(
+                //               '    Payment Method',
+                //               style: TextStyle(
+                //                 fontWeight: FontWeight.bold,
+                //               ),
+                //               textAlign: TextAlign.left,
+                //             ),
+                //           ],
+                //         ),
+                //         ListTile(
+                //           leading: Icon(
+                //             FontAwesomeIcons.cashRegister,
+                //             color: Theme.of(context).accentColor,
+                //           ),
+                //           title: Text('Cash'),
+                //           trailing: Icon(
+                //             Icons.radio_button_checked,
+                //             color: Theme.of(context).accentColor,
+                //           ),
+                //         ),
+                //         ListTile(
+                //           leading: Icon(
+                //             Icons.credit_card,
+                //           ),
+                //           title: Text(
+                //             'Select payment method',
+                //           ),
+                //           trailing: Icon(Icons.navigate_next),
+                //           onTap: () {},
+                //         ),
+                //       ],
+                //     ),
+                //   ),
+                // ),
+              ],
             ),
-          ),
-          _getCartItems(),
-          SizedBox(
-            height: 140,
-          ),
-          // SizedBox(
-          //   height: 10,
-          // ),
-          // FutureBuilder(
-          //   future: getDeliveryCharges(),
-          //   builder: (context, snapshot) {
-
-          //   },
-          // ),
-          // FutureBuilder<Widget>(
-          //   future: _getCartItems(),
-          //   builder: (context, snapshot) {
-          //     if (snapshot.connectionState == ConnectionState.waiting) {
-          //       return Center(
-          //         child: CircularProgressIndicator(),
-          //       );
-          //     } else if(snapshot.data != null){
-          //       return snapshot.data;
-          //     }
-          //     else {
-          //       return Center(child: Text('No Item in Cart'));
-          //     }
-          //   },
-          // // ),
-
-          /***************************************************** */
-          //*****************Payment Methods*******************
-          //*************************************************** */
-
-          // Card(
-          //   margin: EdgeInsets.only(
-          //     top: 10,
-          //   ), //, left: cardMargin, right: cardMargin),
-          //   elevation: 5,
-          //   child: Container(
-          //     padding: EdgeInsets.only(top: cardPadding),
-          //     child: Column(
-          //       children: <Widget>[
-          //         Row(
-          //           children: [
-          //             Text(
-          //               '    Payment Method',
-          //               style: TextStyle(
-          //                 fontWeight: FontWeight.bold,
-          //               ),
-          //               textAlign: TextAlign.left,
-          //             ),
-          //           ],
-          //         ),
-          //         ListTile(
-          //           leading: Icon(
-          //             FontAwesomeIcons.cashRegister,
-          //             color: Theme.of(context).accentColor,
-          //           ),
-          //           title: Text('Cash'),
-          //           trailing: Icon(
-          //             Icons.radio_button_checked,
-          //             color: Theme.of(context).accentColor,
-          //           ),
-          //         ),
-          //         ListTile(
-          //           leading: Icon(
-          //             Icons.credit_card,
-          //           ),
-          //           title: Text(
-          //             'Select payment method',
-          //           ),
-          //           trailing: Icon(Icons.navigate_next),
-          //           onTap: () {},
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
-        ],
-      ),
-    );
+          );
+        });
   }
 
   List<model.StoreItem> items;
-  Map<String, double> itemsData;
+  Map<String, Map<String, dynamic>> itemsData;
   double totalDeliveryCharges = 0;
   double totalPrice = 0;
   List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
@@ -3035,7 +3412,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             child: Text(
               'Cart is Empty',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headline,
+              style: Theme.of(context).textTheme.headline5,
             ),
           ),
         ),
@@ -3062,7 +3439,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             Center(
               child: Text(
                 'Items In Cart',
-                style: Theme.of(context).textTheme.headline,
+                style: Theme.of(context).textTheme.headline5,
               ),
             ),
             Column(
@@ -3071,19 +3448,18 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
               children: List<Widget>.generate(items.length, (index) {
                 globalKeysForCartItem.add(GlobalKey<CartItemState>());
                 // model.StoreItem item = items[index];
-                totalPrice +=
-                    items[index].price * itemsData[items[index].itemId];
-                if (ShoppingCartRoute._toAddress != null) {
+                totalPrice += items[index].price *
+                    itemsData[items[index].itemId]['quantity'];
+                if (toAddress != null) {
                   // double distance = Utils.calculateDistance(
                   //   LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
                   //       ShoppingCartRoute._toAddress.coordinates.longitude),
                   //   items[index].latlng,
                   // );
 
+                  print('To Coordinates: ${toAddress?.coordinates ?? ''}');
                   print(
-                      'To Coordinates: ${ShoppingCartRoute._toAddress.coordinates}');
-                  print(
-                    'Item: ${items[index].latlng}',
+                    'Item: ${items[index]?.latlng ?? ''}',
                   );
 
                   // if (distance <= 5) {
@@ -3121,27 +3497,68 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                         );
                         setState(() {});
                       },
+                      onFlavourChange: (index, value) async {
+                        items[index].flavour = value;
+                        // await Firestore.instance
+                        //     .collection('carts')
+                        //     .document((Session.data['user'] as User).userId)
+                        //     .setData(
+                        //   {
+                        //     'itemsData': {
+                        //       items[index].itemId: {
+                        //         'flavour': value,
+                        //         'quantity':
+                        //             items[index].quantity?.toDouble() ?? 1,
+                        //       },
+                        //     }
+                        //   },
+                        //   merge: true,
+                        // );
+                        itemsData.update(items[index].itemId, (a) {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavour': value ?? '',
+                          };
+                        }, ifAbsent: () {
+                          return {
+                            'quantity': (items[index]?.quantity ?? 0) == 0
+                                ? 1
+                                : items[index].quantity,
+                            'flavour': value ?? '',
+                          };
+                        });
+                      },
                       onQuantityChange: (value, index) async {
                         if (value == null || value == 0) {
                           return;
                         }
-                        Firestore.instance
-                            .collection('carts')
-                            .document((Session.data['user'] as User).userId)
-                            .setData(
-                          {
-                            'itemsData': {
-                              items[index].itemId: value.toDouble(),
-                            }
-                          },
-                          merge: true,
-                        );
+                        items[index].quantity = value.toDouble();
+                        // Firestore.instance
+                        //     .collection('carts')
+                        //     .document((Session.data['user'] as User).userId)
+                        //     .setData(
+                        //   {
+                        //     'itemsData': {
+                        //       items[index].itemId: {
+                        //         'quantity': value?.toDouble() ?? 1,
+                        //         'flavour': items[index]?.flavour ?? '',
+                        //       },
+                        //     }
+                        //   },
+                        //   merge: true,
+                        // );
                         itemsData.update(items[index].itemId, (a) {
-                          return value.toDouble();
+                          return {
+                            'quantity': value?.toDouble() ?? 1,
+                            'flavour': items[index].flavour ?? '',
+                          };
                         });
                         totalPrice = 0;
                         for (var item in items) {
-                          totalPrice += item.price * itemsData[item.itemId];
+                          totalPrice +=
+                              item.price * itemsData[item.itemId]['quantity'];
                         }
                         totalPrice += totalDeliveryCharges;
 
@@ -3152,6 +3569,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                       },
                       item: items[index],
                       controller: _controllers[index],
+                      flavourController: _flavourControllers[index],
                       itemIndex: index,
                     ),
                     isAnimationVisibleList[index]
@@ -3224,12 +3642,13 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                   'Cancel',
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead,
+                                                      .subtitle1,
                                                 ),
                                               ],
                                             ),
                                             Spacer(),
                                             Column(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: <Widget>[
                                                 IconButton(
                                                   tooltip: "Confirm",
@@ -3255,7 +3674,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                                   .data['cart'];
                                                           var itemsData = Map<
                                                               String,
-                                                              double>.from(
+                                                              Map<String,
+                                                                  dynamic>>.from(
                                                             cart.itemsData,
                                                           );
 
@@ -3325,8 +3745,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                               _controllers
                                                                   .removeAt(
                                                                       index);
+                                                              _flavourControllers
+                                                                  .removeAt(
+                                                                      index);
                                                               print(_controllers
                                                                   .length);
+                                                              print(
+                                                                  _flavourControllers
+                                                                      .length);
                                                             });
                                                           });
                                                         }
@@ -3344,7 +3770,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                                                   'Yes',
                                                   style: Theme.of(context)
                                                       .textTheme
-                                                      .subhead
+                                                      .subtitle1
                                                       .copyWith(
                                                         color: Colors.red,
                                                       ),
@@ -3370,7 +3796,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                 children: <Widget>[
                   Text(
                     'Delivery\nCharges',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Container(
                     color: Theme.of(context).primaryColor,
@@ -3381,8 +3807,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                   Container(
                     constraints: BoxConstraints(maxWidth: 180),
                     child: Text(
-                      '${ShoppingCartRoute._toAddress == null ? 'Select a Destination' : getDeliveryCharges()}',
-                      style: Theme.of(context).textTheme.subtitle,
+                      '''${toAddress == null ? 'Select a Destination' : ((toAddress?.coordinates?.latitude ?? 0) == 0 && (toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : getDeliveryCharges()}''',
+                      style: Theme.of(context).textTheme.subtitle2,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.visible,
                     ),
@@ -3394,8 +3820,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
                     margin: EdgeInsets.all(8),
                   ),
                   Text(
-                    'Total\n${totalDeliveryCharges.toStringAsFixed(2)} R',
-                    style: Theme.of(context).textTheme.subhead,
+                    'Total\nR${totalDeliveryCharges.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.subtitle1,
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -3405,8 +3831,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
             Container(
               alignment: Alignment.centerRight,
               child: Text(
-                'Total: ${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)} R ',
-                style: Theme.of(context).textTheme.title.copyWith(
+                'Total: R${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)}',
+                style: Theme.of(context).textTheme.headline6.copyWith(
                       inherit: true,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3425,57 +3851,73 @@ class ShoppingCartRouteState extends State<ShoppingCartRouteBody> {
     String finalString = '';
     double total = 0;
     // int index = 0;
-    Map<String, Map<String, dynamic>> deliveryCharges = {};
+    Map<String, dynamic> uniqueStores = {};
+
     for (var item in items) {
-      if (deliveryCharges.containsKey(item.latlng.toString())) {
-        deliveryCharges[item.latlng.toString()].update(
-          'count',
-          (old) => old + 1,
-        );
+      if (uniqueStores.containsKey(item.latlng.toString())) {
       } else {
-        Coordinates coordinates = ShoppingCartRoute._toAddress.coordinates;
+        Coordinates coordinates = toAddress?.coordinates ?? Coordinates(0, 0);
         double distance = Utils.calculateDistance(
             LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
-        deliveryCharges.putIfAbsent(
-          item.latlng.toString(),
-          () {
-            return {
-              'count': 1,
-              'distance': distance,
-            };
-          },
-        );
+        uniqueStores.putIfAbsent(item.latlng.toString(), () {
+          return {
+            'distance': distance,
+          };
+        });
       }
     }
 
-    deliveryCharges.forEach((k, v) {
+    // for (var item in items) {
+    //   if (deliveryCharges.containsKey(item.latlng.toString())) {
+    //     deliveryCharges[item.latlng.toString()].update(
+    //       'count',
+    //       (old) => old + 1,
+    //     );
+    //   } else {
+    //     Coordinates coordinates =
+    //         ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
+    //     double distance = Utils.calculateDistance(
+    //         LatLng(coordinates., coordinates.longitude), item.latlng);
+    //     deliveryCharges.putIfAbsent(
+    //       item.latlng.toString(),
+    //       () {
+    //         return {
+    //           'count': 1,
+    //           'distance': distance,
+    //         };
+    //       },
+    //     );
+    //   }
+    // }
+
+    uniqueStores.forEach((k, v) {
       final distance = v['distance'];
-      if (v['count'] == 1) {
-        double charges = 30;
-        final tempDistance = distance - 5;
-        if (tempDistance <= 0) {
-          v.putIfAbsent('charges', () => charges);
-        } else {
-          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
-          v.putIfAbsent('charges', () => charges);
-        }
+      // if (v['count'] == 1) {
+      double charges = 30;
+      final tempDistance = distance - 5;
+      if (tempDistance <= 0) {
+        v.putIfAbsent('charges', () => charges);
       } else {
-        if (distance <= 10) {
-          v.putIfAbsent('charges', () => 60.0);
-        } else {
-          double charges = 60.0;
-          final tempDistance = distance - 10;
-          charges += ((tempDistance as double).ceilToDouble()) * 4.5;
-          v.putIfAbsent('charges', () => charges);
-        }
+        charges += ((tempDistance as double) * 4.5);
+        v.putIfAbsent('charges', () => charges);
       }
+      // } else {
+      // if (distance <= 10) {
+      //   v.putIfAbsent('charges', () => 60.0);
+      // } else {
+      //   double charges = 60.0;
+      //   final tempDistance = distance - 10;
+      //   charges += ((tempDistance as double).ceilToDouble()) * 4.5;
+      //   v.putIfAbsent('charges', () => charges);
+      // }
+      // }
 
       total += v['charges'];
 
       if (finalString.isEmpty) {
-        finalString += '${v['charges']}R';
+        finalString += 'R${(v['charges'] as double).toStringAsFixed(1)}';
       } else {
-        finalString += ' + ${v['charges']}R';
+        finalString += ' + R${(v['charges'] as double).toStringAsFixed(1)}';
       }
     });
 
@@ -3498,40 +3940,71 @@ class CartItem extends StatefulWidget {
   final model.StoreItem item;
   final Function onDelete;
   final int itemIndex;
-  final Function(int, int) onQuantityChange;
+  final Function(int value, int index) onQuantityChange;
+  final Function(int index, String value) onFlavourChange;
   final _quantityFocusNode = FocusNode();
+  final _flavourFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
-  CartItem(
-      {this.key,
-      this.item,
-      this.controller,
-      this.itemIndex,
-      @required this.onQuantityChange,
-      @required this.onDelete})
-      : super(key: key) {
+  final TextEditingController flavourController;
+  CartItem({
+    this.key,
+    this.item,
+    this.controller,
+    this.flavourController,
+    this.itemIndex,
+    @required this.onQuantityChange,
+    @required this.onDelete,
+    @required this.onFlavourChange,
+  }) : super(key: key) {
     UserCart cart = Session.data['cart'];
-    controller.removeListener(() {});
+    // controller.removeListener(() {});
+    // flavourController.removeListener((){});
     controller.addListener(() {
       if (controller.text == null || controller.text.isEmpty) {
         return;
       }
       int value = int.parse(controller.text);
       if (value <= 0) {
-        cart.itemsData[item.itemId] = 1.0;
+        controller.text = '1';
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 1,
+          ifAbsent: () => 1,
+        );
         onQuantityChange(1, itemIndex);
       } else if (value > 99) {
-        cart.itemsData[item.itemId] = 99.0;
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => 99,
+          ifAbsent: () => 99,
+        );
         onQuantityChange(99, itemIndex);
       } else {
-        cart.itemsData[item.itemId] = value.toDouble();
+        cart.itemsData[item.itemId].update(
+          'quantity',
+          (old) => value.toDouble(),
+          ifAbsent: () => value.toDouble(),
+        );
         onQuantityChange(value, itemIndex);
       }
     });
     _quantityFocusNode.addListener(() {
       if (controller.text == '') {
-        controller.text = '0';
+        controller.text = '1';
       }
       key?.currentState?.refresh();
+    });
+    _flavourFocusNode.addListener(() {
+      if (!_flavourFocusNode.hasFocus) {
+        cart.itemsData[item.itemId].update(
+          'flavour',
+          (old) => flavourController?.text ?? '',
+          ifAbsent: () => flavourController?.text ?? '',
+        );
+        onFlavourChange(itemIndex, flavourController?.text ?? '');
+
+        key?.currentState?.refresh();
+      }
     });
   }
 
@@ -3569,149 +4042,182 @@ class CartItemState extends State<CartItem> {
     return Card(
       child: Padding(
         padding: EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: ShapeDecoration(
-                  color: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: ClipRRect(
-                  child: FadeInImage.assetNetwork(
-                    placeholder: 'assets/images/logo.png',
-                    image: widget.item.images[0],
-                    height: 80,
-                    fit: BoxFit.fitWidth,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 8,
-            ),
-            Expanded(
-              flex: 3,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(
+              width: MediaQuery.of(context).size.width,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.item.itemName,
-                              style: Theme.of(context).textTheme.title,
-                            ),
-                            Text(
-                              widget.item.description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                  Expanded(
+                    child: Container(
+                      decoration: ShapeDecoration(
+                        color: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: <Widget>[
-                            InkWell(
-                              child: Text(
-                                ' - ',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 28,
-                                    fontFamily: "Roboto"),
-                              ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 1) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value - 1}';
-                                });
-                              },
-                            ),
-                            Container(
-                              width: 30,
-                              child: TextField(
-                                focusNode: widget._quantityFocusNode,
-                                controller: widget.controller,
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                ),
-                                inputFormatters: <TextInputFormatter>[
-                                  LengthLimitingTextInputFormatter(2),
-                                  WhitelistingTextInputFormatter.digitsOnly,
-                                  BlacklistingTextInputFormatter
-                                      .singleLineFormatter,
+                      child: ClipRRect(
+                        child: FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/logo.png',
+                          image: widget.item.images[0],
+                          height: 80,
+                          fit: BoxFit.fitWidth,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 8,
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.item.itemName,
+                                    style:
+                                        Theme.of(context).textTheme.headline6,
+                                  ),
+                                  Text(
+                                    widget.item.description,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
                             ),
-                            InkWell(
-                              child: Text(
-                                ' +',
-                                style: TextStyle(
-                                    color: Theme.of(context).accentColor,
-                                    fontStyle: FontStyle.normal,
-                                    fontSize: 20,
-                                    fontFamily: "Roboto"),
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: <Widget>[
+                                  InkWell(
+                                    child: Text(
+                                      ' - ',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 28,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          1) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value - 1}';
+                                      });
+                                    },
+                                  ),
+                                  Container(
+                                    width: 30,
+                                    child: TextField(
+                                      focusNode: widget._quantityFocusNode,
+                                      controller: widget.controller,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                      ),
+                                      inputFormatters: <TextInputFormatter>[
+                                        LengthLimitingTextInputFormatter(2),
+                                        WhitelistingTextInputFormatter
+                                            .digitsOnly,
+                                        BlacklistingTextInputFormatter
+                                            .singleLineFormatter,
+                                      ],
+                                    ),
+                                  ),
+                                  InkWell(
+                                    child: Text(
+                                      ' +',
+                                      style: TextStyle(
+                                          color: Theme.of(context).accentColor,
+                                          fontStyle: FontStyle.normal,
+                                          fontSize: 20,
+                                          fontFamily: "Roboto"),
+                                    ),
+                                    onTap: () {
+                                      var value =
+                                          int.parse(widget.controller.text);
+                                      if (int.parse(widget.controller.text) ==
+                                          99) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        widget.controller.text = '${value + 1}';
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
-                              onTap: () {
-                                var value = int.parse(widget.controller.text);
-                                if (int.parse(widget.controller.text) == 99) {
-                                  return;
-                                }
-                                setState(() {
-                                  widget.controller.text = '${value + 1}';
-                                });
-                              },
                             ),
+                            Expanded(
+                              child: IconButton(
+                                onPressed: () {
+                                  if (!isPressed) {
+                                    widget.onDelete();
+                                    isPressed = true;
+                                    Future.delayed(Duration(seconds: 1))
+                                        .then((_) {
+                                      isPressed = false;
+                                    });
+                                  }
+                                },
+                                icon: Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            )
                           ],
                         ),
-                      ),
-                      Expanded(
-                        child: IconButton(
-                          onPressed: () {
-                            if (!isPressed) {
-                              widget.onDelete();
-                              isPressed = true;
-                              Future.delayed(Duration(seconds: 1)).then((_) {
-                                isPressed = false;
-                              });
-                            }
-                          },
-                          icon: Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                          ),
+                        SizedBox(
+                          height: 4,
                         ),
-                      )
-                    ],
-                  ),
-                  SizedBox(
-                    height: 4,
-                  ),
-                  Align(
-                    child: Text(
-                      'Price: R${widget.item.price.toInt()} per Item',
-                      style: Theme.of(context).textTheme.subhead,
+                        Align(
+                          child: Text(
+                            'Price: R${widget.item.price.toInt()} per Item',
+                            style: Theme.of(context).textTheme.subtitle1,
+                          ),
+                          alignment: Alignment.bottomRight,
+                        ),
+                      ],
                     ),
-                    alignment: Alignment.bottomRight,
                   ),
                 ],
               ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            TextField(
+              controller: widget.flavourController,
+              focusNode: widget._flavourFocusNode,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Flavour',
+                helperText:
+                    'Add your Flavour here. If Applicable. For Food Deliveries Only',
+              ),
+              // onEditingComplete: () {
+              //   widget.onFlavourChange(
+              //       widget.itemIndex, widget.flavourController.text ?? '');
+              // },
             ),
           ],
         ),
