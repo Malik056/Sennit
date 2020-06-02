@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DriverSignUpRoute extends StatelessWidget {
   @override
@@ -76,7 +78,8 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
 
     onSignUpError = (error) {
       pressed = false;
-      Navigator.pop(context);
+      // Navigator.pop(context);
+      BotToast.closeAllLoading();
       Utils.showSnackBarError(context, 'Email Address is already in use');
     };
     super.initState();
@@ -449,7 +452,8 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     error.message,
                                   );
                                   pressed = false;
-                                  Navigator.pop(context);
+                                  // Navigator.pop(context);
+                                  BotToast.closeAllLoading();
                                 }).then((value) {
                                   FirebaseUser firebaseUser = value.user;
                                   if (firebaseUser == null) {
@@ -483,7 +487,9 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                     batch.setData(userRef, map);
                                     batch.commit().timeout(
                                         Duration(seconds: 20), onTimeout: () {
-                                      Navigator.pop(context);
+                                      // Navigator.pop(context);
+                                      BotToast.closeAllLoading();
+
                                       pressed = false;
                                       // firebaseUser.delete();
                                       Utils.showSnackBarError(
@@ -507,14 +513,16 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                       firebaseUser.sendEmailVerification();
                                       // Navigator.popUntil(
                                       //     context, (route) => route.isFirst);
-
+                                      // Navigator.pop(context);
+                                      BotToast.closeAllLoading();
+                                      SharedPreferences preferences =
+                                          await SharedPreferences.getInstance();
+                                      preferences.setString('user', 'driver');
                                       Navigator.pushAndRemoveUntil(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) {
-                                            return VerifyEmailRoute(
-                                              context: context,
-                                            );
+                                            return VerifyEmailRoute();
                                           },
                                         ),
                                         (route) => false,
@@ -533,7 +541,8 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                       //     .pushNamed(MyApp.userHome);
                                     }).catchError((error) {
                                       pressed = false;
-                                      Navigator.pop(context);
+                                      // Navigator.pop(context);
+                                      BotToast.closeAllLoading();
                                       SnackBar snackBar = SnackBar(
                                         content: Text(
                                           'Something went wrong. Try again!',
@@ -548,6 +557,7 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                   }
                                 });
                               } on dynamic catch (_) {
+                                BotToast.closeAllLoading();
                                 onSignUpError();
                                 // FirebaseAuth.instance
                                 //     .currentUser()
@@ -557,18 +567,19 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                                 // ||
                                 // dateInitialText == dateText
                                 ) {
+                              BotToast.closeAllLoading();
                               setState(() {
                                 pressed = false;
-                                Navigator.pop(context);
+                                // Navigator.pop(context);
                                 // if (dateInitialText == dateText) {
                                 //   dateOfBirthHeadingColor = Colors.red;
                                 //   dateOfBirthTextColor = Colors.red;
                                 // } else {}
                               });
                             } else {
+                              BotToast.closeAllLoading();
                               setState(() {
                                 pressed = false;
-                                Navigator.pop(context);
                               });
                             }
                           }

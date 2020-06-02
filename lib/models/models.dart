@@ -338,10 +338,109 @@ class Driver {
   }
 }
 
+class ReceiveItOrderItemDetails {
+  String flavour;
+  int quantity;
+  double price;
+
+  ReceiveItOrderItemDetails({this.flavour, this.quantity, this.price});
+
+  factory ReceiveItOrderItemDetails.fromMap(Map<String, dynamic> map) {
+    if (map == null) {
+      return null;
+    }
+
+    return ReceiveItOrderItemDetails(
+      flavour: map['flavour'] ?? '',
+      quantity: (map['quantity'] as num)?.toInt() ?? 0,
+      price: (map['price'] as num)?.toDouble() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'flavour': flavour ?? '',
+      'quantity': quantity ?? 0,
+      'price': price ?? 0,
+    };
+  }
+}
+
+class ReceiveItOrderItem {
+  //key is Item Id and Value is ReceiveItOrderItemDetails
+  Map<String, ReceiveItOrderItemDetails> itemDetails = {};
+  ReceiveItOrderItem({this.itemDetails}) {
+    if (this.itemDetails == null) {
+      this.itemDetails = {};
+    }
+  }
+  factory ReceiveItOrderItem.fromMap(Map<String, dynamic> value) {
+    return ReceiveItOrderItem(
+      itemDetails: value?.map<String, ReceiveItOrderItemDetails>(
+            (key, value) {
+              return MapEntry<String, ReceiveItOrderItemDetails>(
+                key,
+                ReceiveItOrderItemDetails.fromMap(value ?? {}),
+              );
+            },
+          ) ??
+          {},
+    );
+  }
+  Map<String, dynamic> toMap() {
+    return itemDetails?.map<String, dynamic>(
+          (key, value) => MapEntry<String, dynamic>(
+            key,
+            value?.toMap() ?? {},
+          ),
+        ) ??
+        {};
+  }
+}
+
+class StoreToReceiveItOrderItems {
+  Map<String, ReceiveItOrderItem> itemDetails = {};
+  StoreToReceiveItOrderItems({
+    this.itemDetails,
+  }) {
+    if (this.itemDetails == null) {
+      itemDetails = {};
+    }
+  }
+
+  factory StoreToReceiveItOrderItems.fromMap(Map<String, dynamic> map) {
+    return StoreToReceiveItOrderItems(
+      itemDetails: Map<String, ReceiveItOrderItem>.from(
+        map?.map<String, ReceiveItOrderItem>(
+              (key, value) => MapEntry<String, ReceiveItOrderItem>(
+                key,
+                ReceiveItOrderItem.fromMap(
+                  value?.map<String, dynamic>(
+                        (key, value) => MapEntry<String, dynamic>(key, value),
+                      ) ??
+                      {},
+                ),
+              ),
+            ) ??
+            {},
+      ),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return itemDetails.map<String, dynamic>(
+      (key, value) => MapEntry<String, dynamic>(
+        key,
+        value.toMap(),
+      ),
+    );
+  }
+}
+
 class OrderFromReceiveIt {
   String orderId;
   String status;
-  Map<String, Map<String, dynamic>> itemsData;
+  StoreToReceiveItOrderItems itemsData;
   String driverName;
   String email;
   String phoneNumber;
@@ -358,6 +457,8 @@ class OrderFromReceiveIt {
   DateTime date;
   DateTime deliveryTime;
   String shortId;
+  bool dropToDoor;
+  String otp;
 
   OrderFromReceiveIt({
     this.orderId,
@@ -379,58 +480,16 @@ class OrderFromReceiveIt {
     this.pricePerItem,
     this.totalPricePerItem,
     this.shortId,
+    this.dropToDoor = true,
+    this.otp,
   });
-
-  OrderFromReceiveIt copyWith({
-    String orderId,
-    String status,
-    List<String> items,
-    String email,
-    String phoneNumber,
-    String house,
-    List<LatLng> pickups,
-    // List<LatLng> quantities,
-    List<String> stores,
-    LatLng destination,
-    String userId,
-    String driverId,
-    String driverName,
-    double price,
-    DateTime orderDate,
-    DateTime deliveryTime,
-    List<double> pricePerItem,
-    List<double> totalPricePerItem,
-    String shorId,
-  }) {
-    return OrderFromReceiveIt(
-      orderId: orderId ?? this.orderId,
-      status: status ?? this.status,
-      itemsData: items ?? this.itemsData,
-      email: email ?? this.email,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      house: house ?? this.house,
-      driverName: driverName,
-      pickups: pickups ?? this.pickups,
-      pricePerItem: pricePerItem ?? this.pricePerItem,
-      totalPricePerItem: totalPricePerItem ?? this.totalPricePerItem,
-      // quantities: quantities ?? this.quantities,
-      stores: stores ?? this.stores,
-      destination: destination ?? this.destination,
-      userId: userId ?? this.userId,
-      driverId: driverId ?? this.driverId,
-      price: (price as num).toDouble() ?? this.price,
-      date: orderDate ?? this.date,
-      deliveryTime: deliveryTime ?? this.deliveryTime,
-      shortId: shortId ?? this.shortId,
-    );
-  }
 
   Map<String, dynamic> toMap() {
     return {
       'orderId': orderId,
       'status': status,
       'driverName': driverName,
-      'itemsData': itemsData,
+      'itemsData': itemsData?.toMap() ?? {},
       'email': email,
       'phoneNumber': phoneNumber,
       'house': house,
@@ -449,6 +508,8 @@ class OrderFromReceiveIt {
       'date': date.millisecondsSinceEpoch,
       'deliveryTime': deliveryTime?.millisecondsSinceEpoch,
       'shortId': shortId,
+      'dropToDoor': dropToDoor,
+      'otp': otp,
     };
   }
 
@@ -458,7 +519,7 @@ class OrderFromReceiveIt {
     return OrderFromReceiveIt(
       orderId: map['orderId'],
       status: map['status'],
-      itemsData: Map<String, Map<String, dynamic>>.from(map['itemsData']),
+      itemsData: StoreToReceiveItOrderItems.fromMap(map['itemsData']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],
       house: map['house'],
@@ -486,8 +547,14 @@ class OrderFromReceiveIt {
       driverId: map['driverId'],
       price: map['price'] as num,
       date: DateTime.fromMillisecondsSinceEpoch(map['date']),
-      deliveryTime: DateTime.fromMillisecondsSinceEpoch(map['deliveryTime']),
+      deliveryTime: map['deliveryTime'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              map['deliveryTime'],
+            ),
       shortId: map['shortId'] ?? '',
+      dropToDoor: map['dropToDoor'] ?? true,
+      otp: map['otp'] ?? '',
     );
   }
 
@@ -572,6 +639,7 @@ class OrderFromSennit {
   String senderHouse;
   String receiverHouse;
   String shortId;
+  String otp;
 
   OrderFromSennit({
     this.orderId,
@@ -599,64 +667,8 @@ class OrderFromSennit {
     this.senderHouse,
     this.receiverHouse,
     this.shortId,
+    this.otp,
   });
-
-  OrderFromSennit copyWith({
-    String orderId,
-    DateTime date,
-    double price,
-    LatLng pickUpLatLng,
-    String pickUpAddress,
-    String dropOffAddress,
-    LatLng dropOffLatLng,
-    double serviceCharges,
-    String userId,
-    String receiverName,
-    String receiverPhone,
-    String receiverEmail,
-    String senderEmail,
-    String senderPhone,
-    String driverId,
-    String driverName,
-    BoxSize boxSize,
-    bool pickupFromDoor,
-    bool dropToDoor,
-    int numberOfBoxes,
-    bool numberOfSleevesNeeded,
-    String status,
-    String senderHouse,
-    String receiverHouse,
-    String shortId,
-  }) {
-    return OrderFromSennit(
-      orderId: orderId ?? this.orderId,
-      date: date ?? this.date,
-      price: price ?? this.price,
-      pickUpLatLng: pickUpLatLng ?? this.pickUpLatLng,
-      pickUpAddress: pickUpAddress ?? this.pickUpAddress,
-      dropOffAddress: dropOffAddress ?? this.dropOffAddress,
-      dropOffLatLng: dropOffLatLng ?? this.dropOffLatLng,
-      serviceCharges: serviceCharges ?? this.serviceCharges,
-      userId: userId ?? this.userId,
-      receiverName: receiverName ?? this.receiverName,
-      receiverPhone: receiverPhone ?? this.receiverPhone,
-      receiverEmail: receiverEmail ?? this.receiverEmail,
-      senderEmail: senderEmail ?? this.senderEmail,
-      senderPhone: senderPhone ?? this.senderPhone,
-      driverId: driverId ?? this.driverId,
-      driverName: driverName ?? this.driverName,
-      boxSize: boxSize ?? this.boxSize,
-      pickupFromDoor: pickupFromDoor ?? this.pickupFromDoor,
-      dropToDoor: dropToDoor ?? this.dropToDoor,
-      numberOfBoxes: numberOfBoxes ?? this.numberOfBoxes,
-      numberOfSleevesNeeded:
-          numberOfSleevesNeeded ?? this.numberOfSleevesNeeded,
-      status: status ?? this.status,
-      senderHouse: senderHouse ?? this.senderHouse,
-      receiverHouse: receiverHouse ?? this.receiverHouse,
-      shortId: shortId ?? this.shortId,
-    );
-  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -677,14 +689,15 @@ class OrderFromSennit {
       'driverId': driverId,
       'driverName': driverName,
       'boxSize': Utils.boxSizeToString(boxSize),
-      'pickupFromDoor': pickupFromDoor,
-      'dropToDoor': dropToDoor,
+      'pickupFromDoor': pickupFromDoor ?? true,
+      'dropToDoor': dropToDoor ?? true,
       'numberOfBoxes': numberOfBoxes,
       'numberOfSleevesNeeded': numberOfSleevesNeeded,
       'status': status,
       'senderHouse': senderHouse,
       'receiverHouse': receiverHouse,
       'shortId': shortId,
+      'otp': otp,
     };
   }
 
@@ -709,14 +722,15 @@ class OrderFromSennit {
       driverId: map['driverId'],
       driverName: map['driverName'],
       boxSize: Utils.getBoxSizeFromString(map['boxSize']),
-      pickupFromDoor: map['pickupFromDoor'],
-      dropToDoor: map['dropToDoor'],
+      pickupFromDoor: map['pickupFromDoor'] ?? true,
+      dropToDoor: map['dropToDoor'] ?? true,
       numberOfBoxes: map['numberOfBoxes'],
       numberOfSleevesNeeded: map['numberOfSleevesNeeded'],
       status: map['status'],
       senderHouse: map['senderHouse'],
       receiverHouse: map['receiverHouse'],
       shortId: map['shortId'],
+      otp: map['otp'],
     );
   }
 
@@ -1202,23 +1216,20 @@ class OrderOtherCharges {
 // }
 
 class UserCart {
-  List<StoreItem> items = List();
-  Map<String, Map<String, dynamic>> itemsData;
+  // List<StoreItem> items = List();
+  StoreToReceiveItOrderItems itemsData;
   UserCart({
     this.itemsData,
   });
 
-  UserCart copyWith({
-    List<Map<String, Map<String, dynamic>>> itemsData,
-  }) {
-    return UserCart(
-      itemsData: itemsData ?? this.itemsData,
-    );
-  }
-
   Map<String, dynamic> toMap() {
     return {
-      'itemsData': itemsData,
+      'itemsData': itemsData.itemDetails?.map<String, dynamic>(
+        (key, value) => MapEntry<String, dynamic>(
+          key,
+          value.toMap(),
+        ),
+      ),
     };
   }
 
@@ -1226,8 +1237,8 @@ class UserCart {
     if (map == null) return null;
 
     return UserCart(
-      itemsData: Map<String, Map<String, dynamic>>.from(
-        map['itemsData'],
+      itemsData: StoreToReceiveItOrderItems.fromMap(
+        map,
       ),
     );
   }
@@ -1581,74 +1592,54 @@ class StoreItem {
   String itemId;
   List<String> images;
   String storeName;
-  String storeAddress;
+  List<String> storagePaths;
+  // String storeAddress;
   double price;
   String description;
   Map<String, String> specifications;
   String itemName;
   LatLng latlng;
   String storeId;
-  Store store;
+  // Store store;
+  int remainingInStock;
 
   //temp
-  String flavour = '';
-  double quantity = 1;
+  // String flavour = '';
+  // double quantity = 1;
 
   StoreItem({
     this.itemId,
     this.storeName,
     this.images,
     this.price,
-    this.storeAddress,
+    this.storagePaths,
+    // this.storeAddress,
     this.description,
     this.itemName,
     this.latlng,
     this.specifications,
     this.storeId,
+    this.remainingInStock = 0,
   }) {
     if (specifications == null) {
       specifications = {};
     }
   }
 
-  StoreItem copyWith({
-    String itemId,
-    List<String> images,
-    double price,
-    String storeName,
-    String storeAddress,
-    String description,
-    String itemName,
-    LatLng latlng,
-    String storeId,
-    Map<String, String> specifications,
-  }) {
-    return StoreItem(
-      itemId: itemId ?? this.itemId,
-      images: images ?? this.images,
-      price: price ?? this.price,
-      storeName: storeName ?? this.storeName,
-      storeAddress: storeAddress ?? this.storeAddress,
-      description: description ?? this.description,
-      itemName: itemName ?? this.itemName,
-      latlng: latlng ?? this.latlng,
-      specifications: specifications ?? this.specifications,
-      storeId: storeId ?? this.storeId,
-    );
-  }
-
   Map<String, dynamic> toMap() {
     return {
       'itemId': itemId,
-      'images': List<dynamic>.from(images.map((x) => x)),
+      'images': List<dynamic>.from(images?.map((x) => x) ?? []),
+      'storagePaths': List<dynamic>.from(storagePaths?.map((x) => x) ?? []),
       'price': price,
       'storeName': storeName,
-      'storeAddress': storeAddress,
+      // 'storeAddress': storeAddress,
       'description': description,
       'itemName': itemName,
       'latlng': Utils.latLngToString(latlng),
       'specifications': specifications ?? {},
       'storeId': storeId,
+      'remainingInStock': remainingInStock ?? 0,
     };
   }
 
@@ -1656,19 +1647,23 @@ class StoreItem {
     if (map == null) return null;
     return StoreItem(
       itemId: map['itemId'],
-      images: List<String>.from(map['images']),
+      images: List<String>.from(map['images'] ?? []),
+      storagePaths: List<String>.from(map['storagePaths'] ?? []),
       price: map['price'].runtimeType == int
           ? (map['price'] as int).toDouble()
           : map['price'].runtimeType == String
               ? double.parse(map['price'])
               : map['price'],
       storeName: map['storeName'],
-      storeAddress: map['storeAddress'],
+      // storeAddress: map['storeAddress'],
       description: map['description'],
       itemName: map['itemName'],
       latlng: Utils.latLngFromString(map['latlng']),
       specifications: Map<String, String>.from(map['specifications'] ?? {}),
       storeId: map['storeId'],
+      remainingInStock: map['remainingInStock'].runtimeType == String
+          ? (int.tryParse(map['remainingInStock']) ?? 0)
+          : map['remainingInStock'],
     );
   }
 
@@ -1711,6 +1706,7 @@ class StoreItem {
 
 class Store {
   String storeId;
+  String email;
   String storeName;
   List<String> items;
   List<StoreItem> storeItems = [];
@@ -1723,6 +1719,7 @@ class Store {
 
   Store({
     this.storeId,
+    this.email,
     this.storeName,
     this.items,
     this.storeImage,
@@ -1733,31 +1730,10 @@ class Store {
     this.isOpened = false,
   });
 
-  Store copyWith({
-    String storeId,
-    String storeName,
-    List<String> items,
-    String storeImage,
-    String storeMotto,
-    LatLng storeLatLng,
-    String storeAddress,
-    bool isOpened,
-  }) {
-    return Store(
-      storeId: storeId ?? this.storeId,
-      storeName: storeName ?? this.storeName,
-      items: items ?? this.items,
-      storeImage: storeImage ?? this.storeImage,
-      storeMotto: storeMotto ?? this.storeMotto,
-      storeAddress: storeAddress ?? this.storeAddress,
-      storeLatLng: storeLatLng ?? this.storeLatLng,
-      isOpened: isOpened ?? this.isOpened,
-    );
-  }
-
   Map<String, dynamic> toMap() {
     return {
       'storeId': storeId,
+      'email': email ?? '',
       'storeName': storeName,
       'items': List<dynamic>.from(items.map((x) => x)),
       'storeImage': storeImage,
@@ -1775,6 +1751,7 @@ class Store {
     return Store(
       storeId: map['storeId'],
       storeName: map['storeName'],
+      email: map['email'] ?? '',
       items: List<String>.from(map['items'] ?? []),
       storeImage: map['storeImage'],
       storeMotto: map['storeMotto'],

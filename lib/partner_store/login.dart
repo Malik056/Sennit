@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PartnerStoreSignInRoute extends StatelessWidget {
   @override
@@ -147,7 +149,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                     .catchError((_) {
                                   FirebaseAuth.instance.signOut();
                                   signInButtonEnabled = true;
-                                  Navigator.pop(context);
+                                  // Navigator.pop(context);
+                                  BotToast.closeAllLoading();
                                   setState(() {});
                                   return null;
                                 }).then((value) {
@@ -158,7 +161,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                     FirebaseAuth.instance.signOut();
                                     signInButtonEnabled = true;
                                     setState(() {});
-                                    Navigator.pop(context);
+                                    BotToast.closeAllLoading();
+                                    // Navigator.pop(context);
                                     Utils.showSnackBarError(
                                       context,
                                       'Request Timed out',
@@ -166,7 +170,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                     return null;
                                   },
                                 );
-                                if (data == null) {
+                                if (data?.data == null) {
                                   return;
                                 }
                                 Store store = Store.fromMap(data.data);
@@ -198,6 +202,10 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                   },
                                   merge: true,
                                 );
+                                BotToast.closeAllLoading();
+                                SharedPreferences preferences =
+                                    await SharedPreferences.getInstance();
+                                preferences.setString('user', 'store');
                                 Navigator.of(context).pushNamedAndRemoveUntil(
                                   MyApp.partnerStoreHome,
                                   (route) => false,
@@ -205,7 +213,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                               },
                             );
                           } else {
-                            Navigator.pop(context);
+                            // Navigator.pop(context);
+                            BotToast.closeAllLoading();
                             signInButtonEnabled = true;
                             SnackBar snackBar = SnackBar(
                               content: Text(
@@ -221,7 +230,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                             return;
                           }
                         }).catchError((_) {
-                          Navigator.pop(context);
+                          BotToast.closeAllLoading();
+                          // Navigator.pop(context);
                           signInButtonEnabled = true;
                           Utils.showSnackBarError(
                             context,
@@ -231,6 +241,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                         }).timeout(
                           Duration(seconds: 12),
                           onTimeout: () {
+                            BotToast.closeAllLoading();
                             Navigator.pop(context);
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
@@ -240,7 +251,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                           },
                         );
                       } on dynamic catch (_) {
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         signInButtonEnabled = true;
                         Utils.showSnackBarError(
                           context,
@@ -249,7 +261,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                         return;
                       }
                     } else {
-                      Navigator.pop(context);
+                      BotToast.closeAllLoading();
+                      // Navigator.pop(context);
                       signInButtonEnabled = true;
                       SnackBar snackBar = SnackBar(
                         content: Text(

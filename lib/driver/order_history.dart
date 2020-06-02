@@ -9,9 +9,11 @@ class OrderHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder<QuerySnapshot>(
       future: Firestore.instance
-          .collection("drivers")
-          .document((Session.data['driver'] as Driver).driverId)
-          .collection('orders')
+          .collection("orders")
+          .where('driverId',
+              isEqualTo: (Session.data['driver'] as Driver).driverId)
+          // .document((Session.data['driver'] as Driver).driverId)
+          // .collection('orders')
           .getDocuments(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

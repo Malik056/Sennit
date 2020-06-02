@@ -42,3 +42,6 @@ lib/generated_plugin_registrant.dart
 android/app/src/main/res/values/api_keys_tokens.xml
 *.apk
 *.abb
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+lib/user/tempReceiveIt.dart

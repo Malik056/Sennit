@@ -9,17 +9,19 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 // import 'package:geocoder/geocoder.dart' as geocoder;
 import 'package:geocoder/model.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
-import 'package:location/location.dart';
 import 'package:location/location.dart' as location;
+import 'package:rxdart/rxdart.dart';
+import 'package:rxdart/subjects.dart';
 // import 'package:place_picker/place_picker.dart';
 import 'package:sennit/driver/delivery_navigation.dart';
 import 'package:sennit/driver/driver_startpage.dart';
@@ -30,13 +32,20 @@ import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/update_notice.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
 import 'package:sennit/partner_store/home.dart';
+import 'package:sennit/rx_models/rx_cart.dart';
+import 'package:sennit/rx_models/rx_config.dart';
+import 'package:sennit/rx_models/rx_connectivity.dart';
+import 'package:sennit/rx_models/rx_receiveit_tab.dart';
+import 'package:sennit/rx_models/rx_searchbar_title.dart';
+import 'package:sennit/rx_models/rx_storesAndItems.dart';
 import 'package:sennit/start_page.dart';
+import 'package:sennit/rx_models/rx_address.dart';
 import 'package:sennit/user/home.dart';
 import 'package:sennit/user/sendit.dart';
 import 'package:sennit/user/signin.dart';
 import 'package:sennit/user/signup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shortid/shortid.dart';
-import 'database/mydatabase.dart';
 import 'driver/signup.dart';
 import 'models/models.dart';
 import 'user/user_startpage.dart';
@@ -54,6 +63,17 @@ import 'user/user_startpage.dart';
 
 //   // Or do other work.
 // }
+void registerSingletons() {
+  GetIt.I.registerSingleton<RxConnectivity>(RxConnectivity());
+  GetIt.I.registerSingleton<RxAddress>(RxAddress());
+  GetIt.I.registerSingleton<RxConfig>(RxConfig());
+  GetIt.I.registerSingleton<RxReceiveItSearchBarTitle>(
+      RxReceiveItSearchBarTitle());
+  GetIt.I.registerSingleton<RxReceiveItTab>(RxReceiveItTab());
+  RxStoresAndItems rxStoresAndItems = RxStoresAndItems();
+  GetIt.I.registerSingleton<RxStoresAndItems>(rxStoresAndItems);
+  GetIt.I.registerSingleton<RxUserCart>(RxUserCart());
+}
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,87 +81,19 @@ main() async {
   // await locationInitializer();
   shortid.characters('ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-');
   shortid.seed(DateTime.now().millisecondsSinceEpoch / 100000);
-  await databaseInitializer();
+  registerSingletons();
+  RxConnectivity rxConnectivity = GetIt.I.get<RxConnectivity>();
+  await rxConnectivity.init();
+  // await databaseInitializer();
   Utils.getFCMServerKey();
-  Utils.getAPIKey();
+  await Utils.getAPIKey();
 
   // await initializeDateFormatting('en_ZA');
-  final user = await FirebaseAuth.instance.currentUser();
-  if (user != null) {
-    final result =
-        await Firestore.instance.collection('users').document(user.uid).get();
-    if (result != null &&
-        result.data != null &&
-        result.data.length > 0 &&
-        result.exists) {
-      Session.data.update('user', (a) {
-        return User.fromMap(result.data);
-      }, ifAbsent: () {
-        return User.fromMap(result.data);
-      });
-      if (user.isEmailVerified) {
-        MyApp.initialRoute = MyApp.userHome;
-      } else {
-        MyApp.initialRoute = MyApp.verifyEmailRoute;
-      }
-    } else {
-      final driverResult = await Firestore.instance
-          .collection('drivers')
-          .document(user.uid)
-          .get();
-      if (driverResult != null &&
-          driverResult.data != null &&
-          driverResult.data.length > 0 &&
-          driverResult.exists) {
-        driverResult.data
-            .update('driverId', (old) => user.uid, ifAbsent: () => user.uid);
-        Session.data.update('driver', (a) {
-          return Driver.fromMap(driverResult.data);
-        }, ifAbsent: () {
-          return Driver.fromMap(driverResult.data);
-        });
-        if (user.isEmailVerified) {
-          MyApp.initialRoute = MyApp.driverHome;
-        } else {
-          MyApp.initialRoute = MyApp.verifyEmailRoute;
-        }
-      } else {
-        final partnerStoreResult = await Firestore.instance
-            .collection('partnerStores')
-            .document(user.uid)
-            .get();
-
-        if (partnerStoreResult != null &&
-            partnerStoreResult.data != null &&
-            partnerStoreResult.data.length > 0 &&
-            partnerStoreResult.exists) {
-          var data = await Firestore.instance
-              .collection('stores')
-              .document(partnerStoreResult.data['storeId'])
-              .get();
-          if (data != null &&
-              data.exists &&
-              data.data != null &&
-              data.data.length > 0) {
-            Session.data.update('partnerStore', (a) {
-              return Store.fromMap(data.data)..storeId = data.documentID;
-            }, ifAbsent: () {
-              return Store.fromMap(data.data)..storeId = data.documentID;
-            });
-          }
-          MyApp.initialRoute = MyApp.partnerStoreHome;
-        } else {
-          await FirebaseAuth.instance.signOut();
-          MyApp.initialRoute = MyApp.startPage;
-        }
-      }
-    }
-  }
-  runApp(MyApp());
+  runApp(MaterialApp(home: MyApp()));
 }
 
 databaseInitializer() async {
-  await DatabaseHelper.iniitialize();
+  // await DatabaseHelper.iniitialize();
 }
 
 class MyApp extends StatefulWidget with WidgetsBindingObserver {
@@ -162,7 +114,7 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
     thoroughfare: 'NULL',
   );
   // static const String searchPage = 'searchPage';
-  static Future<void> futureCart;
+  // static Future<void> futureCart;
   // static final String startPage2 = '/startPage2';
   static const String userSignup = '$userStartPage/userSignup';
   static const String userSignIn = '$userStartPage/userSignIn';
@@ -192,11 +144,11 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const Color primaryColor = Color.fromARGB(255, 87, 89, 152);
   static Color disabledPrimaryColor =
       Color.fromARGB(255, 87 + 40, 89 + 40, 152 + 40);
-  static Address _address;
+  // static Address _address;
   // static Location _location;
-  static Future<LatLng> _lastKnowLocation;
+  // static Future<LatLng> _lastKnowLocation;
 
-  static LatLng _initialLocation;
+  // static LatLng _initialLocation;
 
   MyApp() {
     WidgetsBinding.instance.addObserver(this);
@@ -210,6 +162,11 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
 class MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  BehaviorSubject<String> statusBehavior =
+      BehaviorSubject<String>.seeded('Loading ...');
+  Stream<String> get status$ => statusBehavior.stream;
+  String get status => statusBehavior.value;
+
   @override
   void initState() {
     super.initState();
@@ -306,248 +263,735 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   // This widget is the root of your application.
 
-  Future<void> locationInitializer() async {
-    Location _location = Location();
-    PermissionStatus locationPermission = await _location.requestPermission();
-    if (locationPermission == PermissionStatus.GRANTED) {
-      // == PermissionStatus.GRANTED) {
-      final locator = Geolocator();
-      MyApp._lastKnowLocation =
-          locator.getLastKnownPosition().then<LatLng>((position) {
-        if (position == null) {
-          return _location.getLocation().then<LatLng>((locationData) {
-            return LatLng(locationData.latitude, locationData.longitude);
-          });
-        } else {
-          return LatLng(position.latitude, position.longitude);
-        }
-      }).timeout(
-        Duration(seconds: 5),
-        onTimeout: () {
-          return LatLng(0, 0);
-        },
-      );
-
-      // MyApp._lastKnowLocation = _location.getLocation().then((data) {
-      //   return LatLng(data.latitude, data.longitude);
+  Future<bool> checkForUpdate() async {
+    var connection = GetIt.I.get<RxConnectivity>();
+    if (!connection.currentState) {
+      // setState(() {
+      statusBehavior.add('No Internet Connection, Waiting ....');
       // });
-      // final data = await MyApp._lastKnowLocation;
-      // MyApp._initialLocation = data;
-      // MyApp._address = (await Geocoder.google(await Utils.getAPIKey())
-      //     .findAddressesFromCoordinates(
-      //         Coordinates(data.latitude, data.longitude)))[0];
-    } else {
-      MyApp._lastKnowLocation = Future.delayed(
-          Duration(
-            milliseconds: 10,
-          ), () {
-        Utils.getMyLocation();
-        MyApp._initialLocation = LatLng(0, 0);
-        MyApp._address = MyApp.dummyAddress;
-        return MyApp._initialLocation;
-      });
-    }
-  }
-
-  Future<Map<String, dynamic>> initialize() async {
-    final ref = Firestore.instance.collection('versions');
-    Function catchError;
-    catchError = (_) async {
-      final querySnapshot = await ref.getDocuments().catchError(catchError);
-      return querySnapshot;
-    };
-    final querySnapshot = await ref.getDocuments().catchError(catchError);
-    num version = querySnapshot.documents.first.data['version'];
-    String versionName = querySnapshot.documents.first.data['versionName'];
-    num compulsoryIfNewVersion =
-        querySnapshot.documents.first.data['compulsoryIfLessThan'];
-    if (Session.version < version) {
-      bool compulsory = false;
-      if (compulsoryIfNewVersion > Session.version) {
-        compulsory = true;
-      }
-      return {
-        'compulsory': compulsory,
-        'update': true,
-        'version': version,
-        'versionName': versionName,
-      };
-    }
-    await locationInitializer().timeout(
-      Duration(
-        seconds: 10,
-      ),
-      onTimeout: () {},
-    );
-    if (MyApp._lastKnowLocation == null) {
-      Utils.getMyLocation();
-      MyApp._initialLocation = LatLng(0, 0);
-      MyApp._address = MyApp.dummyAddress;
       return null;
     }
-    await MyApp._lastKnowLocation?.then((data) async {
-      MyApp._initialLocation = data;
-      final listOfAddress = (await Geocoder.google(await Utils.getAPIKey())
-          .findAddressesFromCoordinates(
-              Coordinates(data.latitude, data.longitude)));
-      if (listOfAddress == null || listOfAddress.length <= 0) {
-        Utils.getMyLocation();
-        MyApp._initialLocation = LatLng(0, 0);
-        MyApp._address = MyApp.dummyAddress;
+    RxConfig rxConfig = GetIt.I.get<RxConfig>();
+    await rxConfig.init();
+    Map<String, dynamic> config = rxConfig.config.value;
+    if (config['maintenanceNotice'] != null) {
+      try {
+        BotToast.showNotification(
+          align: Alignment.topCenter,
+          title: (fn) => Text('Maintenance Notice'),
+          duration: Duration(seconds: 5),
+          crossPage: true,
+          subtitle: (fn) => Text(
+            'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+          ),
+        );
+      } catch (ex) {
+        print(ex.toString());
       }
-    })?.timeout(Duration(seconds: 5), onTimeout: () async {
-      Utils.getMyLocation();
-      MyApp._initialLocation = LatLng(0, 0);
-      MyApp._address = MyApp.dummyAddress;
-      return MyApp._initialLocation;
-    });
-    return null;
+    }
+    num newVersionCode = config['versionCode'];
+    if (newVersionCode > Session.version) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
-  @override
+  Widget getLoadingWidget() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Image.asset('assets/images/logo.png'),
+          SizedBox(height: 20),
+          StreamBuilder<String>(
+              initialData: 'Initializing .....',
+              stream: status$,
+              builder: (context, snapshot) {
+                return Center(
+                  child: Text(snapshot.data),
+                );
+              }),
+        ],
+      ),
+    );
+  }
+
+  Future<String> initializeAndGetInitialRoute() async {
+    // var initializingSuccessful = await initialize(setState);
+    // if (!initializingSuccessful) {
+    //   return null;
+    // }
+    var rxConnectivity = GetIt.I.get<RxConnectivity>();
+    bool connected = rxConnectivity.currentState;
+
+    if (!connected) {
+      // setState(() {
+      statusBehavior.add('No Connection! Waiting for Connection ....');
+      // });
+      return null;
+    }
+    // RxConfig rxConfig = GetIt.I.get<RxConfig>();
+    // setState(() {
+    //   status = 'Checking for updates 10%';
+    // });
+    // await rxConfig.init();
+    // setState(() {
+    statusBehavior.add('Fetching your location ...20%');
+    // });
+    RxAddress rxAddress = GetIt.I.get<RxAddress>();
+    StreamSubscription loadingProgressSubscription = Stream.periodic(
+        Duration(
+          milliseconds: 300,
+        ), (value) {
+      int computedValue = 20 + value;
+      if (computedValue > 40) {
+        return 40;
+      }
+      return computedValue;
+    }).listen((event) {
+      // setState(() {
+      statusBehavior.add('Fetching your location ... $event%');
+      // });
+    });
+    var addressResult;
+    try {
+      addressResult = await rxAddress.init();
+    } catch (ex) {
+      debugPrint(ex.toString());
+    }
+    loadingProgressSubscription?.cancel();
+    if (addressResult == null) {
+      // setState(() {
+      statusBehavior.add("Couldn't get your location. Retrying .....");
+      // });
+      return null;
+    }
+    statusBehavior.add('Initialized Stores and Items ... 45%');
+    RxStoresAndItems rxStoresAndItems = GetIt.I.get<RxStoresAndItems>();
+    loadingProgressSubscription = Stream.periodic(
+        Duration(
+          milliseconds: 600,
+        ), (value) {
+      int computedValue = 45 + value;
+      if (computedValue > 70) {
+        return 70;
+      }
+      return computedValue;
+    }).listen((event) {
+      // setState(() {
+      statusBehavior.add('Initialized Stores and Items ... $event%');
+      // });
+    });
+    var storesAndItemsResult =
+        await rxStoresAndItems.initializeStoresAndItems();
+    loadingProgressSubscription.cancel();
+    if (storesAndItemsResult == null) {
+      // setState(() {
+      statusBehavior.add("Couldn't get Stores and Products. Retrying .....");
+      // });
+      return null;
+    }
+    // setState(() {
+    statusBehavior.add('Fetching User Data..... 75%');
+    // });
+
+    final user = await FirebaseAuth.instance.currentUser().catchError((error) {
+      print(error.toString());
+      return null;
+    });
+    if (user == null) {
+      return MyApp.startPage;
+    }
+    final result = await Firestore.instance
+        .collection('users')
+        .document(user.uid)
+        .get()
+        .catchError((error) {
+      print(error.toString());
+      return null;
+    });
+    if (result == null) {
+      statusBehavior.add('Couldn\'t Fetch User Data. Retrying ......');
+      return null;
+    }
+    statusBehavior.add('Fetching User Data..... 85%');
+    User newUser;
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    Driver newDriver;
+    if (result != null &&
+        result.data != null &&
+        result.data.length > 0 &&
+        result.exists) {
+      // Session.data.update('user', (a) {
+      //   return User.fromMap(result.data);
+      // }, ifAbsent: () {
+      //   return User.fromMap(result.data);
+      // });
+      newUser = User.fromMap(result.data);
+      // if (user.isEmailVerified) {
+      //   // MyApp.initialRoute = MyApp.userHome;
+      // } else {
+      //   // MyApp.initialRoute = MyApp.verifyEmailRoute;
+      // }
+    }
+    final driverResult = await Firestore.instance
+        .collection('drivers')
+        .document(user.uid)
+        .get()
+        .catchError((error) {
+      return null;
+    });
+    if (driverResult == null) {
+      statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+      return null;
+    }
+    if ((driverResult.data?.length ?? 0) > 0 && driverResult.exists) {
+      newDriver = Driver.fromMap(driverResult.data);
+      newDriver.driverId = user.uid;
+      statusBehavior.add('Fetching User Data..... 90%');
+      // driverResult.data
+      //     .update('driverId', (old) => user.uid, ifAbsent: () => user.uid);
+      // Session.data.update('driver', (a) {
+      //   return Driver.fromMap(driverResult.data);
+      // }, ifAbsent: () {
+      //   return Driver.fromMap(driverResult.data);
+      // });
+      // if (user.isEmailVerified) {
+      //   MyApp.initialRoute = MyApp.driverHome;
+      // } else {
+      //   MyApp.initialRoute = MyApp.verifyEmailRoute;
+      // }
+
+      if (newUser != null) {
+        String userType = preferences.getString('user');
+        if ((userType ?? '') == 'user') {
+          statusBehavior.add('Done ..... 100%');
+          if (user.isEmailVerified) {
+            Session.data.putIfAbsent('user', () => newUser);
+            return MyApp.userHome;
+          } else {
+            return MyApp.verifyEmailRoute;
+          }
+        } else if ((userType ?? '') == 'driver') {
+          statusBehavior.add('Done ..... 100%');
+          if (user.isEmailVerified) {
+            Session.data.putIfAbsent('driver', () => newDriver);
+            return MyApp.driverHome;
+          } else {
+            return MyApp.verifyEmailRoute;
+          }
+        }
+        statusBehavior.add('Awaiting response .....');
+        String nextRoute = await showDialog<String>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) {
+              return AlertDialog(
+                title: Text('Login'),
+                insetPadding: EdgeInsets.all(0),
+                contentPadding: EdgeInsets.only(top: 20),
+                content: WillPopScope(
+                  onWillPop: () async => false,
+                  child: Center(
+                    heightFactor: 1,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        ListTile(
+                          // selected: true,
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          leading: Icon(FontAwesomeIcons.car),
+                          title: Text('Login as Driver'),
+                          trailing: Icon(Icons.navigate_next),
+                          onTap: () async {
+                            SharedPreferences prefs =
+                                await SharedPreferences.getInstance();
+                            prefs.setString('user', 'driver');
+                            Session.data.putIfAbsent('driver', () => newDriver);
+                            if (!user.isEmailVerified) {
+                              Navigator.pop(context, MyApp.verifyEmailRoute);
+                            }
+                            Navigator.pop(context, MyApp.driverHome);
+                          },
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        ListTile(
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                          // selected: true,
+                          leading: Icon(
+                            Icons.account_circle,
+                          ),
+                          title: Text('Login as User'),
+                          trailing: Icon(Icons.navigate_next),
+                          onTap: () async {
+                            SharedPreferences prefs =
+                                await SharedPreferences.getInstance();
+                            prefs.setString('user', 'user');
+                            Session.data.putIfAbsent('user', () => newUser);
+                            if (!user.isEmailVerified) {
+                              Navigator.pop(context, MyApp.verifyEmailRoute);
+                            }
+                            Navigator.pop(context, MyApp.userHome);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            });
+
+        statusBehavior.add('Done .... 100%');
+        return nextRoute;
+      } else {
+        statusBehavior.add('Done ..... 100%');
+        preferences.setString('user', 'driver');
+        Session.data.update(
+          'driver',
+          (old) => newDriver,
+          ifAbsent: () => newDriver,
+        );
+        if (user.isEmailVerified) {
+          // statusBehavior.add('Done .... 100%');
+          return MyApp.driverHome;
+        } else {
+          // statusBehavior.add('Done .... 100%');
+          return MyApp.verifyEmailRoute;
+        }
+      }
+    } else if (newUser != null) {
+      statusBehavior.add('Done .... 100%');
+      preferences.setString('user', 'user');
+      Session.data.update(
+        'user',
+        (old) => newUser,
+        ifAbsent: () => newUser,
+      );
+      if (user.isEmailVerified) {
+        return MyApp.userHome;
+      } else {
+        return MyApp.verifyEmailRoute;
+      }
+    }
+    final partnerStoreResult = await Firestore.instance
+        .collection('partnerStores')
+        .document(user.uid)
+        .get()
+        .catchError((error) {
+      return null;
+    });
+    if (partnerStoreResult == null) {
+      statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+      return null;
+    }
+    if (partnerStoreResult.exists &&
+        (partnerStoreResult.data?.length ?? 0) > 0) {
+      var data = await Firestore.instance
+          .collection('stores')
+          .document(partnerStoreResult.data['storeId'])
+          .get()
+          .catchError((error) {
+        print(error.toString());
+        return null;
+      });
+      if (data == null) {
+        statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+        return null;
+      }
+      if (data != null &&
+          data.exists &&
+          data.data != null &&
+          data.data.length > 0) {
+        Session.data.update('partnerStore', (a) {
+          return Store.fromMap(data.data)..storeId = data.documentID;
+        }, ifAbsent: () {
+          return Store.fromMap(data.data)..storeId = data.documentID;
+        });
+      }
+      statusBehavior.add('Done .... 100%');
+      preferences.setString('user', 'store');
+      return MyApp.partnerStoreHome;
+    } else {
+      bool error = false;
+      await FirebaseAuth.instance.signOut().catchError((error) {
+        error = true;
+      });
+      if (error) {
+        return null;
+      }
+      preferences.setString('user', null);
+      statusBehavior.add('Done .... 100%');
+      return MyApp.startPage;
+    }
+  }
+
   Widget build(BuildContext context) {
-    return BotToastInit(
-      child: FutureBuilder<Map<String, dynamic>>(
-          future: initialize(),
-          builder: (context, snapshot) {
-            return MaterialApp(
-              navigatorKey: navigatorKey,
-              localizationsDelegates: const [
-                location_picker.S.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              supportedLocales: const <Locale>[
-                Locale('en', ''),
-                Locale('ar', ''),
-              ],
-              navigatorObservers: [BotToastNavigatorObserver()],
-              initialRoute: MyApp.initialRoute,
-              routes: {
-                MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
-                      OpenAs.NAVIGATION,
-                      fromCoordinate: LatLng(31, 74),
-                      toCoordinate: LatLng(40, 80),
-                      myLocation: LatLng(42, 85),
-                    ),
-                MyApp.startPage: (context) => StartPage(),
-                MyApp.driverHome: (context) => HomeScreenDriver(),
-                MyApp.userSignup: (context) => UserSignUpRoute(),
-                MyApp.userSignIn: (context) => UserSignInRoute(),
-                MyApp.userStartPage: (context) => UserStartPage(),
-                MyApp.driverSignup: (context) => DriverSignUpRoute(),
-                MyApp.driverSignin: (context) => DriverSignInRoute(),
-                MyApp.driverStartPage: (context) => DriverStartPage(),
-                MyApp.userHome: (context) => UserHomeRoute(),
-                MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(
-                      context: context,
-                    ),
-                MyApp.selectFromAddress: (context) =>
-                    SelectFromAddressRoute(MyApp._address),
-                // MyApp.receiveItRoute: (context) => StoresRoute(
-                //       key: GlobalKey<StoresRouteState>(),
-                //       address: MyApp._address,
-                //     ),
-                // MyApp.storeMainPage: (context) => StoreMainPage(),
-                MyApp.partnerStoreHome: (context) => OrderedItemsList(),
-                // activeOrderBody: (context) => ActiveOrder(),
-                // MyApp.searchPage: (context) => SearchWidget(demo: true,),
-                MyApp.notificationWidget: (context) => UserNotificationWidget(),
-                // sennitOrderRoute: (context) => SennitOrderRoute({}),
-              },
-              title: 'Sennit',
-              theme: ThemeData(
-                backgroundColor: Colors.white,
-                fontFamily: 'ArchivoNarrow',
-                primaryColor: MyApp.secondaryColor,
-                accentColor: MyApp.secondaryColor,
-                // buttonColor: primaryColor,
-                buttonTheme: ButtonThemeData(
-                  buttonColor: MyApp.secondaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(6),
-                    ),
+    statusBehavior.add('Checking for Updates ....');
+    Future<bool> newVersionCheck = checkForUpdate();
+    return MaterialApp(
+      builder: BotToastInit(),
+      navigatorKey: navigatorKey,
+      localizationsDelegates: const [
+        location_picker.S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const <Locale>[
+        Locale('en', ''),
+        // Locale('ar', ''),
+      ],
+      navigatorObservers: [BotToastNavigatorObserver()],
+      // initialRoute: MyApp.initialRoute,
+      routes: {
+        MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
+              OpenAs.NAVIGATION,
+              fromCoordinate: LatLng(31, 74),
+              toCoordinate: LatLng(40, 80),
+              myLocation: LatLng(42, 85),
+            ),
+        MyApp.startPage: (context) => StartPage(),
+        MyApp.driverHome: (context) => HomeScreenDriver(),
+        MyApp.userSignup: (context) => UserSignUpRoute(),
+        MyApp.userSignIn: (context) => UserSignInRoute(),
+        MyApp.userStartPage: (context) => UserStartPage(),
+        MyApp.driverSignup: (context) => DriverSignUpRoute(),
+        MyApp.driverSignin: (context) => DriverSignInRoute(),
+        MyApp.driverStartPage: (context) => DriverStartPage(),
+        MyApp.userHome: (context) => UserHomeRoute(),
+        MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(),
+        MyApp.selectFromAddress: (context) => SelectFromAddressRoute(),
+        // MyApp.receiveItRoute: (context) => StoresRoute(
+        //       key: GlobalKey<StoresRouteState>(),
+        //       address: MyApp._address,
+        //     ),
+        // MyApp.storeMainPage: (context) => StoreMainPage(),
+        MyApp.partnerStoreHome: (context) => OrderedItemsList(),
+        // activeOrderBody: (context) => ActiveOrder(),
+        // MyApp.searchPage: (context) => SearchWidget(demo: true,),
+        MyApp.notificationWidget: (context) => UserNotificationWidget(),
+        // sennitOrderRoute: (context) => SennitOrderRoute({}),
+      },
+      title: 'Sennit',
+      theme: ThemeData(
+        backgroundColor: Colors.white,
+        fontFamily: 'ArchivoNarrow',
+        primaryColor: MyApp.secondaryColor,
+        accentColor: MyApp.secondaryColor,
+        // buttonColor: primaryColor,
+        buttonTheme: ButtonThemeData(
+          buttonColor: MyApp.secondaryColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(6),
+            ),
+          ),
+        ),
+        bottomAppBarColor: Colors.white,
+        bottomAppBarTheme: BottomAppBarTheme(
+          color: Colors.white,
+          elevation: 8,
+        ),
+        appBarTheme: AppBarTheme(
+          iconTheme: IconThemeData(
+            color: MyApp.secondaryColor,
+          ),
+          color: Colors.white,
+          textTheme: TextTheme(
+            headline6: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'ArchivoNarrow',
+              fontSize: 22,
+              color: MyApp.secondaryColor,
+            ),
+          ),
+        ),
+        iconTheme: IconThemeData(
+          color: MyApp.secondaryColor,
+        ),
+        textTheme: TextTheme(
+          headline6: TextStyle(
+            color: MyApp.secondaryColor,
+            fontSize: 22,
+            fontWeight: FontWeight.normal,
+          ),
+          headline5: TextStyle(
+            color: MyApp.secondaryColor,
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+          ),
+          subtitle1: TextStyle(
+            color: MyApp.secondaryColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+          subtitle2: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
+          bodyText2: TextStyle(
+            fontSize: 14,
+            decorationColor: Colors.black,
+            fontFamily: 'Roboto',
+          ),
+          button: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+          ),
+          headline4: TextStyle(
+            fontSize: 26,
+            color: MyApp.secondaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      home: StatefulBuilder(builder: (context, setState) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: FutureBuilder<bool>(
+            future: newVersionCheck,
+            initialData: null,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              RxConfig rxConfig = GetIt.I.get<RxConfig>();
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return getLoadingWidget();
+              }
+
+              if (snapshot.data == null) {
+                statusBehavior.add('Failed To Fetch Config. Retrying .......');
+                newVersionCheck = checkForUpdate();
+                WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+                  setState(() {});
+                });
+                return getLoadingWidget();
+              }
+
+              if (snapshot.data == true) {
+                return UpdateNoticeRoute();
+              } else if (rxConfig?.config?.value['closedForMaintenance'] ??
+                  false) {
+                return Center(
+                  child: Column(
+                    children: <Widget>[
+                      Icon(FontAwesomeIcons.tools, size: 40),
+                      SizedBox(height: 10),
+                      Text(
+                        'Sorry For Inconvenience! The App is Closed for Maintenance',
+                        style: Theme.of(context).textTheme.subtitle1,
+                      ),
+                      Text(
+                        rxConfig?.config?.value['waitTime'] != null
+                            ? 'We Will be back in ${rxConfig.config.value['waitTime']}'
+                            : '',
+                        style: Theme.of(context).textTheme.caption,
+                      ),
+                    ],
                   ),
+                );
+              }
+              statusBehavior.add('Initializing Data .... 0%');
+              Future<String> initialRoute = initializeAndGetInitialRoute();
+              return StatefulBuilder(builder: (context, setStateVar) {
+                return FutureBuilder<String>(
+                    initialData: null,
+                    future: initialRoute,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return getLoadingWidget();
+                      }
+
+                      if (snapshot.data == null) {
+                        initialRoute = initializeAndGetInitialRoute();
+                        WidgetsBinding.instance
+                            .addPostFrameCallback((timeStamp) {
+                          setStateVar(() {});
+                        });
+                        return getLoadingWidget();
+                      }
+
+                      if (snapshot.data == MyApp.startPage) {
+                        return StartPage();
+                      } else if (snapshot.data == MyApp.userHome) {
+                        return UserHomeRoute();
+                      } else if (snapshot.data == MyApp.driverHome) {
+                        return HomeScreenDriver();
+                      } else if (snapshot.data == MyApp.partnerStoreHome) {
+                        return OrderedItemsList();
+                      } else {
+                        return StartPage();
+                      }
+                    });
+              });
+            },
+          ),
+        );
+      }),
+    );
+  }
+
+  // @override
+  Widget build2(BuildContext context) {
+    return FutureBuilder<void>(
+      // future: initialize(null),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Column(children: [
+              Image.asset('assets/images/logo.png'),
+              SizedBox(
+                height: 10,
+              ),
+              Text('$status'),
+            ]),
+          );
+        }
+        RxConfig config = GetIt.I.get<RxConfig>();
+        return MaterialApp(
+          localizationsDelegates: const [
+            location_picker.S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const <Locale>[
+            Locale('en', ''),
+            Locale('ar', ''),
+          ],
+          navigatorObservers: [BotToastNavigatorObserver()],
+          initialRoute: MyApp.initialRoute,
+          routes: {
+            MyApp.driverNavigationRoute: (context) => DeliveryTrackingRoute(
+                  OpenAs.NAVIGATION,
+                  fromCoordinate: LatLng(31, 74),
+                  toCoordinate: LatLng(40, 80),
+                  myLocation: LatLng(42, 85),
                 ),
-                bottomAppBarColor: Colors.white,
-                bottomAppBarTheme: BottomAppBarTheme(
-                  color: Colors.white,
-                  elevation: 8,
-                ),
-                appBarTheme: AppBarTheme(
-                  iconTheme: IconThemeData(
-                    color: MyApp.secondaryColor,
-                  ),
-                  color: Colors.white,
-                  textTheme: TextTheme(
-                    headline6: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'ArchivoNarrow',
-                      fontSize: 22,
-                      color: MyApp.secondaryColor,
-                    ),
-                  ),
-                ),
-                iconTheme: IconThemeData(
-                  color: MyApp.secondaryColor,
-                ),
-                textTheme: TextTheme(
-                  headline6: TextStyle(
-                    color: MyApp.secondaryColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.normal,
-                  ),
-                  headline5: TextStyle(
-                    color: MyApp.secondaryColor,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  subtitle1: TextStyle(
-                    color: MyApp.secondaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                  subtitle2: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                  ),
-                  bodyText2: TextStyle(
-                    fontSize: 14,
-                    decorationColor: Colors.black,
-                    fontFamily: 'Roboto',
-                  ),
-                  button: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                  headline4: TextStyle(
-                    fontSize: 26,
-                    color: MyApp.secondaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+            MyApp.startPage: (context) => StartPage(),
+            MyApp.driverHome: (context) => HomeScreenDriver(),
+            MyApp.userSignup: (context) => UserSignUpRoute(),
+            MyApp.userSignIn: (context) => UserSignInRoute(),
+            MyApp.userStartPage: (context) => UserStartPage(),
+            MyApp.driverSignup: (context) => DriverSignUpRoute(),
+            MyApp.driverSignin: (context) => DriverSignInRoute(),
+            MyApp.driverStartPage: (context) => DriverStartPage(),
+            MyApp.userHome: (context) => UserHomeRoute(),
+            MyApp.verifyEmailRoute: (context) => VerifyEmailRoute(),
+            MyApp.selectFromAddress: (context) => SelectFromAddressRoute(),
+            // MyApp.receiveItRoute: (context) => StoresRoute(
+            //       key: GlobalKey<StoresRouteState>(),
+            //       address: MyApp._address,
+            //     ),
+            // MyApp.storeMainPage: (context) => StoreMainPage(),
+            MyApp.partnerStoreHome: (context) => OrderedItemsList(),
+            // activeOrderBody: (context) => ActiveOrder(),
+            // MyApp.searchPage: (context) => SearchWidget(demo: true,),
+            MyApp.notificationWidget: (context) => UserNotificationWidget(),
+            // sennitOrderRoute: (context) => SennitOrderRoute({}),
+          },
+          title: 'Sennit',
+          theme: ThemeData(
+            backgroundColor: Colors.white,
+            fontFamily: 'ArchivoNarrow',
+            primaryColor: MyApp.secondaryColor,
+            accentColor: MyApp.secondaryColor,
+            // buttonColor: primaryColor,
+            buttonTheme: ButtonThemeData(
+              buttonColor: MyApp.secondaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(
+                  Radius.circular(6),
                 ),
               ),
-              home: snapshot.connectionState == ConnectionState.waiting
-                  ? Scaffold(
-                      appBar: AppBar(
-                        backgroundColor: Colors.white,
-                        title: Text(
-                          'Sennit',
-                          style: Theme.of(context).textTheme.subtitle1,
-                        ),
-                        centerTitle: true,
-                      ),
-                      body: Center(child: CircularProgressIndicator()))
-                  : snapshot.data != null
-                      ? UpdateNoticeRoute(
-                          snapshot.data['compulsory'],
-                          snapshot.data['versionName'],
-                        )
-                      : null,
-            );
-          }),
+            ),
+            bottomAppBarColor: Colors.white,
+            bottomAppBarTheme: BottomAppBarTheme(
+              color: Colors.white,
+              elevation: 8,
+            ),
+            appBarTheme: AppBarTheme(
+              iconTheme: IconThemeData(
+                color: MyApp.secondaryColor,
+              ),
+              color: Colors.white,
+              textTheme: TextTheme(
+                headline6: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'ArchivoNarrow',
+                  fontSize: 22,
+                  color: MyApp.secondaryColor,
+                ),
+              ),
+            ),
+            iconTheme: IconThemeData(
+              color: MyApp.secondaryColor,
+            ),
+            textTheme: TextTheme(
+              headline6: TextStyle(
+                color: MyApp.secondaryColor,
+                fontSize: 22,
+                fontWeight: FontWeight.normal,
+              ),
+              headline5: TextStyle(
+                color: MyApp.secondaryColor,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+              subtitle1: TextStyle(
+                color: MyApp.secondaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+              subtitle2: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+              ),
+              bodyText2: TextStyle(
+                fontSize: 14,
+                decorationColor: Colors.black,
+                fontFamily: 'Roboto',
+              ),
+              button: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+              headline4: TextStyle(
+                fontSize: 26,
+                color: MyApp.secondaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          home: snapshot.connectionState == ConnectionState.waiting
+              ? Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: Colors.white,
+                    title: Text(
+                      'Sennit',
+                      style: Theme.of(context).textTheme.subtitle1,
+                    ),
+                    centerTitle: true,
+                  ),
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Image.asset('assets/images/logo.png'),
+                        SizedBox(height: 40),
+                        CircularProgressIndicator(),
+                      ],
+                    ),
+                  ),
+                )
+              : config.config != null ? UpdateNoticeRoute() : null,
+        );
+      },
     );
   }
 }
@@ -711,7 +1155,7 @@ class Utils {
       toastBuilder: (fn) {
         return Container(
           color: Colors.white,
-          width: MediaQuery.of(context).size.width,
+          // width: MediaQuery.of(context).size.width,
           height: kToolbarHeight,
           child: Row(
             children: <Widget>[
@@ -1000,6 +1444,8 @@ class Utils {
   static showPlacePicker(BuildContext context,
       {@required LatLng initialLocation}) async {
     String apiKey = await getAPIKey();
+    LatLng latlng = Utils.latLngFromCoordinates(
+        GetIt.I.get<RxAddress>().currentMyAddress.coordinates);
     // LocationPicker(apiKey);
     Map<String, LocationResult> map =
         Map<String, LocationResult>.from((await Navigator.of(context).push(
@@ -1007,9 +1453,8 @@ class Utils {
                 builder: (context) => LocationPicker(
                   apiKey,
                   automaticallyAnimateToCurrentLocation: false,
-                  initialCenter: initialLocation ??
-                      Utils.getLastKnowLocation() ??
-                      LatLng(0, 0),
+                  initialCenter:
+                      initialLocation ?? latlng ?? LatLng(30.5595, 22.9375),
                   requiredGPS: true,
                   myLocationButtonEnabled: true,
                   layersButtonEnabled: false,
@@ -1025,35 +1470,79 @@ class Utils {
     return map[keys[0]];
   }
 
-  static Future<LatLng> getMyLocation(
-      {location.LocationAccuracy accuracy =
-          location.LocationAccuracy.BALANCED}) async {
-    final _location = Location()..changeSettings(accuracy: accuracy);
-    if (await _location.hasPermission() != PermissionStatus.GRANTED) {
-      var result = await _location.requestPermission();
-      if (result != PermissionStatus.GRANTED) {
-        Utils.showSnackBarError(null,
-            'This App Needs Location Permission to work. Please give permission.');
-      }
-      return null;
-    }
-    MyApp._lastKnowLocation = _location.getLocation().then((data) {
-      return LatLng(data.latitude, data.longitude);
-    });
-
-    return MyApp._lastKnowLocation
-      ..then((a) {
-        MyApp._initialLocation = a;
-      });
-  }
-
-  static LatLng getLastKnowLocation() {
-    return MyApp._initialLocation ?? LatLng(0, 0);
-  }
+  // static Future<LatLng> getMyLocation(
+  //     {location.LocationAccuracy accuracy =
+  //         location.LocationAccuracy.BALANCED}) async {
+  //   final RxAddress addressService = GetIt.I.get<RxAddress>();
+  //   final _location = Location()..changeSettings(accuracy: accuracy);
+  //   if (await _location.hasPermission() != PermissionStatus.GRANTED) {
+  //     var result = await _location.requestPermission();
+  //     if (result != PermissionStatus.GRANTED) {
+  //       Utils.showSnackBarError(null,
+  //           'This App Needs Location Permission to work. Please give permission.');
+  //     }
+  //     return null;
+  //   }
+  //   Coordinates myLocation =
+  //       await _location.getLocation().then<Coordinates>((data) {
+  //     return Coordinates(data.latitude, data.longitude);
+  //   });
+  //   Address myAddress;
+  //   if (myLocation != null) {
+  //     myAddress = await Geocoder.google(await Utils.getAPIKey())
+  //         .findAddressesFromCoordinates(myLocation)
+  //         .then<Address>((value) => value[0]);
+  //   }
+  //   addressService.setMyAddress(myAddress);
+  //   return Utils.latLngFromCoordinates(myAddress.coordinates);
+  // }
 
   static Address getLastKnowAddress() {
-    return MyApp._address ??
-        Address(addressLine: 'Null', adminArea: 'Null', countryName: 'Null');
+    return GetIt.I.get<RxAddress>().currentMyAddress;
+  }
+
+  static Future<LatLng> getLatestLocation(
+      {location.LocationAccuracy accuracy =
+          location.LocationAccuracy.balanced}) async {
+    // Location location = Location();
+    // if (await location.hasPermission() == PermissionStatus.GRANTED) {
+    //   LocationData data = await location.getLocation();
+    //   Address myAddress = (await Geocoder.google(await Utils.getAPIKey())
+    //       .findAddressesFromCoordinates(
+    //           Coordinates(data.latitude, data.longitude)))[0];
+    //   GetIt.I.get<RxAddress>().setMyAddress(myAddress);
+    //   return LatLng(data.latitude, data.longitude);
+    // } else {
+    //   Utils.showSnackBarError(
+    //     null,
+    //     'Location Permission Denied: This App may misbehave.',
+    //   );
+    //   return null;
+    // }
+    final RxAddress addressService = GetIt.I.get<RxAddress>();
+    return Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
+    // final _location = Location()..changeSettings(accuracy: accuracy);
+    // if (await _location.hasPermission() != PermissionStatus.GRANTED) {
+    //   var result = await _location.requestPermission();
+    //   if (result != PermissionStatus.GRANTED) {
+    //     Utils.showSnackBarError(null,
+    //         'This App Needs Location Permission to work. Please give permission.');
+    //   }
+    //   return null;
+    // }
+    // Coordinates myLocation =
+    //     await _location.getLocation().then<Coordinates>((data) {
+    //   return Coordinates(data.latitude, data.longitude);
+    // });
+    // Address myAddress;
+    // if (myLocation != null) {
+    //   myAddress = await Geocoder.google(await Utils.getAPIKey())
+    //       .findAddressesFromCoordinates(myLocation)
+    //       .then<Address>((value) => value[0]);
+    // }
+    // addressService.setMyAddress(myAddress);
+    // return Utils.latLngFromCoordinates(myAddress.coordinates);
   }
 
   static LatLng latLngFromString(String latlng) {
@@ -1064,6 +1553,16 @@ class Utils {
     double latitude = double.parse(splitedValues[0]);
     double longitude = double.parse(splitedValues[1]);
     return LatLng(latitude, longitude);
+  }
+
+  static LatLng latLngFromCoordinates(Coordinates coordinates) {
+    if (coordinates == null) return null;
+    return LatLng(coordinates.latitude, coordinates.longitude);
+  }
+
+  static Coordinates coordinatesFromLatLng(LatLng latlng) {
+    if (latlng == null) return null;
+    return Coordinates(latlng.latitude, latlng.longitude);
   }
 
   static String genderToString(Gender gender) {
@@ -1118,16 +1617,17 @@ class Utils {
   }
 
   static void showLoadingDialog(BuildContext context, [bool dismissible]) {
-    showDialog(
-        context: context,
-        barrierDismissible: dismissible ?? true,
-        builder: (context) {
-          return Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
-          );
-        });
+    // showDialog(
+    //     context: context,
+    //     barrierDismissible: dismissible ?? true,
+    //     builder: (context) {
+    //       return Center(
+    //         child: CircularProgressIndicator(
+    //           strokeWidth: 2,
+    //         ),
+    //       );
+    //     });
+    BotToast.showLoading(crossPage: false, clickClose: dismissible ?? false);
   }
 
   static bool isEmailCorrect(String email) {
@@ -1151,27 +1651,35 @@ class Utils {
   }
 
   static Future signOutUser(context) async {
-    Utils.showLoadingDialog(context);
+    BotToast.showLoading();
     // Navigator.of(context).popUntil((route) => route.isFirst);
     FirebaseMessaging fcm = FirebaseMessaging();
+    GetIt.I.get<RxReceiveItTab>().index.add(0);
     User user = Session.data['user'];
     if (user == null) {
+      Session.data.clear();
+      BotToast.closeAllLoading();
       Navigator.of(context)
           .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
       return;
     } else {
+      Session.data.clear();
+      BotToast.closeAllLoading();
       Future unRegisteringTokens = Firestore.instance
           .collection('users')
           .document(user.userId)
           .collection('tokens')
           .document(await fcm.getToken())
           .delete()
-          .timeout(Duration(seconds: 12), onTimeout: () {
-        Navigator.pop(context);
+          .catchError((error) {
+        print(error.toString());
+      }).timeout(Duration(seconds: 12), onTimeout: () {
+        // Navigator.pop(context);
       });
       await unRegisteringTokens;
+      // Navigator.pop(context);
+      // MyAppState.navigatorKey.currentState.pop();
       await FirebaseAuth.instance.signOut();
-      Session.data..removeWhere((key, value) => true);
       Navigator.of(context)
           .pushNamedAndRemoveUntil(MyApp.startPage, (route) => false);
     }
@@ -1311,12 +1819,17 @@ class Utils {
 class Session {
   static Map<String, dynamic> data = Map<String, dynamic>();
   static num version = 45;
+  static String versionName = '2.2.5';
   static getCart() {
     if (data.containsKey('cart')) {
       return data['cart'];
     } else {
       data.putIfAbsent('cart', () {
-        return UserCart(itemsData: {});
+        return UserCart(
+          itemsData: StoreToReceiveItOrderItems(
+            itemDetails: {},
+          ),
+        );
       });
       return data['cart'];
     }

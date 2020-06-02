@@ -8,12 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart'
     as mapbox;
 import 'package:geocoder/geocoder.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:location/location.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/rx_models/rx_address.dart';
+import 'package:sennit/rx_models/rx_storesAndItems.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
 class OrderNavigationRoute extends StatefulWidget {
@@ -86,7 +89,7 @@ class OrderNavigationRoute extends StatefulWidget {
 
   static _startNavigation(
       context, LatLng destination, LatLng myLocation) async {
-    Utils.showLoadingDialog(context);
+    Utils.showLoadingDialog(context, true);
     // MapsLauncher.launchCoordinates(
     //     pickup.latitude, pickup.longitude);
     mapbox.MapboxNavigation _directions;
@@ -102,10 +105,11 @@ class OrderNavigationRoute extends StatefulWidget {
         // });
         if (arrived) {
           await _directions.finishNavigation();
-          Navigator.popUntil(
-            context,
-            (route) => route.settings.name == OrderNavigationRoute.NAME,
-          );
+          BotToast.closeAllLoading();
+          // Navigator.popUntil(
+          //   context,
+          //   (route) => route.settings.name == OrderNavigationRoute.NAME,
+          // );
           Utils.showSuccessDialog('You Have Arrived');
           await Future.delayed(Duration(seconds: 2));
           BotToast.cleanAll();
@@ -127,10 +131,11 @@ class OrderNavigationRoute extends StatefulWidget {
       simulateRoute: false,
       language: "English",
     );
-    Navigator.popUntil(
-      context,
-      (route) => route.settings.name == OrderNavigationRoute.NAME,
-    );
+    BotToast.closeAllLoading();
+    // Navigator.popUntil(
+    //   context,
+    //   (route) => route.settings.name == OrderNavigationRoute.NAME,
+    // );
   }
 
   @override
@@ -142,6 +147,7 @@ class OrderNavigationRoute extends StatefulWidget {
 class OrderNavigationRouteState extends State<OrderNavigationRoute> {
   final _solidController = SolidController();
 
+  RxAddress addressService = GetIt.I.get<RxAddress>();
   StreamSubscription<LocationData> locationSubscription;
   StreamSubscription<DocumentSnapshot> documentStream;
   // Future<Map<String, dynamic>> items;
@@ -159,10 +165,11 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
     //     widget.data['numberOfSleevesNeeded'] == null) {
     //   items = widget.getItems(widget.data);
     // }
-    myLatLng = Utils.getLastKnowLocation();
+    myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     if (!widget.alreadyAccepted) {
       documentStream = Firestore.instance
-          .collection('postedOrders')
+          .collection('orders')
           .document(widget.data['orderId'])
           .snapshots()
           .listen((data) async {
@@ -218,74 +225,74 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
             _Body(
               alreadyAccepted: widget.alreadyAccepted,
               onCancelPopupConfirm: () async {
-                Driver driver = Session.data['driver'];
+                // Driver driver = Session.data['driver'];
                 await locationSubscription?.cancel();
                 locationSubscription = null;
                 widget.data.update(('status'), (old) => 'Pending',
                     ifAbsent: () => 'Accepted');
                 widget.data.update(
-                  ('driverId'),
-                  (old) => FieldValue.delete(),
-                  ifAbsent: () => FieldValue.delete(),
+                  'driverId',
+                  (old) => null,
+                  ifAbsent: () => null,
                 );
                 widget.data.update(
                   ('driverName'),
-                  (old) => FieldValue.delete(),
-                  ifAbsent: () => FieldValue.delete(),
+                  (old) => null,
+                  ifAbsent: () => null,
                 );
                 widget.data.update(
                   ('driverImage'),
-                  (old) => FieldValue.delete(),
-                  ifAbsent: () => FieldValue.delete(),
+                  (old) => null,
+                  ifAbsent: () => null,
                 );
 
-                int millisecondsAcceptedOn = widget.data['acceptedOn'];
-                int canceledAt = DateTime.now().millisecondsSinceEpoch;
-                int timeDifference = canceledAt - millisecondsAcceptedOn;
-                double canceledAfterMinutes = timeDifference / 1000 / 60;
+                // int millisecondsAcceptedOn = widget.data['acceptedOn'];
+                // int canceledAt = DateTime.now().millisecondsSinceEpoch;
+                // int timeDifference = canceledAt - millisecondsAcceptedOn;
+                // double canceledAfterMinutes = timeDifference / 1000 / 60;
 
                 final batch = Firestore.instance.batch();
 
                 final postedOrderRef = Firestore.instance
-                    .collection('postedOrders')
-                    .document(widget.data['orderId']);
-
-                final driverAcceptedOrderRef = Firestore.instance
-                    .collection('drivers')
-                    .document(driver.driverId)
-                    .collection('acceptedOrders')
-                    .document(widget.data['orderId']);
-
-                final userOrderRef = Firestore.instance
-                    .collection('users')
-                    .document(widget.data['userId'])
                     .collection('orders')
                     .document(widget.data['orderId']);
 
-                final canceledOrderRef = Firestore.instance
-                    .collection("drivers")
-                    .document(driver.driverId)
-                    .collection('cancelledOrders')
-                    .document(widget.data['orderId']);
+                // final driverAcceptedOrderRef = Firestore.instance
+                //     .collection('drivers')
+                //     .document(driver.driverId)
+                //     .collection('acceptedOrders')
+                //     .document(widget.data['orderId']);
+
+                // final userOrderRef = Firestore.instance
+                //     .collection('users')
+                //     .document(widget.data['userId'])
+                //     .collection('orders')
+                //     .document(widget.data['orderId']);
+
+                // final canceledOrderRef = Firestore.instance
+                //     .collection("drivers")
+                //     .document(driver.driverId)
+                //     .collection('cancelledOrders')
+                //     .document(widget.data['orderId']);
 
                 batch.setData(postedOrderRef, widget.data, merge: true);
-                batch.delete(driverAcceptedOrderRef);
-                batch.setData(
-                  canceledOrderRef,
-                  {
-                    '${DateTime.now().millisecondsSinceEpoch}': {
-                      'orderId': widget.data['orderId'],
-                      'acceptedOn': millisecondsAcceptedOn,
-                      'canceledAt': canceledAt,
-                      'canceledAfterMinutes': canceledAfterMinutes,
-                    }
-                  },
-                );
-                batch.setData(
-                  userOrderRef,
-                  widget.data,
-                  merge: true,
-                );
+                // batch.delete(driverAcceptedOrderRef);
+                // batch.setData(
+                //   canceledOrderRef,
+                //   {
+                //     '${DateTime.now().millisecondsSinceEpoch}': {
+                //       'orderId': widget.data['orderId'],
+                //       'acceptedOn': millisecondsAcceptedOn,
+                //       'canceledAt': canceledAt,
+                //       'canceledAfterMinutes': canceledAfterMinutes,
+                //     }
+                //   },
+                // );
+                // batch.setData(
+                //   userOrderRef,
+                //   widget.data,
+                //   merge: true,
+                // );
                 batch.commit();
               },
               onOrderComplete: () async {
@@ -305,11 +312,14 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     .document(widget.data['userId'])
                     .collection('tokens')
                     .getDocuments();
-                final userOrderRef = Firestore.instance
-                    .collection('users')
-                    .document(widget.data['userId'])
-                    .collection('orders')
-                    .document(widget.data['orderId']);
+                // final userOrderRef = Firestore.instance
+                //     .collection('users')
+                //     .document(widget.data['userId'])
+                //     .collection('orders')
+                //     .document(widget.data['orderId']);
+
+                int millisecondsNow =
+                    DateTime.now().toUtc().millisecondsSinceEpoch;
 
                 final userNotificationRef = Firestore.instance
                     .collection('users')
@@ -318,31 +328,40 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     .document(widget.data['orderId']);
 
                 final orderRef = Firestore.instance
-                    .collection('postedOrders')
-                    .document(widget.data['orderId']);
-
-                final acceptedOrderRef = Firestore.instance
-                    .collection('drivers')
-                    .document(driverId)
-                    .collection('acceptedOrders')
-                    .document(
-                      widget.data['orderId'],
-                    );
-
-                final driverCompleteOrderRef = Firestore.instance
-                    .collection('drivers')
-                    .document(driverId)
                     .collection('orders')
                     .document(widget.data['orderId']);
 
                 batch.setData(
-                  userOrderRef,
+                  orderRef,
                   {
                     'status': 'Delivered',
-                    'deliveryDate': now.millisecondsSinceEpoch,
+                    'completionDate': millisecondsNow,
                   },
                   merge: true,
                 );
+
+                // final acceptedOrderRef = Firestore.instance
+                //     .collection('drivers')
+                //     .document(driverId)
+                //     .collection('acceptedOrders')
+                //     .document(
+                //       widget.data['orderId'],
+                //     );
+
+                // final driverCompleteOrderRef = Firestore.instance
+                //     .collection('drivers')
+                //     .document(driverId)
+                //     .collection('orders')
+                //     .document(widget.data['orderId']);
+
+                // batch.setData(
+                //   userOrderRef,
+                //   {
+                //     'status': 'Delivered',
+                //     'deliveryDate': now.millisecondsSinceEpoch,
+                //   },
+                //   merge: true,
+                // );
                 batch.setData(
                   userNotificationRef,
                   {
@@ -357,74 +376,75 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     'userId': widget.data['userId'],
                   },
                 );
-                batch.setData(
-                  driverCompleteOrderRef,
-                  widget.data
-                    ..update(
-                      'status',
-                      (old) => 'Delivered',
-                      ifAbsent: () => 'Delivered',
-                    )
-                    ..update(
-                      'deliveryDate',
-                      (old) => now.millisecondsSinceEpoch,
-                      ifAbsent: () => now.millisecondsSinceEpoch,
-                    ),
-                );
-                batch.delete(acceptedOrderRef);
-                batch.delete(orderRef);
+                // batch.setData(
+                //   driverCompleteOrderRef,
+                //   widget.data
+                //     ..update(
+                //       'status',
+                //       (old) => 'Delivered',
+                //       ifAbsent: () => 'Delivered',
+                //     )
+                //     ..update(
+                //       'deliveryDate',
+                //       (old) => now.millisecondsSinceEpoch,
+                //       ifAbsent: () => now.millisecondsSinceEpoch,
+                //     ),
+                // );
+                // batch.delete(acceptedOrderRef);
+                // batch.delete(orderRef);
 
-                if (widget.data['numberOfBoxes'] == null) {
-                  List<Map<String, dynamic>> itemDetails =
-                      (await ReceiveItSolidBottomSheet
-                          ._key.currentState.items)['itemDetails'];
-                  Map<String, Map<String, dynamic>> itemsData =
-                      Map<String, Map<String, dynamic>>.from(
-                          widget.data['itemsData']);
-                  int index = 0;
-                  final keys = itemsData.keys;
-                  for (String itemKey in keys) {
-                    Map<String, dynamic> item = (await Firestore.instance
-                            .collection('items')
-                            .document(itemKey)
-                            .get())
-                        .data;
-                    LatLng latLng =
-                        Utils.latLngFromString(widget.data['destination']);
-                    String address =
-                        (await Geocoder.google(await Utils.getAPIKey())
-                                .findAddressesFromCoordinates(Coordinates(
-                                    latLng.latitude, latLng.longitude)))[0]
-                            .addressLine;
-                    var storeItemRef = Firestore.instance
-                        .collection('stores')
-                        .document(item['storeId'])
-                        .collection('orderedItems')
-                        .document(item['itemId']);
+                // if (widget.data['numberOfBoxes'] == null) {
 
-                    batch.setData(
-                      storeItemRef,
-                      {
-                        widget.data['orderId']: {
-                          'orderedBy': widget.data['userId'],
-                          'dateOrdered': widget.data['date'],
-                          'dateDelivered': now.millisecondsSinceEpoch,
-                          'deliveredTo': (widget.data['house'] == null ||
-                                      widget.data['house'] == ''
-                                  ? ''
-                                  : widget.data['house'] + ', ') +
-                              address,
-                          'quantity': itemsData[itemKey]['quantity'],
-                          'flavour': itemsData[itemKey]['flavour'],
-                          'userEmail': widget.data['email'],
-                          'price': itemDetails[index++]['price'],
-                        },
-                      },
-                      merge: true,
-                    );
-                  }
-                }
-                await batch.commit();
+                //   // List<Map<String, dynamic>> itemDetails =
+                //   //     (await ReceiveItSolidBottomSheet
+                //   //         ._key.currentState.items)['itemDetails'];
+                //   Map<String, Map<String, dynamic>> itemsData =
+                //       Map<String, Map<String, dynamic>>.from(
+                //           widget.data['itemsData']);
+                //   int index = 0;
+                //   final keys = itemsData.keys;
+                //   for (String itemKey in keys) {
+                //     Map<String, dynamic> item = (await Firestore.instance
+                //             .collection('items')
+                //             .document(itemKey)
+                //             .get())
+                //         .data;
+                //     LatLng latLng =
+                //         Utils.latLngFromString(widget.data['destination']);
+                //     String address =
+                //         (await Geocoder.google(await Utils.getAPIKey())
+                //                 .findAddressesFromCoordinates(Coordinates(
+                //                     latLng.latitude, latLng.longitude)))[0]
+                //             .addressLine;
+                //     var storeItemRef = Firestore.instance
+                //         .collection('stores')
+                //         .document(item['storeId'])
+                //         .collection('orderedItems')
+                //         .document(item['itemId']);
+
+                //     batch.setData(
+                //       storeItemRef,
+                //       {
+                //         widget.data['orderId']: {
+                //           'orderedBy': widget.data['userId'],
+                //           'dateOrdered': widget.data['date'],
+                //           'dateDelivered': now.millisecondsSinceEpoch,
+                //           'deliveredTo': (widget.data['house'] == null ||
+                //                       widget.data['house'] == ''
+                //                   ? ''
+                //                   : widget.data['house'] + ', ') +
+                //               address,
+                //           'quantity': itemsData[itemKey]['quantity'],
+                //           'flavour': itemsData[itemKey]['flavour'],
+                //           'userEmail': widget.data['email'],
+                //           'price': itemDetails[index++]['price'],
+                //         },
+                //       },
+                //       merge: true,
+                //     );
+                //   }
+                // }
+                var batchReq = batch.commit();
                 final snapshot = await userToken;
                 final _fcmServerKey = await Utils.getFCMServerKey();
                 final deviceTokens = <String>[];
@@ -456,6 +476,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     },
                   ),
                 );
+                await batchReq;
               },
               verificationCode: widget.verificationCode,
               onOrderConfirmed: () async {
@@ -465,13 +486,13 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                 if (!widget.alreadyAccepted) {
                   await Firestore.instance.runTransaction((trx) async {
                     DocumentReference ref = Firestore.instance
-                        .collection('postedOrders')
-                        .document(widget.data['orderId']);
-                    DocumentReference userOrderRef = Firestore.instance
-                        .collection('users')
-                        .document(widget.data['userId'])
                         .collection('orders')
                         .document(widget.data['orderId']);
+                    // DocumentReference userOrderRef = Firestore.instance
+                    //     .collection('users')
+                    //     .document(widget.data['userId'])
+                    //     .collection('orders')
+                    //     .document(widget.data['orderId']);
                     final snapshot = await trx.get(ref);
                     Map<String, dynamic> data =
                         Map<String, dynamic>.from(snapshot.data);
@@ -502,11 +523,7 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     widget.data.clear();
                     widget.data.addAll(data);
                     try {
-                      print(
-                          'orderId is going to be when trx set: ${widget.data['orderId']}');
                       final postedOrderUpdate = trx.set(ref, data);
-                      final userOrderUpdate = trx.set(userOrderRef, data);
-                      await userOrderUpdate;
                       await postedOrderUpdate;
                     } catch (ex) {
                       print(ex);
@@ -517,32 +534,34 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     }
                   });
                   documentStream.cancel();
-                  final batch = Firestore.instance.batch();
-                  final acceptedOrderRef = Firestore.instance
-                      .collection('drivers')
-                      .document(driver.driverId)
-                      .collection('acceptedOrders')
-                      .document(widget.data['orderId']);
-                  final postedOrderRef = Firestore.instance
-                      .collection('postedOrders')
-                      .document(widget.data['orderId']);
-                  batch.setData(acceptedOrderRef, widget.data);
-                  batch.delete(postedOrderRef);
-                  batch.commit();
+                  // final batch = Firestore.instance.batch();
+                  // // final acceptedOrderRef = Firestore.instance
+                  // //     .collection('drivers')
+                  // //     .document(driver.driverId)
+                  // //     .collection('acceptedOrders')
+                  // //     .document(widget.data['orderId']);
+                  // final postedOrderRef = Firestore.instance
+                  //     .collection('orders')
+                  //     .document(widget.data['orderId']);
+                  // // batch.setData(acceptedOrderRef, widget.data);
+                  // // batch.delete(postedOrderRef);
+                  // batch.commit();
                   // .setData(widget.data);
 
                   // widget.data.update(('status'), (old) => 'Accepted',
                   //     ifAbsent: () => 'Accepted');
                 }
-                Location location = Location();
-                await location.changeSettings(distanceFilter: 50);
+                // Location location = Location();
+                // await location.changeSettings(distanceFilter: 50);
                 // locationSubscription = location.onLocationChanged();
                 // Navigator.popUntil(
                 //     context,
                 //     (route) =>
                 //         route.settings.name == OrderNavigationRoute.NAME);
-                locationSubscription =
-                    location.onLocationChanged().listen((locationData) {
+                RxAddress rxAddress = GetIt.I.get<RxAddress>();
+                rxAddress.stream$.listen((addresses) {
+                  Address myAddress = addresses['myAddress'];
+                  Coordinates locationData = myAddress.coordinates;
                   myLatLng =
                       LatLng(locationData.latitude, locationData.longitude);
 
@@ -566,24 +585,22 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
 
                   var batch = Firestore.instance.batch();
 
-                  var driverRef = Firestore.instance
-                      .collection('drivers')
-                      .document(driver.driverId)
-                      .collection('acceptedOrders')
-                      .document(widget.data['orderId']);
-                  var userRef = Firestore.instance
-                      .collection('users')
-                      .document(widget.data['userId'])
+                  // var driverRef = Firestore.instance
+                  //     .collection('drivers')
+                  //     .document(driver.driverId)
+                  //     .collection('acceptedOrders')
+                  //     .document(widget.data['orderId']);
+                  // var userRef = Firestore.instance
+                  //     .collection('users')
+                  //     .document(widget.data['userId'])
+                  //     .collection('orders')
+                  //     .document(widget.data['orderId']);
+                  var orderRef = Firestore.instance
                       .collection('orders')
                       .document(widget.data['orderId']);
 
                   batch.setData(
-                    driverRef,
-                    dataToUpload,
-                    merge: true,
-                  );
-                  batch.setData(
-                    userRef,
+                    orderRef,
                     dataToUpload,
                     merge: true,
                   );
@@ -641,16 +658,16 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
 
 class ReceiveItSolidBottomSheet extends StatefulWidget {
   // final Function(LatLng) onSelectItem;
-  final data;
+  final Map<String, dynamic> data;
   final Function(LatLng) animateToLatLng;
-  static GlobalKey<ReceiveItSolidBottomSheetState> _key =
-      GlobalKey<ReceiveItSolidBottomSheetState>();
+  // static GlobalKey<ReceiveItSolidBottomSheetState> _key =
+  //     GlobalKey<ReceiveItSolidBottomSheetState>();
 
   ReceiveItSolidBottomSheet({
     // @required key,
     @required this.data,
     this.animateToLatLng,
-  }) : super(key: _key);
+  }); // : super(key: _key);
 
   // factory ReceiveItSolidBottomSheet({
   //   data,
@@ -665,20 +682,23 @@ class ReceiveItSolidBottomSheet extends StatefulWidget {
     return ReceiveItSolidBottomSheetState();
   }
 
-  show() {
-    _key?.currentState?._solidController?.show();
-  }
+  // show() {
+  //   _key?.currentState?._solidController?.show();
+  // }
 
-  hide() {
-    _key?.currentState?._solidController?.hide();
-  }
+  // hide() {
+  //   _key?.currentState?._solidController?.hide();
+  // }
 }
 
 class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
   bool isShown = false;
   // final BottomBarIcon _icon = BottomBarIcon();
-  Future<Map<String, dynamic>> items;
-  var _solidController = SolidController();
+  // Future<Map<String, dynamic>> items;
+  var _solidController;
+  RxAddress addressService = GetIt.I.get<RxAddress>();
+  GlobalKey<_BottomBarIconState> bottomBaIconKey;
+  OrderFromReceiveIt order;
 
   @override
   void dispose() {
@@ -686,58 +706,69 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
     super.dispose();
   }
 
-  Future<Map<String, dynamic>> getItems(data) async {
-    LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, Map<String, dynamic>> itemsData =
-        Map<String, Map<String, dynamic>>.from(data['itemsData']);
-    List<Map<String, dynamic>> itemDetails = [];
-    Map<String, dynamic> finalResult = {};
-    final keys = itemsData.keys;
-    for (String itemKey in keys) {
-      final result =
-          await Firestore.instance.collection('items').document(itemKey).get();
-      // LatLng latlng = Utils.latLngFromString(result.data['latlng']);
-      // Address address = (await Geocoder.google(await Utils.getAPIKey())
-      //     .findAddressesFromCoordinates(
-      //         Coordinates(latlng.latitude, latlng.longitude)))[0];
-      // result.data.putIfAbsent('address', () => result.data['storeAddress']);
-      itemDetails.add(result.data);
-    }
-
-    Address address = (await Geocoder.google(await Utils.getAPIKey())
-        .findAddressesFromCoordinates(
-            Coordinates(destination.latitude, destination.longitude)))[0];
-    // itemDetails.add({'destination' : address.addressLine});
-    finalResult.putIfAbsent('destination', () {
-      return address;
-    });
-    finalResult.putIfAbsent('destinationLatLng', () {
-      return destination;
-    });
-
-    finalResult.putIfAbsent('itemDetails', () {
-      return itemDetails;
-    });
-
-    return finalResult;
-  }
-
   @override
   void initState() {
     super.initState();
-    items = getItems(widget.data);
+    _solidController = SolidController();
+    bottomBaIconKey = GlobalKey<_BottomBarIconState>();
+    order = OrderFromReceiveIt.fromMap(widget.data);
   }
+
+  Future<Address> initializeItemsAndGetAddress() async {
+    // LatLng destination = Utils.latLngFromString(order.destination);
+    StoreToReceiveItOrderItems itemsData = order.itemsData;
+    // List<Map<String, dynamic>> itemDetails = [];
+    // Map<String, dynamic> finalResult = {};
+    final keys = itemsData.itemDetails.keys;
+    List<Future<DocumentSnapshot>> requests = [];
+    RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
+    Map<String, StoreItem> itemsMap = storesAndItems.items.value;
+    // Map<String, Store> storesMap = storesAndItems.stores.value;
+
+    for (String itemKey in keys) {
+      final request =
+          Firestore.instance.collection('items').document(itemKey).get();
+      requests.add(request);
+    }
+    for (var request in requests) {
+      final result = await request;
+      itemsMap.putIfAbsent(
+        result.documentID,
+        () => StoreItem.fromMap(result.data),
+      );
+    }
+    Address address = (await Geocoder.google(await Utils.getAPIKey())
+        .findAddressesFromCoordinates(Coordinates(
+            order.destination.latitude, order.destination.longitude)))[0];
+    return address;
+    // itemDetails.add({'destination' : address.addressLine});
+    // finalResult.putIfAbsent('destinationLatLng', () {
+    //   return destination;
+    // });
+
+    // finalResult.putIfAbsent('itemDetails', () {
+    //   return itemDetails;
+    // });
+  }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   items = getItems(widget.data);
+  // }
 
   @override
   Widget build(BuildContext context) {
+    LatLng myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     return SolidBottomSheet(
       controller: _solidController..hide(),
       toggleVisibilityOnTap: true,
       onShow: () async {
-        BottomBarIcon._key?.currentState?.setIconState(true);
+        bottomBaIconKey?.currentState?.setIconState(true);
       },
       onHide: () async {
-        BottomBarIcon._key?.currentState?.setIconState(false);
+        bottomBaIconKey?.currentState?.setIconState(false);
       },
       // enableDrag: true,
       // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
@@ -761,300 +792,716 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                   topLeft: Radius.circular(20), topRight: Radius.circular(20)),
             ),
           ),
-          child: BottomBarIcon(),
+          child: BottomBarIcon(key: bottomBaIconKey),
         ),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-          future: items,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting ||
-                snapshot.data == null) {
+      body: FutureBuilder<Address>(
+          future: initializeItemsAndGetAddress(),
+          builder: (context, destinationSnapshot) {
+            if (destinationSnapshot.connectionState ==
+                ConnectionState.waiting) {
               return Center(
                 child: CircularProgressIndicator(),
               );
             }
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  SizedBox(height: 10),
-                  Text(
-                    'OrderId: ${widget.data['shortId']}',
-                    style: Theme.of(context).textTheme.subtitle1,
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(
-                    height: 40,
-                  ),
-                  Container(
-                    color: Theme.of(context).primaryColor,
-                    padding: EdgeInsets.all(6),
-                    child: Text(
-                      ' P i c k u p ',
+            return StreamBuilder<Map<String, Address>>(
+                stream: addressService.stream$,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  RxStoresAndItems storesAndItems =
+                      GetIt.I.get<RxStoresAndItems>();
+
+                  Map<String, Store> stores = storesAndItems.stores.value;
+                  Map<String, StoreItem> items = storesAndItems.items.value;
+
+                  List<Widget> widgets = [];
+                  //Adding Top Widgets Before Stores and Items.
+                  widgets.addAll([
+                    SizedBox(height: 10),
+                    Text(
+                      'OrderId: ${widget.data['shortId']}',
+                      style: Theme.of(context).textTheme.subtitle1,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Container(
-                    // color: Colors.black,
-                    // width: MediaQuery.of(context).size.width,
-                    height: 200,
-                    child: ListView.builder(
-                      // padding: EdgeInsets.only(right: 20),
-                      scrollDirection: Axis.horizontal,
-                      // dragStartBehavior: DragStartBehavior.start,
-                      physics: BouncingScrollPhysics(),
-                      itemCount: snapshot.data['itemDetails'].length,
-                      itemBuilder: (context, index) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Card(
-                              elevation: 8,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: InkWell(
-                                  splashColor: Theme.of(context)
-                                      .primaryColor
-                                      .withAlpha(190),
-                                  onTap: () async {
-                                    widget.animateToLatLng(
-                                      Utils.latLngFromString(
-                                        snapshot.data['itemDetails'][index]
-                                            ['latlng'],
+                    SizedBox(
+                      height: 16,
+                    ),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                              text: 'Phone: ',
+                              style: Theme.of(context).textTheme.subtitle1),
+                          TextSpan(
+                              text: order.phoneNumber,
+                              style: Theme.of(context).textTheme.subtitle2),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 6.0,
+                    ),
+                    (order.house ?? '') != ''
+                        ? Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'Apt: ',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(
+                                  text: order.house,
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.normal),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Opacity(opacity: 0),
+                    SizedBox(height: 6),
+                    Text(
+                      order.dropToDoor
+                          ? 'Bring Order to Door'
+                          : 'Customer Will Meet at Vehicle',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(
+                      height: 40,
+                    ),
+                    Container(
+                      color: Theme.of(context).primaryColor,
+                      padding: EdgeInsets.all(6),
+                      child: Text(
+                        ' P i c k u p ',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                  ]);
+
+                  //Adding Lists of Stores and their Items.
+                  Map<String, ReceiveItOrderItem> storeAndItsItems =
+                      order.itemsData.itemDetails;
+                  for (var storeId in order.itemsData.itemDetails.keys) {
+                    Store store = stores[storeId];
+                    var itemKeysOfCurrentStore =
+                        storeAndItsItems[storeId].itemDetails.keys.toList();
+                    widgets.add(
+                      SizedBox(height: 14),
+                    );
+                    widgets.add(
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Text(
+                          store.storeName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .subtitle2
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+                    widgets.add(
+                      SizedBox(height: 7),
+                    );
+                    widgets.add(
+                      InkWell(
+                        splashColor:
+                            Theme.of(context).primaryColor.withAlpha(190),
+                        onTap: () async {
+                          widget.animateToLatLng(
+                            store.storeLatLng,
+                          );
+                          _solidController.hide();
+                        },
+                        child: SizedBox(
+                          height: 110,
+                          child: Row(
+                            // crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              SizedBox(width: 10),
+                              SizedBox(
+                                height: 110,
+                                width: 150,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                          text: 'Address: ',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .subtitle2),
+                                      TextSpan(
+                                        text: store.storeAddress,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2,
                                       ),
-                                    );
-                                    _solidController.hide();
-                                  },
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          Container(
-                                            color: Colors.black,
-                                            child: Image.network(
-                                              '${snapshot.data['itemDetails'][index]['images'][0]}',
-                                              height: 100,
-                                              width: 100,
-                                              fit: BoxFit.fitWidth,
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-                                          Container(
-                                            width: 150,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                    ],
+                                  ),
+                                  strutStyle: StrutStyle(
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Container(
+                                  height: 110,
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.only(right: 20),
+                                    scrollDirection: Axis.horizontal,
+                                    // dragStartBehavior: DragStartBehavior.start,
+                                    physics: BouncingScrollPhysics(),
+                                    itemCount: itemKeysOfCurrentStore
+                                        .length, // TODO://Fix it,
+                                    itemBuilder: (context, index) {
+                                      StoreItem item =
+                                          items[itemKeysOfCurrentStore[index]];
+                                      ReceiveItOrderItemDetails
+                                          receiveItOrderItemDetails =
+                                          storeAndItsItems[storeId]
+                                              .itemDetails[item.itemId];
+                                      // return Container(color: Colors.brown,child: Text('Hello!'));
+                                      return Card(
+                                        elevation: 8,
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: Container(
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: <Widget>[
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                  snapshot.data['itemDetails']
-                                                      [index]['itemName'],
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .subtitle1,
-                                                ),
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                    '${snapshot.data['itemDetails'][index]['storeAddress']}'),
-                                                Align(
-                                                  alignment:
-                                                      Alignment.centerRight,
-                                                  child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                                Container(
+                                                  color: Colors.black,
+                                                  child: Image.network(
+                                                    '${item.images[0]}',
+                                                    height: 100,
+                                                    width: 100,
+                                                    fit: BoxFit.fitWidth,
                                                   ),
-                                                )
+                                                ),
+                                                SizedBox(
+                                                  height: 0,
+                                                  width: 8,
+                                                ),
+                                                Container(
+                                                  width: 150,
+                                                  // height: 100,
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: <Widget>[
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                        item.itemName,
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .subtitle1,
+                                                      ),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                          'Price: R${item.price.toStringAsFixed(1)}'),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                          'Qty: ${receiveItOrderItemDetails.quantity}'),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .bottomRight,
+                                                        child: Text(
+                                                          "Total: R${(item.price * receiveItOrderItemDetails.quantity).toStringAsFixed(1)}",
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          maxLines: 1,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                Container(
+                                                  color: Colors.grey,
+                                                  child: SizedBox(
+                                                    height: 0,
+                                                    width: 8,
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-                                        ],
-                                      ),
-                                      InkWell(
-                                        splashColor: Theme.of(context)
-                                            .primaryColor
-                                            .withAlpha(190),
-                                        onTap: () async {
-                                          LatLng latlng =
-                                              Utils.latLngFromString(
-                                            snapshot.data['itemDetails'][index]
-                                                ['latlng'],
-                                          );
-                                          print('Navigating to $latlng');
-                                          OrderNavigationRoute._startNavigation(
-                                            context,
-                                            latlng,
-                                            Utils.getLastKnowLocation(),
-                                          );
-                                        },
-                                        child: Container(
-                                          width: 270.0,
-                                          color: Theme.of(context).primaryColor,
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.all(8.0),
-                                                  child: Text(
-                                                    'Navigate Here!',
-                                                    style: TextStyle(
-                                                        color: Colors.white),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                         ),
-                                      )
-                                    ],
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
-                            ),
-                            // RaisedButton(
-                            //   onPressed: () {},
-                            //   child: Text('Open in Map',
-                            //       style: TextStyle(color: Colors.white)),
-                            // ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Card(
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: InkWell(
+                    );
+                    widgets.add(
+                      InkWell(
                         splashColor:
                             Theme.of(context).primaryColor.withAlpha(190),
-                        onTap: () {
-                          LatLng latLng = snapshot.data['destinationLatLng'];
-                          widget.animateToLatLng(latLng);
-                          _solidController.hide();
+                        onTap: () async {
+                          LatLng latlng = store.storeLatLng;
+                          print('Navigating to $latlng');
+                          OrderNavigationRoute._startNavigation(
+                            context,
+                            latlng,
+                            myLatLng,
+                          );
                         },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Container(
-                              decoration: ShapeDecoration(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(8.0),
-                                    topRight: Radius.circular(8.0),
+                        child: Container(
+                          width: MediaQuery.of(context).size.width,
+                          color: Theme.of(context).primaryColor,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'Navigate Here!',
+                                    style: TextStyle(color: Colors.white),
                                   ),
                                 ),
-                                color: Theme.of(context).primaryColor,
                               ),
-                              padding: EdgeInsets.all(6),
-                              child: Text(
-                                ' D r o p o f f ',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Icon(Icons.location_on),
-                                  Expanded(
-                                    child: Text(
-                                      '${(snapshot.data['destination'] as Address).addressLine}',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            InkWell(
-                              splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () async {
-                                print('Opened in maps');
-                                LatLng latLng =
-                                    snapshot.data['destinationLatLng'];
-                                // MapsLauncher.launchCoordinates(
-                                //   latLng.latitude,
-                                //   latLng.longitude,
-                                // );
-                                OrderNavigationRoute._startNavigation(
-                                  context,
-                                  latLng,
-                                  Utils.getLastKnowLocation(),
-                                );
-                              },
-                              child: Container(
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  widgets.add(
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: InkWell(
+                          splashColor:
+                              Theme.of(context).primaryColor.withAlpha(190),
+                          onTap: () {
+                            LatLng latLng = order.destination;
+                            widget.animateToLatLng(latLng);
+                            _solidController.hide();
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Container(
                                 decoration: ShapeDecoration(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(8.0),
-                                      bottomRight: Radius.circular(8.0),
+                                      topLeft: Radius.circular(8.0),
+                                      topRight: Radius.circular(8.0),
                                     ),
                                   ),
                                   color: Theme.of(context).primaryColor,
                                 ),
-                                padding: EdgeInsets.all(8.0),
+                                padding: EdgeInsets.all(6),
                                 child: Text(
-                                  'Navigate Here!',
+                                  ' D r o p o f f ',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
-                            ),
-                          ],
+                              SizedBox(
+                                height: 10,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Icon(Icons.location_on),
+                                    Expanded(
+                                      child: Text(
+                                        '${destinationSnapshot?.data?.addressLine ?? 'Unable to Fetch the address'}',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              InkWell(
+                                splashColor: Theme.of(context)
+                                    .primaryColor
+                                    .withAlpha(190),
+                                onTap: () async {
+                                  print('Opened in maps');
+                                  LatLng latLng = order.destination;
+                                  // MapsLauncher.launchCoordinates(
+                                  //   latLng.latitude,
+                                  //   latLng.longitude,
+                                  // );
+                                  OrderNavigationRoute._startNavigation(
+                                    context,
+                                    latLng,
+                                    myLatLng,
+                                  );
+                                },
+                                child: Container(
+                                  decoration: ShapeDecoration(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(8.0),
+                                        bottomRight: Radius.circular(8.0),
+                                      ),
+                                    ),
+                                    color: Theme.of(context).primaryColor,
+                                  ),
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Text(
+                                    'Navigate Here!',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
+                  );
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: widgets,
+                      // <Widget>[
+                      //   SizedBox(height: 10),
+                      //   Text(
+                      //     'OrderId: ${widget.data['shortId']}',
+                      //     style: Theme.of(context).textTheme.subtitle1,
+                      //     textAlign: TextAlign.center,
+                      //   ),
+                      //   SizedBox(
+                      //     height: 40,
+                      //   ),
+                      //   Container(
+                      //     color: Theme.of(context).primaryColor,
+                      //     padding: EdgeInsets.all(6),
+                      //     child: Text(
+                      //       ' P i c k u p ',
+                      //       textAlign: TextAlign.center,
+                      //       style: TextStyle(
+                      //           color: Colors.white,
+                      //           fontSize: 18,
+                      //           fontWeight: FontWeight.bold),
+                      //     ),
+                      //   ),
+                      //   SizedBox(
+                      //     height: 10,
+                      //   ),
+                      //   Container(
+                      //     // color: Colors.black,
+                      //     // width: MediaQuery.of(context).size.width,
+                      //     height: 200,
+                      //     child: ListView.builder(
+                      //       // padding: EdgeInsets.only(right: 20),
+                      //       scrollDirection: Axis.horizontal,
+                      //       // dragStartBehavior: DragStartBehavior.start,
+                      //       physics: BouncingScrollPhysics(),
+                      //       itemCount: 10, // TODO://Fix it,
+                      //       itemBuilder: (context, index) {
+                      //         return Column(
+                      //           mainAxisSize: MainAxisSize.min,
+                      //           children: <Widget>[
+                      //             Card(
+                      //               elevation: 8,
+                      //               child: ClipRRect(
+                      //                 borderRadius: BorderRadius.circular(4),
+                      //                 child: InkWell(
+                      //                   splashColor: Theme.of(context)
+                      //                       .primaryColor
+                      //                       .withAlpha(190),
+                      //                   onTap: () async {
+                      //                     widget.animateToLatLng(
+                      //                       Utils.latLngFromString(
+                      //                         snapshot.data['itemDetails']
+                      //                             [index]['latlng'],
+                      //                       ),
+                      //                     );
+                      //                     _solidController.hide();
+                      //                   },
+                      //                   child: Column(
+                      //                     mainAxisSize: MainAxisSize.min,
+                      //                     children: <Widget>[
+                      //                       Row(
+                      //                         mainAxisSize: MainAxisSize.min,
+                      //                         children: <Widget>[
+                      //                           Container(
+                      //                             color: Colors.black,
+                      //                             child: Image.network(
+                      //                               '${snapshot.data['itemDetails'][index]['images'][0]}',
+                      //                               height: 100,
+                      //                               width: 100,
+                      //                               fit: BoxFit.fitWidth,
+                      //                             ),
+                      //                           ),
+                      //                           SizedBox(
+                      //                             width: 8,
+                      //                           ),
+                      //                           Container(
+                      //                             width: 150,
+                      //                             child: Column(
+                      //                               crossAxisAlignment:
+                      //                                   CrossAxisAlignment
+                      //                                       .start,
+                      //                               children: <Widget>[
+                      //                                 SizedBox(
+                      //                                   height: 4,
+                      //                                 ),
+                      //                                 Text(
+                      //                                   snapshot.data[
+                      //                                           'itemDetails']
+                      //                                       [index]['itemName'],
+                      //                                   style: Theme.of(context)
+                      //                                       .textTheme
+                      //                                       .subtitle1,
+                      //                                 ),
+                      //                                 SizedBox(
+                      //                                   height: 4,
+                      //                                 ),
+                      //                                 Text(
+                      //                                     '${snapshot.data['itemDetails'][index]['storeAddress']}'),
+                      //                                 Align(
+                      //                                   alignment: Alignment
+                      //                                       .centerRight,
+                      //                                   child: Text(
+                      //                                     "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
+                      //                                     overflow: TextOverflow
+                      //                                         .ellipsis,
+                      //                                     maxLines: 1,
+                      //                                     style: TextStyle(
+                      //                                       fontSize: 14,
+                      //                                       fontWeight:
+                      //                                           FontWeight.bold,
+                      //                                     ),
+                      //                                   ),
+                      //                                 )
+                      //                               ],
+                      //                             ),
+                      //                           ),
+                      //                           SizedBox(
+                      //                             width: 8,
+                      //                           ),
+                      //                         ],
+                      //                       ),
+                      //                       InkWell(
+                      //                         splashColor: Theme.of(context)
+                      //                             .primaryColor
+                      //                             .withAlpha(190),
+                      //                         onTap: () async {
+                      //                           LatLng latlng =
+                      //                               Utils.latLngFromString(
+                      //                             snapshot.data['itemDetails']
+                      //                                 [index]['latlng'],
+                      //                           );
+                      //                           print('Navigating to $latlng');
+                      //                           OrderNavigationRoute
+                      //                               ._startNavigation(
+                      //                             context,
+                      //                             latlng,
+                      //                             myLatLng,
+                      //                           );
+                      //                         },
+                      //                         child: Container(
+                      //                           width: 270.0,
+                      //                           color: Theme.of(context)
+                      //                               .primaryColor,
+                      //                           child: Row(
+                      //                             children: [
+                      //                               Expanded(
+                      //                                 child: Container(
+                      //                                   padding:
+                      //                                       const EdgeInsets
+                      //                                           .all(8.0),
+                      //                                   child: Text(
+                      //                                     'Navigate Here!',
+                      //                                     style: TextStyle(
+                      //                                         color:
+                      //                                             Colors.white),
+                      //                                   ),
+                      //                                 ),
+                      //                               ),
+                      //                             ],
+                      //                           ),
+                      //                         ),
+                      //                       )
+                      //                     ],
+                      //                   ),
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             // RaisedButton(
+                      //             //   onPressed: () {},
+                      //             //   child: Text('Open in Map',
+                      //             //       style: TextStyle(color: Colors.white)),
+                      //             // ),
+                      //           ],
+                      //         );
+                      //       },
+                      //     ),
+                      //   ),
+                      //   SizedBox(
+                      //     height: 10,
+                      //   ),
+                      //   Padding(
+                      //     padding: const EdgeInsets.all(18.0),
+                      //     child: Card(
+                      //       elevation: 8,
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(8.0),
+                      //       ),
+                      //       child: InkWell(
+                      //         splashColor:
+                      //             Theme.of(context).primaryColor.withAlpha(190),
+                      //         onTap: () {
+                      //           LatLng latLng =
+                      //               snapshot.data['destinationLatLng'];
+                      //           widget.animateToLatLng(latLng);
+                      //           _solidController.hide();
+                      //         },
+                      //         child: Column(
+                      //           mainAxisSize: MainAxisSize.min,
+                      //           crossAxisAlignment: CrossAxisAlignment.stretch,
+                      //           children: <Widget>[
+                      //             Container(
+                      //               decoration: ShapeDecoration(
+                      //                 shape: RoundedRectangleBorder(
+                      //                   borderRadius: BorderRadius.only(
+                      //                     topLeft: Radius.circular(8.0),
+                      //                     topRight: Radius.circular(8.0),
+                      //                   ),
+                      //                 ),
+                      //                 color: Theme.of(context).primaryColor,
+                      //               ),
+                      //               padding: EdgeInsets.all(6),
+                      //               child: Text(
+                      //                 ' D r o p o f f ',
+                      //                 textAlign: TextAlign.center,
+                      //                 style: TextStyle(
+                      //                   color: Colors.white,
+                      //                   fontSize: 18,
+                      //                   fontWeight: FontWeight.bold,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             SizedBox(
+                      //               height: 10,
+                      //             ),
+                      //             Container(
+                      //               padding: const EdgeInsets.all(8.0),
+                      //               child: Row(
+                      //                 crossAxisAlignment:
+                      //                     CrossAxisAlignment.center,
+                      //                 children: <Widget>[
+                      //                   Icon(Icons.location_on),
+                      //                   Expanded(
+                      //                     child: Text(
+                      //                       '${(snapshot.data['destination'] as Address).addressLine}',
+                      //                     ),
+                      //                   ),
+                      //                 ],
+                      //               ),
+                      //             ),
+                      //             SizedBox(
+                      //               height: 10,
+                      //             ),
+                      //             InkWell(
+                      //               splashColor: Theme.of(context)
+                      //                   .primaryColor
+                      //                   .withAlpha(190),
+                      //               onTap: () async {
+                      //                 print('Opened in maps');
+                      //                 LatLng latLng =
+                      //                     snapshot.data['destinationLatLng'];
+                      //                 // MapsLauncher.launchCoordinates(
+                      //                 //   latLng.latitude,
+                      //                 //   latLng.longitude,
+                      //                 // );
+                      //                 OrderNavigationRoute._startNavigation(
+                      //                   context,
+                      //                   latLng,
+                      //                   myLatLng,
+                      //                 );
+                      //               },
+                      //               child: Container(
+                      //                 decoration: ShapeDecoration(
+                      //                   shape: RoundedRectangleBorder(
+                      //                     borderRadius: BorderRadius.only(
+                      //                       bottomLeft: Radius.circular(8.0),
+                      //                       bottomRight: Radius.circular(8.0),
+                      //                     ),
+                      //                   ),
+                      //                   color: Theme.of(context).primaryColor,
+                      //                 ),
+                      //                 padding: EdgeInsets.all(8.0),
+                      //                 child: Text(
+                      //                   'Navigate Here!',
+                      //                   style: TextStyle(
+                      //                     color: Colors.white,
+                      //                   ),
+                      //                   textAlign: TextAlign.center,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ],
+                    ),
+                  );
+                });
           }),
     );
   }
@@ -1063,14 +1510,14 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
 class SennitSolidBottomSheet extends StatefulWidget {
   final Function(LatLng) onSelectItem;
   final data;
-  static GlobalKey<SennitSolidBottomSheetState> _key =
-      GlobalKey<SennitSolidBottomSheetState>();
+  // static GlobalKey<SennitSolidBottomSheetState> _key =
+  //     GlobalKey<SennitSolidBottomSheetState>();
 
   SennitSolidBottomSheet({
     // @required key,
     @required this.onSelectItem,
     @required this.data,
-  }) : super(key: _key);
+  }); // : super(key: _key);
 
   // factory SennitSolidBottomSheet({
   //   @required onSelectItem,
@@ -1090,18 +1537,26 @@ class SennitSolidBottomSheet extends StatefulWidget {
     return SennitSolidBottomSheetState();
   }
 
-  show() {
-    _key?.currentState?._controller?.show();
-  }
+  // show() {
+  //   _key?.currentState?._controller?.show();
+  // }
 
-  hide() {
-    _key?.currentState?._controller?.hide();
-  }
+  // hide() {
+  //   _key?.currentState?._controller?.hide();
+  // }
 }
 
 class SennitSolidBottomSheetState extends State<SennitSolidBottomSheet> {
   bool isShown = false;
   var _controller = SolidController();
+  GlobalKey<_BottomBarIconState> bottomBaIconKey;
+
+  @override
+  void initState() {
+    super.initState();
+    bottomBaIconKey = GlobalKey<_BottomBarIconState>();
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -1113,12 +1568,12 @@ class SennitSolidBottomSheetState extends State<SennitSolidBottomSheet> {
     return SolidBottomSheet(
       controller: _controller..hide(),
       onShow: () async {
-        BottomBarIcon._key?.currentState?.setIconState(true);
-        print(BottomBarIcon._key);
+        bottomBaIconKey?.currentState?.setIconState(true);
+        // print(BottomBarIcon._key);
       },
 
       onHide: () async {
-        BottomBarIcon._key?.currentState?.setIconState(false);
+        bottomBaIconKey?.currentState?.setIconState(false);
       },
       // enableDrag: true,
       // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
@@ -1142,7 +1597,7 @@ class SennitSolidBottomSheetState extends State<SennitSolidBottomSheet> {
                   topLeft: Radius.circular(20), topRight: Radius.circular(20)),
             ),
           ),
-          child: BottomBarIcon(),
+          child: BottomBarIcon(key: bottomBaIconKey),
         ),
       ),
       body: _OrderTile(
@@ -1155,8 +1610,8 @@ class SennitSolidBottomSheetState extends State<SennitSolidBottomSheet> {
 }
 
 class BottomBarIcon extends StatefulWidget {
-  BottomBarIcon() : super(key: _key);
-  static GlobalKey<_BottomBarIconState> _key = GlobalKey<_BottomBarIconState>();
+  BottomBarIcon({@required Key key}) : super(key: key);
+  // static GlobalKey<_BottomBarIconState> _key = GlobalKey<_BottomBarIconState>();
 
   // BottomBarIcon() {
   //   // _key = GlobalKey<_BottomBarIconState>();
@@ -1487,6 +1942,7 @@ class _MapWidget extends StatefulWidget {
   final List<LatLng> pickups;
   final LatLng dropOff;
   static GlobalKey<_MapState> _key = GlobalKey<_MapState>();
+  final RxAddress addressService = GetIt.I.get<RxAddress>();
 
   _MapWidget({
     // @required GlobalKey<_MapState> key,
@@ -1517,7 +1973,8 @@ class _MapWidget extends StatefulWidget {
   }
 
   void centerCamera() async {
-    LatLng myLocation = await Utils.getMyLocation();
+    LatLng myLocation = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: myLocation, zoom: 15.0),
@@ -1539,7 +1996,7 @@ class _MapState extends State<_MapWidget> {
   }
 
   Future<void> initialize() async {
-    final myLocation = await Utils.getMyLocation();
+    final myLocation = await Utils.getLatestLocation();
     int index = -1;
     List<LatLng> tempPickups = [];
     for (LatLng pickup in widget.pickups) {
@@ -1759,8 +2216,10 @@ class _PopupsState extends State<_Popups> with WidgetsBindingObserver {
         isOrderCompleteDialogueVisible = false;
         Utils.showLoadingDialog(context);
         await widget.onOrderComplete();
-        int count = 0;
-        Navigator.popUntil(context, (route) => count++ > 1);
+        // int count = 0;
+        BotToast.closeAllLoading();
+        Navigator.pushNamedAndRemoveUntil(
+            context, MyApp.driverHome, (route) => false);
       },
     );
   }
@@ -1916,13 +2375,13 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               length: 6,
               obsecureText: false,
               animationType: AnimationType.fade,
-              shape: PinCodeFieldShape.box,
+              // shape: PinCodeFieldShape.box,
               animationDuration: Duration(milliseconds: 300),
-              borderRadius: BorderRadius.circular(5),
-              selectedColor: Theme.of(context).primaryColor,
+              // borderRadius: BorderRadius.circular(5),
+              // selectedColor: Theme.of(context).primaryColor,
               controller: _verificationCodeController,
-              fieldHeight: 40,
-              fieldWidth: 35,
+              // fieldHeight: 40,
+              // fieldWidth: 35,
               onChanged: (value) {
                 confirmationKey = value;
                 setState(() {});
@@ -1950,11 +2409,11 @@ class _DeliveryDonePopUpStateRevised extends State<_DeliveryDonePopUp> {
               onPressed: () async {
                 String key = widget.verificationCode;
                 if (confirmationKey == key) {
+                  await widget.onConfirm();
                   Utils.showSuccessDialog('Order Has been Delivered');
                   Future.delayed(Duration(seconds: 2)).then((a) {
                     BotToast.removeAll();
                   });
-                  widget.onConfirm();
                 } else {
                   hasError = true;
                   setState(() {
@@ -2079,8 +2538,10 @@ class _CancelOrderPopUpStateRevised extends State<_CancelOrderPopUp> {
                     onPressed: () async {
                       Utils.showLoadingDialog(context);
                       await widget.onConfirm();
-                      int count = 0;
-                      Navigator.popUntil(context, (route) => count++ > 1);
+                      // int count = 0;
+                      BotToast.closeAllLoading();
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, MyApp.driverHome, (route) => false);
                       // widget.parent.setState(() {});
                     },
                   ),
@@ -2136,7 +2597,8 @@ class _OrderConfirmationStateRevised extends State<_OrderConfirmation> {
   onPressAcceptOrder() async {
     Utils.showLoadingDialog(context);
     await widget.onConfirm();
-    Navigator.pop(context);
+    BotToast.closeAllLoading();
+    // Navigator.pop(context);
   }
 
   @override
@@ -2242,11 +2704,12 @@ class _OrderTile extends StatelessWidget {
   _OrderTile({Key key, @required this.data, @required this.onSelectItem})
       : super(key: key) {
     location.changeSettings(
-      accuracy: LocationAccuracy.NAVIGATION,
+      accuracy: LocationAccuracy.navigation,
     );
   }
 
   double getDistanceFromYourLocation(LatLng source, LatLng destination) {
+    if (source == null || destination == null) return null;
     return Utils.calculateDistance(source, destination);
   }
 
@@ -2265,16 +2728,21 @@ class _OrderTile extends StatelessWidget {
         // setState(() {
         //   _arrived = arrived;
         // });
-        // if (arrived) {
-        //   await _directions.finishNavigation();
-        //   // Navigator.popUntil(
-        //   //   context,
-        //   //   (route) => route.settings.name == SennitOrderNavigationRoute.NAME,
-        //   // );
-        //   // Utils.showSuccessDialog('You Have Arrived');
-        //   // await Future.delayed(Duration(seconds: 2));
-        //   // BotToast.cleanAll();
-        // }
+        if (arrived) {
+          try {
+            await _directions.finishNavigation();
+          } catch (ex) {
+            print(ex.toString());
+          }
+          BotToast.closeAllLoading();
+          // Navigator.popUntil(
+          //   context,
+          //   (route) => route.settings.name == SennitOrderNavigationRoute.NAME,
+          // );
+          Utils.showSuccessDialog('You Have Arrived');
+          await Future.delayed(Duration(seconds: 2));
+          BotToast.cleanAll();
+        }
       },
     );
     await _directions.startNavigation(
@@ -2295,261 +2763,383 @@ class _OrderTile extends StatelessWidget {
     // await Future.delayed(
     //   Duration(seconds: 2),
     // );
-    Navigator.popUntil(
-      context,
-      (route) => route.settings.name == OrderNavigationRoute.NAME,
-    );
+    BotToast.closeAllLoading();
+    // Navigator.popUntil(
+    //   context,
+    //   (route) => route.settings.name == OrderNavigationRoute.NAME,
+    // );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<dynamic>(
-      initialData: Utils.getLastKnowLocation(),
-      stream: location.onLocationChanged(),
+    return StreamBuilder<Map<String, Address>>(
+      stream: GetIt.I.get<RxAddress>().stream$,
       builder: (context, snapshot) {
-        LatLng myLocation = snapshot.connectionState == ConnectionState.waiting
-            ? (snapshot.data is LatLng)
-                ? snapshot.data
-                : snapshot.data is Coordinates
-                    ? LatLng(snapshot.data.latitude, snapshot.data.longitude)
-                    : null
-            : snapshot.connectionState == ConnectionState.active
-                ? LatLng((snapshot.data as LocationData).latitude,
-                    (snapshot.data as LocationData).longitude)
-                : null;
+        LatLng myLocation = Utils.latLngFromCoordinates(
+          snapshot.data['myAddress'].coordinates,
+        );
+        // snapshot.connectionState == ConnectionState.waiting
+        //     ? (snapshot.data is LatLng)
+        //         ? snapshot.data
+        //         : snapshot.data is Coordinates
+        //             ? Utils.latLngFromCoordinates(
+        //                 snapshot.data['myAddress'].coordinates)
+        //             : null
+        //     : snapshot.connectionState == ConnectionState.active
+        //         ? LatLng((snapshot.data as LocationData).latitude,
+        //             (snapshot.data as LocationData).longitude)
+        //         : null;
         LatLng pickup = Utils.latLngFromString(data['pickUpLatLng']);
         LatLng destination = Utils.latLngFromString(data['dropOffLatLng']);
 
-        return Card(
-          margin: EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              SizedBox(
-                height: 8,
-              ),
-              Text(
-                'OrderId: ${data['shortId']}',
-                style: Theme.of(context).textTheme.subtitle1,
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Card(
-                          elevation: 4.0,
-                          child: InkWell(
-                            splashColor:
-                                Theme.of(context).primaryColor.withAlpha(190),
-                            onTap: () async {
-                              onSelectItem(pickup);
-                            },
-                            child: Container(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  Container(
-                                    decoration: ShapeDecoration(
-                                      color: Theme.of(context).primaryColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.only(
-                                            topLeft: Radius.circular(4),
-                                            topRight: Radius.circular(4)),
-                                      ),
-                                    ),
-                                    padding: EdgeInsets.all(4),
-                                    child: Text(
-                                      ' P i c k u p ',
-                                      // textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text('${data['pickUpAddress']}'),
-                                  ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  myLocation != null
-                                      ? Container(
-                                          child: Text.rich(
-                                            TextSpan(
-                                              text: 'Distance: ',
-                                              children: [
-                                                TextSpan(
-                                                  text:
-                                                      '${getDistanceFromYourLocation(myLocation, pickup).toStringAsFixed(1)} Km',
-                                                  style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.normal,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        )
-                                      : Opacity(
-                                          opacity: 0,
+        return SingleChildScrollView(
+          child: Card(
+            margin: EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SizedBox(
+                  height: 8,
+                ),
+                Text(
+                  'OrderId: ${data['shortId']}',
+                  style: Theme.of(context).textTheme.subtitle1,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Card(
+                            elevation: 4.0,
+                            child: InkWell(
+                              splashColor:
+                                  Theme.of(context).primaryColor.withAlpha(190),
+                              onTap: () async {
+                                onSelectItem(pickup);
+                              },
+                              child: Container(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    Container(
+                                      decoration: ShapeDecoration(
+                                        color: Theme.of(context).primaryColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(4),
+                                              topRight: Radius.circular(4)),
                                         ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 6,
-                        ),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          child: RaisedButton(
-                            child: Text(
-                              'Start Navigation',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            onPressed: () async {
-                              _startNavigation(
-                                context,
-                                pickup,
-                                myLocation,
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 2,
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Card(
-                          elevation: 4.0,
-                          child: InkWell(
-                            splashColor:
-                                Theme.of(context).primaryColor.withAlpha(190),
-                            onTap: () async {
-                              onSelectItem(destination);
-                            },
-                            child: Container(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  Container(
-                                    decoration: ShapeDecoration(
-                                      color: Theme.of(context).primaryColor,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.only(
-                                            topLeft: Radius.circular(4),
-                                            topRight: Radius.circular(4)),
                                       ),
-                                    ),
-                                    padding: EdgeInsets.all(4),
-                                    child: Text(
-                                      ' D r o p O f f ',
-                                      style: TextStyle(
+                                      padding: EdgeInsets.all(4),
+                                      child: Text(
+                                        ' P i c k u p ',
+                                        // textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 14,
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 14),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text('${data['dropOffAddress']}'),
-                                  ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  myLocation != null
-                                      ? Container(
-                                          child: Text.rich(
-                                            TextSpan(
-                                              text: 'Distance: ',
-                                              children: [
-                                                TextSpan(
-                                                    text:
-                                                        '${getDistanceFromYourLocation(myLocation, destination).toStringAsFixed(1)} Km',
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.normal,
-                                                    )),
-                                              ],
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        )
-                                      : Opacity(
-                                          opacity: 0,
                                         ),
-                                ],
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 4,
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('${data['pickUpAddress']}'),
+                                    ),
+                                    SizedBox(
+                                      height: 4,
+                                    ),
+                                    // Container(
+                                    //   padding: EdgeInsets.all(8.0),
+                                    //   child: Text(
+                                    //     '${(data['pickupFromDoor'] ?? true) ? 'Pick from Door' : 'Customer Will Meet at Vehicle'}',
+                                    //     style: Theme.of(context)
+                                    //         .textTheme
+                                    //         .subtitle1,
+                                    //   ),
+                                    // ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          height: 6,
-                        ),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          child: RaisedButton(
-                            child: Text(
-                              'Start Navigation',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            onPressed: () async {
-                              _startNavigation(
-                                  context, destination, myLocation);
-                            },
-                            onLongPress: () {},
+                          SizedBox(
+                            height: 6,
                           ),
-                        ),
-                      ],
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            child: RaisedButton(
+                              child: Text(
+                                'Start Navigation',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              onPressed: () async {
+                                _startNavigation(
+                                  context,
+                                  pickup,
+                                  myLocation,
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(
+                                text: 'Apt: ',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '${data['senderHouse']}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ]),
+                          ),
+                          SizedBox(height: 6.0),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(
+                                text: 'Sender Phone: ',
+                                style: TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(
+                                text: '${data['senderPhone']}',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.normal),
+                              ),
+                            ]),
+                          ),
+                          SizedBox(height: 6.0),
+                          Text(
+                            (data['pickFromDoor'] ?? true)
+                                ? 'Pick Order From Door'
+                                : 'Customer will Meet you at Vehicle',
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 6.0),
+                          StreamBuilder<Map<String, Address>>(
+                              stream: GetIt.I.get<RxAddress>().stream$,
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData) {
+                                  return Opacity(
+                                    opacity: 0,
+                                  );
+                                } else if (!snapshot.data
+                                        .containsKey('myAddress') ||
+                                    snapshot.data['myAddress'] == null) {
+                                  return Opacity(opacity: 0);
+                                }
+                                LatLng myLatLng = Utils.latLngFromCoordinates(
+                                    snapshot.data['myAddress'].coordinates);
+                                return Container(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: 'Distance: ',
+                                      children: [
+                                        TextSpan(
+                                            text:
+                                                '${getDistanceFromYourLocation(myLatLng, pickup)?.toStringAsFixed(1) ?? 'Something went wrong'} Km',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                            )),
+                                      ],
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }),
+                          SizedBox(height: 20),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              Text(
-                '''${(data['numberOfBoxes'] == null || data['numberOfBoxes'] <= 0) ? '' : '${data['numberOfBoxes']} Box(s)'}
-              ${(data['numberOfSleevesNeeded'] == null || data['numberOfSleevesNeeded'] <= 0) ? '' : '${(data['numberOfBoxes'] != null && data['numberOfBoxes'] > 0) ? ', ' : ''}${data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-                style: Theme.of(context)
-                    .textTheme
-                    .subtitle1
-                    .copyWith(fontSize: 18),
-              ),
-            ],
+                    SizedBox(
+                      width: 2,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Card(
+                            elevation: 4.0,
+                            child: InkWell(
+                              splashColor:
+                                  Theme.of(context).primaryColor.withAlpha(190),
+                              onTap: () async {
+                                onSelectItem(destination);
+                              },
+                              child: Container(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    Container(
+                                      decoration: ShapeDecoration(
+                                        color: Theme.of(context).primaryColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.only(
+                                              topLeft: Radius.circular(4),
+                                              topRight: Radius.circular(4)),
+                                        ),
+                                      ),
+                                      padding: EdgeInsets.all(4),
+                                      child: Text(
+                                        ' D r o p O f f ',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 4,
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: Text('${data['dropOffAddress']}'),
+                                    ),
+                                    SizedBox(
+                                      height: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            height: 6,
+                          ),
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            child: RaisedButton(
+                              child: Text(
+                                'Start Navigation',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              onPressed: () async {
+                                _startNavigation(
+                                    context, destination, myLocation);
+                              },
+                              onLongPress: () {},
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(
+                                text: 'Apt: ',
+                                style: TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(
+                                  text: '${data['receiverHouse']}',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.normal)),
+                            ]),
+                          ),
+                          SizedBox(height: 10),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(
+                                text: 'Receiver Phone: ',
+                                style: TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              TextSpan(
+                                text: '${data['receiverPhone']}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ]),
+                          ),
+                          SizedBox(height: 6.0),
+                          Text(
+                            (data['dropToDoor'] ?? true)
+                                ? 'Drop Order To Door'
+                                : 'Receiver Will Meet you at Vehicle',
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 6.0),
+                          StreamBuilder<Map<String, Address>>(
+                              stream: GetIt.I.get<RxAddress>().stream$,
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData) {
+                                  return Opacity(
+                                    opacity: 0,
+                                  );
+                                } else if (!snapshot.data
+                                        .containsKey('myAddress') ||
+                                    snapshot.data['myAddress'] == null) {
+                                  return Opacity(opacity: 0);
+                                }
+                                LatLng myLatLng = Utils.latLngFromCoordinates(
+                                    snapshot.data['myAddress'].coordinates);
+                                return Container(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: 'Distance: ',
+                                      children: [
+                                        TextSpan(
+                                            text:
+                                                '${getDistanceFromYourLocation(myLatLng, destination).toStringAsFixed(1)} Km',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                            )),
+                                      ],
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }),
+                          SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  '''${(data['numberOfBoxes'] == null || data['numberOfBoxes'] <= 0) ? '' : '${data['numberOfBoxes']} Box(s)'} ${(data['numberOfSleevesNeeded'] == null || data['numberOfSleevesNeeded'] <= 0) ? '' : '${(data['numberOfBoxes'] != null && data['numberOfBoxes'] > 0) ? ', ' : ''}${data['numberOfSleevesNeeded']} Sleeve(s)'}''',
+                  style: Theme.of(context)
+                      .textTheme
+                      .subtitle1
+                      .copyWith(fontSize: 16),
+                ),
+              ],
+            ),
           ),
         );
       },

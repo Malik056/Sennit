@@ -94,8 +94,8 @@ class DeliveryTrackingRouteState extends State<DeliveryTrackingRouteBody> {
     //     ),
     //   ],
     // );
-    return FutureBuilder(
-      future: Utils.getMyLocation(),
+    return FutureBuilder<LatLng>(
+      future: Utils.getLatestLocation(),
       builder: (context, AsyncSnapshot<LatLng> asyncData) {
         if (asyncData.connectionState == ConnectionState.done &&
             asyncData.data != null) {
@@ -103,8 +103,10 @@ class DeliveryTrackingRouteState extends State<DeliveryTrackingRouteBody> {
             fit: StackFit.expand,
             children: <Widget>[
               GoogleMap(
-                initialCameraPosition:
-                    CameraPosition(target: asyncData.data, zoom: 14),
+                initialCameraPosition: CameraPosition(
+                  target: asyncData.data,
+                  zoom: 14,
+                ),
               ),
             ],
           );

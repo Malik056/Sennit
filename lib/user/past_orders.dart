@@ -9,9 +9,8 @@ class PastOrdersRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder<QuerySnapshot>(
       future: Firestore.instance
-          .collection("users")
-          .document((Session.data['user'] as User).userId)
-          .collection('orders')
+          .collection("orders")
+          .where('userId', isEqualTo: (Session.data['user'] as User).userId)
           .getDocuments(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

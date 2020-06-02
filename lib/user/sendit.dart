@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
@@ -11,38 +12,37 @@ import 'package:random_string/random_string.dart';
 import 'package:rave_flutter/rave_flutter.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
+import 'package:sennit/rx_models/rx_address.dart';
+import 'package:sennit/rx_models/rx_config.dart';
+import 'package:sennit/rx_models/rx_connectivity.dart';
 import 'package:sennit/user/generic_tracking_screen.dart';
 import 'package:shortid/shortid.dart';
 
 enum SourcePage { addressSelectionFrom, addressSelectionDestination, receiveIt }
 
 class SelectFromAddressRoute extends StatelessWidget {
-  final Address lastUsedAddress;
-  SelectFromAddressRoute(this.lastUsedAddress);
+  SelectFromAddressRoute();
 
   @override
   Widget build(BuildContext context) {
-    return AddressAddingRoute(SourcePage.addressSelectionFrom, lastUsedAddress);
+    return AddressAddingRoute(
+      SourcePage.addressSelectionFrom,
+    );
   }
 }
 
 class DeliverToAddressRoute extends StatelessWidget {
-  final Address address;
-  const DeliverToAddressRoute({Key key, this.address}) : super(key: key);
+  const DeliverToAddressRoute({Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return AddressAddingRoute(SourcePage.addressSelectionDestination, address);
+    return AddressAddingRoute(SourcePage.addressSelectionDestination);
   }
 }
 
 class AddressAddingRoute extends StatelessWidget {
   final SourcePage sourcePage;
-  AddressAddingRoute(this.sourcePage, address) {
-    _fromAddress = address;
-  }
-  static Address _toAddress;
-  static Address _fromAddress;
+  AddressAddingRoute(this.sourcePage);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,22 +50,23 @@ class AddressAddingRoute extends StatelessWidget {
         actions: <Widget>[
           FlatButton(
             onPressed: () {
+              Address _fromAddress =
+                  GetIt.I.get<RxAddress>().currentFromAddress;
+              Address _toAddress = GetIt.I.get<RxAddress>().currentToAddress;
               sourcePage == SourcePage.receiveIt
                   ? Navigator.of(context).pop(_fromAddress)
                   : sourcePage == SourcePage.addressSelectionDestination
-                      ? _toAddress != null
+                      ? (_toAddress != null)
                           ? Navigator.of(context)
                               .push(MaterialPageRoute(builder: (context) {
-                              return SendItCartRoute(_fromAddress, _toAddress);
+                              return SendItCartRoute();
                             }))
                           : Utils.showSnackBarError(
                               context, 'Please Select an Address')
-                      : _fromAddress != null
+                      : (_fromAddress != null)
                           ? Navigator.of(context)
                               .push(MaterialPageRoute(builder: (context) {
-                              return DeliverToAddressRoute(
-                                address: _fromAddress,
-                              );
+                              return DeliverToAddressRoute();
                             }))
                           : Utils.showSnackBarError(
                               context,
@@ -92,7 +93,7 @@ class AddressAddingRoute extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SafeArea(child: AddressAddingBody(sourcePage, _fromAddress)),
+      body: SafeArea(child: AddressAddingBody(sourcePage)),
       // backgroundColor: Colors.white,
     );
   }
@@ -100,9 +101,8 @@ class AddressAddingRoute extends StatelessWidget {
 
 class AddressAddingBody extends StatefulWidget {
   // final _formKey = GlobalKey<FormState>();
-  AddressAddingBody(this.sourcePage, this._fromAddress);
+  AddressAddingBody(this.sourcePage);
   final SourcePage sourcePage;
-  final Address _fromAddress;
 
   @override
   State<StatefulWidget> createState() {
@@ -141,293 +141,328 @@ class AddressAddingState extends State<AddressAddingBody> {
     // defaultHighlightedColorDOB = Theme.of(context).accentColor;
   }
 
+  bool isLoading = false;
+
   @override
   Widget build(BuildContext context) {
     User user = Session.data['user'];
     List<UserLocationHistory> locationHistory =
         Session.data['userLocationHistory'];
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Card(
-            margin: EdgeInsets.all(0),
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.all(cardPadding),
-              child: Column(
-                children: <Widget>[
-                  // ListTile(
-                  //   leading: Icon(
-                  //     Icons.location_on,
-                  //     color: Theme.of(context).accentColor,
-                  //   ),
-                  //   title: Text('Pick A location'),
-                  //   onTap: () async {
-                  //     LocationResult result =
-                  //         await Utils.showPlacePicker(context);
-                  //     if (result != null) {
-                  //       Coordinates coordinates = Coordinates(
-                  //           result.latLng.latitude, result.latLng.longitude);
-                  //       if (widget.sourcePage ==
-                  //           SourcePage.addressSelectionDestination) {
-                  //         AddressAddingRoute._toAddress = (await Geocoder.local
-                  //             .findAddressesFromCoordinates(coordinates))[0];
-                  //       } else {
-                  //         AddressAddingRoute._fromAddress = (await Geocoder
-                  //             .local
-                  //             .findAddressesFromCoordinates(coordinates))[0];
-                  //       }
-                  //       setState(() {});
-                  //     }
-                  //   },
-                  // ),
-                  ListTile(
-                      leading: Icon(
-                        Icons.my_location,
-                        color: Theme.of(context).accentColor,
-                      ),
-                      title: Text('Selected Location',
-                          style:
-                              TextStyle(color: Theme.of(context).accentColor)),
-                      subtitle: Text(
-                        widget.sourcePage ==
-                                SourcePage.addressSelectionDestination
-                            ? (AddressAddingRoute._toAddress != null
-                                ? AddressAddingRoute._toAddress.addressLine
-                                : 'Please select a Destination')
-                            : AddressAddingRoute._fromAddress != null
-                                ? AddressAddingRoute._fromAddress.addressLine
-                                : 'Select an Address',
-                      ),
-                      onTap: () async {
-                        Coordinates coordinates;
-                        widget.sourcePage ==
-                                SourcePage.addressSelectionDestination
-                            ? coordinates =
-                                AddressAddingRoute._toAddress?.coordinates
-                            : coordinates =
-                                AddressAddingRoute._fromAddress?.coordinates;
-
-                        LatLng latlng = coordinates == null
-                            ? null
-                            : LatLng(
-                                coordinates.latitude,
-                                coordinates.longitude,
-                              );
-                        LocationResult result = await Utils.showPlacePicker(
-                          context,
-                          initialLocation: latlng,
-                        );
-                        if (result != null) {
-                          Coordinates coordinates = Coordinates(
-                              result.latLng.latitude, result.latLng.longitude);
-                          if (widget.sourcePage ==
-                              SourcePage.addressSelectionDestination) {
-                            AddressAddingRoute._toAddress = (await Geocoder
-                                .local
-                                .findAddressesFromCoordinates(coordinates))[0];
-                          } else {
-                            AddressAddingRoute._fromAddress = (await Geocoder
-                                .local
-                                .findAddressesFromCoordinates(coordinates))[0];
-                          }
-                          setState(() {});
-                        }
-                      }),
-                ],
-              ),
-            ),
-          ),
-          Opacity(
-            opacity: 0.0,
-            child: Container(
-              height: 30,
-            ),
-          ),
-          Card(
-            margin: EdgeInsets.all(0),
-            elevation: 5,
-            child: Container(
-              padding: EdgeInsets.all(cardPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    '  Saved Addresses',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).accentColor,
-                    ),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.all(6),
-                    leading: Icon(Icons.home),
-                    title: Text('Home'),
-                    subtitle: Text('${user.homeLocationAddress}'),
-                    onTap: () async {
-                      Address selectedAddress =
-                          (await Geocoder.google(await Utils.getAPIKey())
-                              .findAddressesFromCoordinates(
-                        Coordinates(user.homeLocationLatLng.latitude,
-                            user.homeLocationLatLng.longitude),
-                      ))[0];
-                      widget.sourcePage == SourcePage.receiveIt
-                          ? Navigator.of(context).pop()
-                          : widget.sourcePage ==
-                                  SourcePage.addressSelectionDestination
-                              ? Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) {
-                                      return SendItCartRoute(
-                                          widget._fromAddress, selectedAddress);
-                                    },
-                                  ),
-                                )
-                              : Navigator.of(context)
-                                  .push(MaterialPageRoute(builder: (context) {
-                                  return DeliverToAddressRoute(
-                                    address: selectedAddress,
-                                  );
-                                }));
-                    },
-                  ),
-                  user.officeLocationAddress != null
-                      ? ListTile(
-                          contentPadding: EdgeInsets.all(6),
-                          leading: Icon(Icons.history),
-                          title: Text('Office'),
-                          subtitle: Text(user.officeLocationAddress),
-                          onTap: () async {
-                            Address selectedAddress =
-                                (await Geocoder.google(await Utils.getAPIKey())
-                                    .findAddressesFromCoordinates(
-                              Coordinates(user.officeLocationLatLng.latitude,
-                                  user.officeLocationLatLng.longitude),
-                            ))[0];
-                            widget.sourcePage == SourcePage.receiveIt
-                                ? Navigator.of(context).pop()
-                                : widget.sourcePage ==
+    RxAddress addressService = GetIt.I.get<RxAddress>();
+    return WillPopScope(
+      onWillPop: () async {
+        return !isLoading;
+      },
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Card(
+              margin: EdgeInsets.all(0),
+              elevation: 5,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
+                child: Column(
+                  children: <Widget>[
+                    // ListTile(
+                    //   leading: Icon(
+                    //     Icons.location_on,
+                    //     color: Theme.of(context).accentColor,
+                    //   ),
+                    //   title: Text('Pick A location'),
+                    //   onTap: () async {
+                    //     LocationResult result =
+                    //         await Utils.showPlacePicker(context);
+                    //     if (result != null) {
+                    //       Coordinates coordinates = Coordinates(
+                    //           result.latLng.latitude, result.latLng.longitude);
+                    //       if (widget.sourcePage ==
+                    //           SourcePage.addressSelectionDestination) {
+                    //         AddressAddingRoute._toAddress = (await Geocoder.local
+                    //             .findAddressesFromCoordinates(coordinates))[0];
+                    //       } else {
+                    //         AddressAddingRoute._fromAddress = (await Geocoder
+                    //             .local
+                    //             .findAddressesFromCoordinates(coordinates))[0];
+                    //       }
+                    //       setState(() {});
+                    //     }
+                    //   },
+                    // ),
+                    StreamBuilder<Map<String, Address>>(
+                        stream: GetIt.I.get<RxAddress>().stream$,
+                        builder: (context, snapshot) {
+                          var _toAddress = (snapshot.data ?? {})['toAddress'];
+                          var _fromAddress =
+                              (snapshot.data ?? {})['fromAddress'];
+                          return ListTile(
+                              leading: Icon(
+                                Icons.my_location,
+                                color: Theme.of(context).accentColor,
+                              ),
+                              title: Text('Selected Location',
+                                  style: TextStyle(
+                                      color: Theme.of(context).accentColor)),
+                              subtitle: Text(
+                                widget.sourcePage ==
                                         SourcePage.addressSelectionDestination
-                                    ? Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) {
-                                            return SendItCartRoute(
-                                                widget._fromAddress,
-                                                selectedAddress);
-                                          },
-                                        ),
-                                      )
-                                    : Navigator.of(context).push(
-                                        MaterialPageRoute(builder: (context) {
-                                        return DeliverToAddressRoute(
-                                          address: selectedAddress,
-                                        );
-                                      }));
-                          },
-                        )
-                      : Opacity(
-                          opacity: 0,
-                        ),
-                ],
-              ),
-            ),
-          ),
-          Opacity(
-            opacity: 0.0,
-            child: Container(
-              height: 30,
-            ),
-          ),
-          locationHistory != null && locationHistory.length > 0
-              ? Card(
-                  elevation: 5,
-                  margin: EdgeInsets.only(bottom: 20),
-                  child: Container(
-                    padding: EdgeInsets.all(cardPadding),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          '  History',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).accentColor,
-                          ),
-                        ),
-                        Column(
-                          children:
-                              List.generate(locationHistory.length, (index) {
-                            return ListTile(
-                              leading: Icon(Icons.history),
-                              subtitle: Text(locationHistory[index].address),
+                                    ? (_toAddress != null
+                                        ? _toAddress.addressLine
+                                        : 'Please select a Destination')
+                                    : _fromAddress != null
+                                        ? _fromAddress.addressLine
+                                        : 'Select an Address',
+                              ),
                               onTap: () async {
-                                Address selectedAddress =
-                                    (await Geocoder.google(
+                                Coordinates coordinates;
+                                widget.sourcePage ==
+                                        SourcePage.addressSelectionDestination
+                                    ? coordinates = _toAddress?.coordinates
+                                    : coordinates = _fromAddress?.coordinates;
+
+                                LatLng latlng = coordinates == null
+                                    ? null
+                                    : LatLng(
+                                        coordinates.latitude,
+                                        coordinates.longitude,
+                                      );
+                                LocationResult result =
+                                    await Utils.showPlacePicker(
+                                  context,
+                                  initialLocation: latlng,
+                                );
+                                if (result != null) {
+                                  Coordinates coordinates = Coordinates(
+                                      result.latLng.latitude,
+                                      result.latLng.longitude);
+                                  if (widget.sourcePage ==
+                                      SourcePage.addressSelectionDestination) {
+                                    Address toAddress = (await Geocoder.google(
                                             await Utils.getAPIKey())
                                         .findAddressesFromCoordinates(
-                                  Coordinates(
-                                      locationHistory[index].latLng.latitude,
-                                      locationHistory[index].latLng.longitude),
-                                ))[0];
-                                widget.sourcePage == SourcePage.receiveIt
-                                    ? Navigator.of(context).pop()
-                                    : widget.sourcePage ==
-                                            SourcePage
-                                                .addressSelectionDestination
-                                        ? Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (context) {
-                                                return SendItCartRoute(
-                                                    widget._fromAddress,
-                                                    selectedAddress);
-                                              },
-                                            ),
-                                          )
-                                        : Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (context) {
-                                            return DeliverToAddressRoute(
-                                              address: selectedAddress,
-                                            );
-                                          }));
-                              },
-                            );
-                          }),
-                        )
-                      ],
-                    ),
-                  ),
-                )
-              : Opacity(
-                  opacity: 0,
+                                            coordinates))[0];
+                                    addressService.setToAddress(toAddress);
+                                  } else {
+                                    Address fromAddress =
+                                        (await Geocoder.google(
+                                                await Utils.getAPIKey())
+                                            .findAddressesFromCoordinates(
+                                                coordinates))[0];
+                                    GetIt.I
+                                        .get<RxAddress>()
+                                        .setFromAddress(fromAddress);
+                                  }
+                                  // setState(() {});
+                                }
+                              });
+                        }),
+                  ],
                 ),
-        ],
+              ),
+            ),
+            Opacity(
+              opacity: 0.0,
+              child: Container(
+                height: 30,
+              ),
+            ),
+            Card(
+              margin: EdgeInsets.all(0),
+              elevation: 5,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      '  Saved Addresses',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.all(6),
+                      leading: Icon(Icons.home),
+                      title: Text('Home'),
+                      subtitle: Text('${user.homeLocationAddress}'),
+                      onTap: () async {
+                        Utils.showLoadingDialog(context);
+                        isLoading = true;
+                        RxAddress addresses = GetIt.I.get<RxAddress>();
+                        Address selectedAddress =
+                            (await Geocoder.google(await Utils.getAPIKey())
+                                .findAddressesFromCoordinates(
+                          Coordinates(user.homeLocationLatLng.latitude,
+                              user.homeLocationLatLng.longitude),
+                        ))[0];
+                        isLoading = false;
+                        BotToast.closeAllLoading();
+                        widget.sourcePage == SourcePage.receiveIt
+                            ? Navigator.of(context).pop()
+                            : widget.sourcePage ==
+                                    SourcePage.addressSelectionDestination
+                                ? Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        addresses.setToAddress(selectedAddress);
+                                        return SendItCartRoute();
+                                      },
+                                    ),
+                                  )
+                                : Navigator.of(context)
+                                    .push(MaterialPageRoute(builder: (context) {
+                                    addresses.setFromAddress(selectedAddress);
+                                    return DeliverToAddressRoute();
+                                  }));
+                      },
+                    ),
+                    user.officeLocationAddress != null
+                        ? ListTile(
+                            contentPadding: EdgeInsets.all(6),
+                            leading: Icon(Icons.history),
+                            title: Text('Office'),
+                            subtitle: Text(user.officeLocationAddress),
+                            onTap: () async {
+                              RxAddress addresses = GetIt.I.get<RxAddress>();
+                              Address selectedAddress = (await Geocoder.google(
+                                      await Utils.getAPIKey())
+                                  .findAddressesFromCoordinates(
+                                Coordinates(user.officeLocationLatLng.latitude,
+                                    user.officeLocationLatLng.longitude),
+                              ))[0];
+                              widget.sourcePage == SourcePage.receiveIt
+                                  ? Navigator.of(context).pop()
+                                  : widget.sourcePage ==
+                                          SourcePage.addressSelectionDestination
+                                      ? Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) {
+                                              addresses.setToAddress(
+                                                  selectedAddress);
+                                              return SendItCartRoute();
+                                            },
+                                          ),
+                                        )
+                                      : Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (context) {
+                                          addresses
+                                              .setFromAddress(selectedAddress);
+                                          return DeliverToAddressRoute();
+                                        }));
+                            },
+                          )
+                        : Opacity(
+                            opacity: 0,
+                          ),
+                  ],
+                ),
+              ),
+            ),
+            Opacity(
+              opacity: 0.0,
+              child: Container(
+                height: 30,
+              ),
+            ),
+            locationHistory != null && locationHistory.length > 0
+                ? Card(
+                    elevation: 5,
+                    margin: EdgeInsets.only(bottom: 20),
+                    child: Container(
+                      padding: EdgeInsets.all(cardPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '  History',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).accentColor,
+                            ),
+                          ),
+                          Column(
+                            children:
+                                List.generate(locationHistory.length, (index) {
+                              return ListTile(
+                                leading: Icon(Icons.history),
+                                subtitle: Text(locationHistory[index].address),
+                                onTap: () async {
+                                  Address selectedAddress =
+                                      (await Geocoder.google(
+                                              await Utils.getAPIKey())
+                                          .findAddressesFromCoordinates(
+                                    Coordinates(
+                                        locationHistory[index].latLng.latitude,
+                                        locationHistory[index]
+                                            .latLng
+                                            .longitude),
+                                  ))[0];
+                                  RxAddress addresses =
+                                      GetIt.I.get<RxAddress>();
+                                  widget.sourcePage == SourcePage.receiveIt
+                                      ? Navigator.of(context).pop()
+                                      : widget.sourcePage ==
+                                              SourcePage
+                                                  .addressSelectionDestination
+                                          ? Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (context) {
+                                                  addresses.setToAddress(
+                                                      selectedAddress);
+                                                  return SendItCartRoute();
+                                                },
+                                              ),
+                                            )
+                                          : Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (context) {
+                                              addresses.setFromAddress(
+                                                  selectedAddress);
+                                              return DeliverToAddressRoute();
+                                            }));
+                                },
+                              );
+                            }),
+                          )
+                        ],
+                      ),
+                    ),
+                  )
+                : Opacity(
+                    opacity: 0,
+                  ),
+          ],
+        ),
+        //   ),
+        // ),
       ),
-      //   ),
-      // ),
     );
   }
 }
 
 class SendItCartRoute extends StatelessWidget {
-  static Address _fromAddress;
-  static Address _toAddress;
   final _key = GlobalKey<ScaffoldState>();
 
-  SendItCartRoute(fromAddress, toAddress) {
-    _fromAddress = fromAddress;
-    _toAddress = toAddress;
-  }
+  SendItCartRoute();
 
   @override
   Widget build(BuildContext context) {
+    RxAddress addressService = GetIt.I.get<RxAddress>();
     return Scaffold(
       key: _key,
       appBar: AppBar(
         actions: <Widget>[
           FlatButton(
             onPressed: () async {
+              bool networkState = GetIt.I.get<RxConnectivity>().currentState;
+              if (!networkState) {
+                Utils.showSnackBarError(context, 'No Internet Connection');
+                return;
+              }
+              Address _fromAddress = addressService.currentFromAddress;
+              Address _toAddress = addressService.currentToAddress;
+
               Utils.showLoadingDialog(context);
               NavigatorState navigator = Navigator.of(context);
               if (double.parse(
@@ -440,7 +475,9 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Select at least 1 Sleeve or Box',
                 );
-                navigator.pop();
+                BotToast.closeAllLoading();
+
+                // navigator.pop();
                 return;
               } else if (SendItCartRouteState
                           .receiverPhoneNumberController.text.length !=
@@ -451,7 +488,8 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Receiver Phone Number',
                 );
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               } else if (SendItCartRouteState
                           .senderPhoneNumberController.text.length !=
@@ -462,7 +500,8 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Sender Phone Number',
                 );
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               } else if (!Utils.isEmailCorrect(
                   SendItCartRouteState.senderEmailController.text.trim())) {
@@ -470,7 +509,8 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Sender Email Address',
                 );
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               } else if (!Utils.isEmailCorrect(
                   SendItCartRouteState.receiverEmailController.text.trim())) {
@@ -478,7 +518,8 @@ class SendItCartRoute extends StatelessWidget {
                   _key,
                   'Please Enter Valid Receiver Email Address',
                 );
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               }
               SendItCartRouteState.senderEmailController.text =
@@ -497,11 +538,13 @@ class SendItCartRoute extends StatelessWidget {
 
               if (result['status'] == RaveStatus.cancelled) {
                 Utils.showSnackBarWarningUsingKey(_key, 'Payment Cancelled');
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               } else if (result['status'] == RaveStatus.error) {
                 Utils.showSnackBarErrorUsingKey(_key, result['errorMessage']);
-                navigator.pop();
+                BotToast.closeAllLoading();
+                // navigator.pop();
                 return;
               } else {
                 Utils.showSnackBarSuccessUsingKey(_key, 'Payment Successful');
@@ -516,15 +559,13 @@ class SendItCartRoute extends StatelessWidget {
               sennitOrder.userId = (Session.data['user'] as User).userId;
               sennitOrder.status = 'Pending';
               sennitOrder.dropOffLatLng = LatLng(
-                  SendItCartRoute._toAddress.coordinates.latitude,
-                  SendItCartRoute._toAddress.coordinates.longitude);
-              sennitOrder.dropOffAddress =
-                  SendItCartRoute._toAddress.addressLine;
+                  _toAddress.coordinates.latitude,
+                  _toAddress.coordinates.longitude);
+              sennitOrder.dropOffAddress = _toAddress.addressLine;
               sennitOrder.pickUpLatLng = LatLng(
-                  SendItCartRoute._fromAddress.coordinates.latitude,
-                  SendItCartRoute._fromAddress.coordinates.longitude);
-              sennitOrder.pickUpAddress =
-                  SendItCartRoute._fromAddress.addressLine;
+                  _fromAddress.coordinates.latitude,
+                  _fromAddress.coordinates.longitude);
+              sennitOrder.pickUpAddress = _fromAddress.addressLine;
               sennitOrder.dropToDoor = SendItCartRouteState.deliverToDoor;
               sennitOrder.pickupFromDoor = SendItCartRouteState.pickFromDoor;
               sennitOrder.numberOfBoxes =
@@ -579,40 +620,40 @@ class SendItCartRoute extends StatelessWidget {
                 // if (true) {
                 String shortId = shortid.generate();
                 sennitOrder.shortId = shortId;
-                Map<String, dynamic> orderData = sennitOrder.toMap()
-                  ..putIfAbsent('otp', () => otp);
-
+                sennitOrder.otp = otp;
+                int currentMillis =
+                    DateTime.now().toUtc().millisecondsSinceEpoch;
+                String userId = Session.data['user'].userId;
+                sennitOrder.orderId = "$userId${currentMillis ~/ 1000}";
                 await Firestore.instance
-                    .collection("postedOrders")
-                    .add(orderData)
-                    .then((_) async {
-                  // final orderId = _.documentID;
-                  // sennitOrder.orderId = orderId;
-                  orderData.update(
-                    'orderId',
-                    (old) => _.documentID,
-                    ifAbsent: () => _.documentID,
-                  );
+                    .collection("orders")
+                    .document(sennitOrder.orderId)
+                    .setData(
+                      sennitOrder.toMap(),
+                    );
+                // .then((_) async {
+                // final orderId = _.documentID;
+                // sennitOrder.orderId = orderId;
 
-                  await Firestore.instance
-                      .collection("users")
-                      .document(Session.data['user'].userId)
-                      .collection('orders')
-                      .document(_.documentID)
-                      .setData(
-                        orderData,
-                        merge: true,
-                      );
+                // await Firestore.instance
+                //     .collection("users")
+                //     .document(Session.data['user'].userId)
+                //     .collection('orders')
+                //     .document(_.documentID)
+                //     .setData(
+                //       orderData,
+                //       merge: true,
+                //     );
 
-                  //   await Firestore.instance
-                  //       .collection("verificationCodes")
-                  //       .document(orderId)
-                  //       .setData(
-                  //     {
-                  //       "key": otp,
-                  //     },
-                  //   );
-                });
+                //   await Firestore.instance
+                //       .collection("verificationCodes")
+                //       .document(orderId)
+                //       .setData(
+                //     {
+                //       "key": otp,
+                //     },
+                //   );
+                // });
 
                 BotToast.showEnhancedWidget(toastBuilder: (a) {
                   return Center(
@@ -649,17 +690,20 @@ class SendItCartRoute extends StatelessWidget {
                 Future.delayed(Duration(seconds: 2)).then((value) {
                   BotToast.cleanAll();
                 });
-                navigator.popUntil(ModalRoute.withName(MyApp.userHome));
-                navigator.push(
+                BotToast.closeAllLoading();
+
+                // navigator.popUntil((route) => false);
+                navigator.pushAndRemoveUntil(
                   MaterialPageRoute(
                     builder: (context) {
                       return OrderTracking(
                         type: OrderTrackingType.SENNIT,
-                        data: orderData,
+                        data: sennitOrder.toMap(),
                       );
                     },
                     settings: RouteSettings(name: OrderTracking.NAME),
                   ),
+                  (route) => false,
                 );
               }
             },
@@ -685,14 +729,18 @@ class SendItCartRoute extends StatelessWidget {
   }
 
   performTransaction(context, amount) async {
+    RxConfig rxConfig = GetIt.I.get<RxConfig>();
+    bool testing = rxConfig?.config?.value['testing'] ?? false;
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
       amount: amount,
-      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      encryptionKey: 'eded539f04b38a2af712eb7d',
-      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+      publicKey: testing
+          ? 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X' //Testing
+          : 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X', //Live
+      encryptionKey: testing
+          ? '27e4c95e939cba30b53d9105' // Testing
+          : 'eded539f04b38a2af712eb7d', // Live
     )
       ..country = "ZA"
       ..currency = "ZAR"
@@ -713,7 +761,7 @@ class SendItCartRoute extends StatelessWidget {
       ..acceptAchPayments = false
       ..acceptGHMobileMoneyPayments = false
       ..acceptUgMobileMoneyPayments = false
-      ..staging = false
+      ..staging = testing
       ..companyName =
           Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
       ..isPreAuth = true
@@ -810,6 +858,9 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
 
   @override
   Widget build(BuildContext context) {
+    RxAddress addressService = GetIt.I.get<RxAddress>();
+    // Address _fromAddress = addressService.currentFromAddress;
+    // Address _toAddress = addressService.currentToAddress;
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -830,50 +881,57 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       height: itemMargin,
                     ),
                   ),
-                  ListTile(
-                    onTap: () async {
-                      Coordinates coordinates =
-                          AddressAddingRoute._fromAddress?.coordinates;
-                      LatLng latlng = coordinates == null
-                          ? null
-                          : LatLng(
-                              coordinates.latitude,
-                              coordinates.longitude,
+                  StreamBuilder<Map<String, Address>>(
+                      stream: addressService.stream$,
+                      builder: (context, snapshot) {
+                        Address _fromAddress =
+                            (snapshot.data ?? {})['fromAddress'];
+                        return ListTile(
+                          onTap: () async {
+                            Coordinates coordinates = _fromAddress?.coordinates;
+                            LatLng latlng = coordinates == null
+                                ? null
+                                : LatLng(
+                                    coordinates.latitude,
+                                    coordinates.longitude,
+                                  );
+                            LocationResult result = await Utils.showPlacePicker(
+                              context,
+                              initialLocation: latlng,
                             );
-                      LocationResult result = await Utils.showPlacePicker(
-                        context,
-                        initialLocation: latlng,
-                      );
-                      if (result != null) {
-                        Coordinates coordinates = Coordinates(
-                          result.latLng.latitude,
-                          result.latLng.longitude,
+                            if (result != null) {
+                              Coordinates coordinates = Coordinates(
+                                result.latLng.latitude,
+                                result.latLng.longitude,
+                              );
+                              Address fromAddress = Address(
+                                addressLine: result.address,
+                                coordinates: coordinates,
+                              );
+                              addressService.setFromAddress(fromAddress);
+                              // SendItCartRoute._fromAddress =
+                              //     (await Geocoder.google(await Utils.getAPIKey())
+                              //         .findAddressesFromCoordinates(coordinates))[0];
+                              // setState(() {});
+                            }
+                          },
+                          leading: Icon(
+                            Icons.location_on,
+                            color: Theme.of(context).accentColor,
+                          ),
+                          title: Text(
+                            _fromAddress?.addressLine ?? 'Not Selected',
+                            style: TextStyle(
+                                color: Theme.of(context).accentColor,
+                                fontSize: 16),
+                          ),
+                          trailing: Icon(
+                            Icons.edit,
+                            color: Theme.of(context).accentColor,
+                            size: 18,
+                          ),
                         );
-                        SendItCartRoute._fromAddress = Address(
-                          addressLine: result.address,
-                          coordinates: coordinates,
-                        );
-                        // SendItCartRoute._fromAddress =
-                        //     (await Geocoder.google(await Utils.getAPIKey())
-                        //         .findAddressesFromCoordinates(coordinates))[0];
-                        setState(() {});
-                      }
-                    },
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text(
-                      SendItCartRoute._fromAddress.addressLine,
-                      style: TextStyle(
-                          color: Theme.of(context).accentColor, fontSize: 16),
-                    ),
-                    trailing: Icon(
-                      Icons.edit,
-                      color: Theme.of(context).accentColor,
-                      size: 18,
-                    ),
-                  ),
+                      }),
                   Opacity(
                     opacity: 0,
                     child: Container(
@@ -1001,48 +1059,55 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                       height: itemMargin,
                     ),
                   ),
-                  ListTile(
-                    onTap: () async {
-                      Coordinates coordinates =
-                          AddressAddingRoute._toAddress?.coordinates;
-                      LatLng latlng = coordinates == null
-                          ? null
-                          : LatLng(
-                              coordinates.latitude,
-                              coordinates.longitude,
+                  StreamBuilder<Map<String, Address>>(
+                      stream: addressService.stream$,
+                      builder: (context, snapshot) {
+                        Address _toAddress = (snapshot.data ?? {})['toAddress'];
+                        return ListTile(
+                          onTap: () async {
+                            Coordinates coordinates = _toAddress?.coordinates;
+                            LatLng latlng = coordinates == null
+                                ? null
+                                : LatLng(
+                                    coordinates.latitude,
+                                    coordinates.longitude,
+                                  );
+                            LocationResult result = await Utils.showPlacePicker(
+                              context,
+                              initialLocation: latlng,
                             );
-                      LocationResult result = await Utils.showPlacePicker(
-                        context,
-                        initialLocation: latlng,
-                      );
-                      if (result != null) {
-                        Coordinates coordinates = Coordinates(
-                            result.latLng.latitude, result.latLng.longitude);
-                        SendItCartRoute._toAddress = Address(
-                          addressLine: result.address,
-                          coordinates: coordinates,
+                            if (result != null) {
+                              Coordinates coordinates = Coordinates(
+                                  result.latLng.latitude,
+                                  result.latLng.longitude);
+                              Address toAddress = Address(
+                                addressLine: result.address,
+                                coordinates: coordinates,
+                              );
+                              addressService.setToAddress(toAddress);
+                              // SendItCartRoute._toAddress =
+                              //     (await Geocoder.google(await Utils.getAPIKey())
+                              //         .findAddressesFromCoordinates(coordinates))[0];
+                              // setState(() {});
+                            }
+                          },
+                          leading: Icon(
+                            Icons.location_on,
+                            color: Theme.of(context).accentColor,
+                          ),
+                          title: Text(
+                            _toAddress?.addressLine ?? 'Not Selected',
+                            style: TextStyle(
+                                color: Theme.of(context).accentColor,
+                                fontSize: 16),
+                          ),
+                          trailing: Icon(
+                            Icons.edit,
+                            color: Theme.of(context).accentColor,
+                            size: 18,
+                          ),
                         );
-                        // SendItCartRoute._toAddress =
-                        //     (await Geocoder.google(await Utils.getAPIKey())
-                        //         .findAddressesFromCoordinates(coordinates))[0];
-                        setState(() {});
-                      }
-                    },
-                    leading: Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).accentColor,
-                    ),
-                    title: Text(
-                      SendItCartRoute._toAddress.addressLine,
-                      style: TextStyle(
-                          color: Theme.of(context).accentColor, fontSize: 16),
-                    ),
-                    trailing: Icon(
-                      Icons.edit,
-                      color: Theme.of(context).accentColor,
-                      size: 18,
-                    ),
-                  ),
+                      }),
                   Opacity(
                     opacity: 0,
                     child: Container(
@@ -1168,8 +1233,21 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
                     style: Theme.of(context).textTheme.subtitle1,
                   ),
                   Spacer(),
-                  Text(
-                    '${Utils.calculateDistanceFromCoordinates(SendItCartRoute._fromAddress.coordinates, SendItCartRoute._toAddress.coordinates).toStringAsFixed(2)} Km ',
+                  StreamBuilder<Map<String, Address>>(
+                    stream: addressService.stream$,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      Address _fromAddress = snapshot.data['fromAddress'];
+                      Address _toAddress = snapshot.data['toAddress'];
+                      if (_fromAddress == null || _toAddress == null) {
+                        return Text('N/A');
+                      }
+                      return Text(
+                        '${Utils.calculateDistanceFromCoordinates(_fromAddress.coordinates, _toAddress.coordinates).toStringAsFixed(2)} Km ',
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1350,12 +1428,13 @@ class SendItCartRouteState extends State<SendItCartRouteBody> {
   }
 
   getCharges() {
+    RxAddress addressService = GetIt.I.get<RxAddress>();
     if (numberOfBoxesController.text == "" ||
         numberOfSleevesNeededController.text == "") {
       return 'N/A';
     }
-    final fromCoordinates = SendItCartRoute._fromAddress.coordinates;
-    final toCoordinates = SendItCartRoute._toAddress.coordinates;
+    final fromCoordinates = addressService.currentFromAddress.coordinates;
+    final toCoordinates = addressService.currentToAddress.coordinates;
 
     double distance = Utils.calculateDistance(
       LatLng(fromCoordinates.latitude, fromCoordinates.longitude),

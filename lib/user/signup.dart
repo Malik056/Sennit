@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSignUpRoute extends StatelessWidget {
   @override
@@ -78,7 +80,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
 
     onSignUpError = (error) {
       pressed = false;
-      Navigator.pop(context);
+      BotToast.closeAllLoading();
+      // Navigator.pop(context);
       Utils.showSnackBarError(context, 'Email Address is already in use');
     };
     super.initState();
@@ -453,7 +456,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                   );
 
                                   pressed = false;
-                                  Navigator.pop(context);
+                                  BotToast.closeAllLoading();
+                                  // Navigator.pop(context);
                                 }).then((value) {
                                   FirebaseUser firebaseUser = value.user;
                                   if (firebaseUser == null) {
@@ -466,7 +470,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       duration: Duration(seconds: 1),
                                     );
                                     Scaffold.of(context).showSnackBar(snackBar);
-                                    Navigator.pop(context);
+                                    BotToast.closeAllLoading();
+                                    // Navigator.pop(context);
                                   } else {
                                     user.userId = firebaseUser.uid;
                                     Map map = user.toMap();
@@ -486,7 +491,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                     batch.setData(driverRef, map);
                                     batch.commit().timeout(
                                         Duration(seconds: 20), onTimeout: () {
-                                      Navigator.pop(context);
+                                      BotToast.closeAllLoading();
+                                      // Navigator.pop(context);
                                       // firebaseUser.delete();
                                       pressed = false;
                                       Utils.showSnackBarError(
@@ -509,12 +515,14 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       // Navigator.pop(context);
                                       firebaseUser.sendEmailVerification();
                                       // Navigator.popUntil(context, (route) => route.isFirst);
+                                      BotToast.closeAllLoading();
+                                      // Navigator.pop(context);
+                                      SharedPreferences preferences = await SharedPreferences.getInstance();
+                                      preferences.setString('user', 'user');
                                       Navigator.of(context).pushAndRemoveUntil(
                                         MaterialPageRoute(
                                           builder: (context) {
-                                            return VerifyEmailRoute(
-                                              context: context,
-                                            );
+                                            return VerifyEmailRoute();
                                           },
                                         ),
                                         (route) => false,
@@ -532,7 +540,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       //     .pushNamed(MyApp.userHome);
                                     }).catchError((error) {
                                       pressed = false;
-                                      Navigator.pop(context);
+                                      BotToast.closeAllLoading();
+                                      // Navigator.pop(context);
                                       SnackBar snackBar = SnackBar(
                                         content: Text(
                                           'Something went wrong. Try again!',
@@ -552,9 +561,10 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                             } else if (
                                 // dateInitialText == dateText ||
                                 user.homeLocationLatLng == null) {
+                              BotToast.closeAllLoading();
                               setState(() {
                                 pressed = false;
-                                Navigator.pop(context);
+                                // Navigator.pop(context);
                                 // if (dateInitialText == dateText) {
                                 //   dateOfBirthHeadingColor = Colors.red;
                                 //   dateOfBirthTextColor = Colors.red;
@@ -563,9 +573,10 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                 // }
                               });
                             } else {
+                              BotToast.closeAllLoading();
                               setState(() {
                                 pressed = false;
-                                Navigator.pop(context);
+                                // Navigator.pop(context);
                               });
                             }
                           }

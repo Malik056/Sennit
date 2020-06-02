@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart';
@@ -24,30 +25,24 @@ import 'package:sennit/my_widgets/notification.dart';
 import 'package:sennit/my_widgets/pdf_viewer.dart';
 import 'package:sennit/my_widgets/review.dart';
 import 'package:sennit/my_widgets/search.dart';
+import 'package:sennit/rx_models/rx_config.dart';
+import 'package:sennit/rx_models/rx_connectivity.dart';
+import 'package:sennit/rx_models/rx_receiveit_tab.dart';
+import 'package:sennit/rx_models/rx_storesAndItems.dart';
+import 'package:sennit/rx_models/rx_searchbar_title.dart';
 import 'package:sennit/user/past_orders.dart';
-import 'package:sennit/user/signin.dart';
 import 'package:shortid/shortid.dart';
 import '../main.dart';
+import 'package:sennit/rx_models/rx_address.dart';
 import 'generic_tracking_screen.dart';
 
 class ReceiveItRoute extends StatelessWidget {
   final drawerNameController = TextEditingController();
-  final GlobalKey<MySearchAppBarState> searchBarKey =
-      GlobalKey<MySearchAppBarState>();
-  final GlobalKey<StoresRouteState> storesRouteKey =
-      GlobalKey<StoresRouteState>();
   static List<Widget> _tabs;
   final bool demo;
   final TabController tabController;
-  static int currentTab = 0;
+  // static int currentTab = 0;
   static Future<void> _authCheck;
-  static List<String> titles = [
-    'Stores',
-    'Search',
-    'Notifications',
-    'Past Orders'
-  ];
-  // final StatefulText appBarTitle;
   static const String NAME = "ReceiveIt";
 
   Future<void> initialize() async {
@@ -63,7 +58,7 @@ class ReceiveItRoute extends StatelessWidget {
         }
       });
     }
-    await MyApp.futureCart;
+    // await MyApp.futureCart;
   }
 
   ReceiveItRoute({
@@ -71,13 +66,15 @@ class ReceiveItRoute extends StatelessWidget {
     @required this.tabController,
   }) {
     _tabs = [];
-    if (MyApp.futureCart == null) {
-      FirebaseAuth.instance.currentUser().then((user) {
-        UserSignIn.initializeCart(user?.uid);
-      });
-    }
+    Session.data.putIfAbsent(
+      'cart',
+      () => UserCart(
+        itemsData: model.StoreToReceiveItOrderItems(
+          itemDetails: {},
+        ),
+      ),
+    );
     if (demo) {
-      currentTab = 0;
       _authCheck = FirebaseAuth.instance.currentUser().then((value) {
         if (value == null) {
           FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -88,8 +85,8 @@ class ReceiveItRoute extends StatelessWidget {
         _tabs
           ..add(
             StoresRoute(
-              key: storesRouteKey,
-              address: null,
+              // key: storesRouteKey,
+              // address: null,
               isDemo: demo,
             ),
           )
@@ -102,8 +99,8 @@ class ReceiveItRoute extends StatelessWidget {
       _tabs
         ..add(
           StoresRoute(
-            key: storesRouteKey,
-            address: null,
+            // key: storesRouteKey,
+            // address: null,
             isDemo: demo,
           ),
         )
@@ -118,18 +115,17 @@ class ReceiveItRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var user = Session.data['user'];
-    print('currentTab: $currentTab ${titles[currentTab]}');
+    // RxReceiveItTab rxReceiveItTab = GetIt.I.get<RxReceiveItTab>();
+    // print('currentTab: $currentTab ${titles[currentTab]}');
     return Scaffold(
       appBar: MySearchAppBar(
-        titles[currentTab],
-        key: searchBarKey,
+        // key: searchBarKey,
         centerTitle: true,
         onQuery: (text) {
-          if (text == null || text.isEmpty) {
-            storesRouteKey.currentState.filterStores('');
-          } else {
-            storesRouteKey.currentState.filterStores(text);
-          }
+          // filtered.clear();
+          RxStoresAndItems rxStoresAndItems = GetIt.I.get<RxStoresAndItems>();
+          // rxStoresAndItems.queryStores.add(text);
+          rxStoresAndItems.setStoreQuery(text);
         },
         leading: InkWell(
           onTap: () {
@@ -229,10 +225,10 @@ class ReceiveItRoute extends StatelessWidget {
             return Center(child: CircularProgressIndicator());
           }
           return _Body(
-            onTabChange: (index) {
-              searchBarKey?.currentState?.changeTitle(titles[index]);
-            },
-          );
+              // onTabChange: (index) {
+              //   GetIt.I.get<RxReceiveItTab>().setCurrentIndex(index);
+              // },
+              );
         },
       ),
     );
@@ -240,14 +236,12 @@ class ReceiveItRoute extends StatelessWidget {
 }
 
 class MySearchAppBar extends StatefulWidget with PreferredSizeWidget {
-  final String title;
   final Widget leading;
   final bool centerTitle;
   final Function(String searchString) onQuery;
 
-  MySearchAppBar(
-    this.title, {
-    key,
+  MySearchAppBar({
+    Key key,
     this.leading,
     this.centerTitle,
     this.onQuery,
@@ -255,7 +249,7 @@ class MySearchAppBar extends StatefulWidget with PreferredSizeWidget {
 
   @override
   State<StatefulWidget> createState() {
-    return MySearchAppBarState(title);
+    return MySearchAppBarState();
   }
 
   @override
@@ -263,7 +257,6 @@ class MySearchAppBar extends StatefulWidget with PreferredSizeWidget {
 }
 
 class MySearchAppBarState extends State<MySearchAppBar> {
-  String title;
   bool searchEnabled = true;
   bool searchBarVisible = false;
   double searchBarWidth = 0;
@@ -279,7 +272,6 @@ class MySearchAppBarState extends State<MySearchAppBar> {
   }
 
   changeTitle(String title) {
-    this.title = title;
     if (!title.toLowerCase().contains('stores')) {
       disableSearch();
     } else {
@@ -317,30 +309,53 @@ class MySearchAppBarState extends State<MySearchAppBar> {
     });
   }
 
-  MySearchAppBarState(this.title);
+  MySearchAppBarState();
 
   @override
   Widget build(BuildContext context) {
+    RxReceiveItSearchBarTitle barTitle =
+        GetIt.I.get<RxReceiveItSearchBarTitle>();
+    RxReceiveItTab rxReceiveItTab = GetIt.I.get<RxReceiveItTab>();
     return Stack(
       fit: StackFit.expand,
       alignment: Alignment.centerRight,
       children: <Widget>[
         AppBar(
-          title: Text(title),
+          title: StreamBuilder<String>(
+            stream: barTitle.title$,
+            builder: (context, snapshot) {
+              return Text(snapshot?.data ?? '');
+            },
+          ),
           centerTitle: widget.centerTitle ?? false,
           leading: widget.leading,
           actions: <Widget>[
-            searchEnabled
-                ? FlatButton(
+            StreamBuilder<int>(
+              stream: rxReceiveItTab.index$,
+              initialData: 0,
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                if (snapshot.data == 0) {
+                  return FlatButton(
                     onPressed: () {
                       this.showSearchBar();
                     },
                     child: Icon(Icons.search),
-                  )
-                : SizedBox(
-                    height: 0,
-                    width: 0,
-                  ),
+                  );
+                } else
+                  return Opacity(opacity: 0);
+              },
+            ),
+            // searchEnabled
+            //     ? FlatButton(
+            //         onPressed: () {
+            //           this.showSearchBar();
+            //         },
+            //         child: Icon(Icons.search),
+            //       )
+            //     : SizedBox(
+            //         height: 0,
+            //         width: 0,
+            //       ),
           ],
         ),
         Positioned(
@@ -380,53 +395,12 @@ class MySearchAppBarState extends State<MySearchAppBar> {
   }
 }
 
-// class StatefulText extends StatefulWidget {
-//   StatefulText({
-//     this.title,
-//   }) : super(key: _key);
-//   static GlobalKey<_StatefulTextState> _key = GlobalKey<_StatefulTextState>();
-//   final title;
-
-//   changeTitle(title) {
-//     _key?.currentState?.changeTitle(title);
-//   }
-
-//   @override
-//   _StatefulTextState createState() => _StatefulTextState();
-// }
-
-// class _StatefulTextState extends State<StatefulText> {
-//   String title;
-
-//   changeTitle(String title) {
-//     this.title = title;
-//     if (mounted) {
-//       setState(() {});
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     super.dispose();
-//   }
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     title = widget.title;
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Text(title ?? '');
-//   }
-// }
-
 class _Body extends StatefulWidget {
   // final List<Widget> tabs = [];
-  final Function(int) onTabChange;
+  // final Function(int) onTabChange;
 
-  const _Body({this.onTabChange});
+  const _Body();
+
   @override
   State<StatefulWidget> createState() {
     return _BodyState();
@@ -448,7 +422,7 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
     _controller = TabController(
       length: ReceiveItRoute._tabs.length,
       vsync: this,
-      initialIndex: ReceiveItRoute.currentTab,
+      initialIndex: GetIt.I.get<RxReceiveItTab>().currentIndex,
     );
     _controller.addListener(_handleTabChange);
 
@@ -456,14 +430,15 @@ class _BodyState extends State<_Body> with SingleTickerProviderStateMixin {
   }
 
   void _handleTabChange() {
-    _BottomNavigationState._index = _controller.index;
-    ReceiveItRoute.currentTab = _controller.index;
-    widget.onTabChange(ReceiveItRoute.currentTab);
-    try {
-      _BottomNavigationState._bottomNavigationState.rebuild();
-    } on dynamic catch (_) {
-      print(_);
-    }
+    // _BottomNavigationState._index = _controller.index;
+    var rxReceiveItTab = GetIt.I.get<RxReceiveItTab>();
+    rxReceiveItTab.setCurrentIndex(_controller.index);
+    // widget.onTabChange(_controller.index);
+    // try {
+    //   _BottomNavigationState._bottomNavigationState.rebuild();
+    // } on dynamic catch (_) {
+    //   print(_);
+    // }
   }
 
   @override
@@ -487,25 +462,25 @@ class _StatefulBottomNavigation extends StatefulWidget {
     return _BottomNavigationState(demo);
   }
 
-  setState() {
-    _key?.currentState?.rebuild();
-  }
+  // setState() {
+  //   _key?.currentState?.rebuild();
+  // }
 }
 
 class _BottomNavigationState extends State<_StatefulBottomNavigation> {
-  static int _index;
+  // static int _index;
   final bool demo;
   static _BottomNavigationState _bottomNavigationState;
   _BottomNavigationState(this.demo);
 
-  rebuild() {
-    setState(() {});
-  }
+  // rebuild() {
+  //   setState(() {});
+  // }
 
   @override
   void initState() {
     _bottomNavigationState = this;
-    _index = ReceiveItRoute.currentTab;
+    // _index = GetIt.I.get<RxReceiveItTab>().currentIndex;
     super.initState();
   }
 
@@ -517,208 +492,218 @@ class _BottomNavigationState extends State<_StatefulBottomNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: _index,
-      onTap: (index) {
-        if (index != _index) {
-          _BodyState._controller.animateTo(index);
-          setState(() {
-            _index = index;
-          });
-        }
-      },
-      items: !demo
-          ? [
-              BottomNavigationBarItem(
-                title: Text(
-                  'Home',
-                  style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.w600),
-                ),
-                icon: Icon(
-                  Icons.store,
-                  color: Colors.black54,
-                ),
-                activeIcon: Icon(
-                  Icons.store,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-              BottomNavigationBarItem(
-                title: Text('Search', style: TextStyle(color: Colors.black)),
-                icon: Icon(
-                  Icons.search,
-                  color: Colors.black54,
-                ),
-                activeIcon: Icon(
-                  Icons.search,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-              BottomNavigationBarItem(
-                title:
-                    Text('Notification', style: TextStyle(color: Colors.black)),
-                icon: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(
-                      Icons.notifications,
-                      color: Colors.black54,
-                    ),
-                    Positioned(
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.red,
-                          gradient: RadialGradient(radius: 0.5, colors: [
-                            Color.fromARGB(255, 0xff, 0x88, 0x88),
-                            Colors.redAccent
-                          ]),
-                        ),
+    return StreamBuilder<int>(
+        initialData: GetIt.I.get<RxReceiveItTab>().currentIndex,
+        stream: GetIt.I.get<RxReceiveItTab>().index$,
+        builder: (context, snapshot) {
+          int _index = snapshot.data;
+          return BottomNavigationBar(
+            currentIndex: _index,
+            onTap: (index) {
+              if (index != _index) {
+                _BodyState._controller.animateTo(index);
+                GetIt.I.get<RxReceiveItTab>().index.add(index);
+                // setState(() {
+                //   _index = index;
+                // });
+              }
+            },
+            items: !demo
+                ? [
+                    BottomNavigationBarItem(
+                      title: Text(
+                        'Home',
+                        style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600),
                       ),
-                      top: 0,
-                      right: 1,
+                      icon: Icon(
+                        Icons.store,
+                        color: Colors.black54,
+                      ),
+                      activeIcon: Icon(
+                        Icons.store,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      title:
+                          Text('Search', style: TextStyle(color: Colors.black)),
+                      icon: Icon(
+                        Icons.search,
+                        color: Colors.black54,
+                      ),
+                      activeIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      title: Text('Notification',
+                          style: TextStyle(color: Colors.black)),
+                      icon: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.notifications,
+                            color: Colors.black54,
+                          ),
+                          Positioned(
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red,
+                                gradient: RadialGradient(radius: 0.5, colors: [
+                                  Color.fromARGB(255, 0xff, 0x88, 0x88),
+                                  Colors.redAccent
+                                ]),
+                              ),
+                            ),
+                            top: 0,
+                            right: 1,
+                          ),
+                        ],
+                      ),
+                      activeIcon: Icon(
+                        Icons.notifications,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      title: Text('Past Order',
+                          style: TextStyle(color: Colors.black)),
+                      icon: Icon(
+                        Icons.bookmark,
+                        color: Colors.black54,
+                      ),
+                      activeIcon: Icon(
+                        Icons.bookmark,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                  ]
+                : [
+                    BottomNavigationBarItem(
+                      title: Text(
+                        'Home',
+                        style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      icon: Icon(
+                        Icons.store,
+                        color: Colors.black54,
+                      ),
+                      activeIcon: Icon(
+                        Icons.store,
+                        color: Theme.of(context).accentColor,
+                      ),
+                    ),
+                    BottomNavigationBarItem(
+                      title:
+                          Text('Search', style: TextStyle(color: Colors.black)),
+                      icon: Icon(
+                        Icons.search,
+                        color: Colors.black54,
+                      ),
+                      activeIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).accentColor,
+                      ),
                     ),
                   ],
-                ),
-                activeIcon: Icon(
-                  Icons.notifications,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-              BottomNavigationBarItem(
-                title:
-                    Text('Past Order', style: TextStyle(color: Colors.black)),
-                icon: Icon(
-                  Icons.bookmark,
-                  color: Colors.black54,
-                ),
-                activeIcon: Icon(
-                  Icons.bookmark,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-            ]
-          : [
-              BottomNavigationBarItem(
-                title: Text(
-                  'Home',
-                  style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.w600),
-                ),
-                icon: Icon(
-                  Icons.store,
-                  color: Colors.black54,
-                ),
-                activeIcon: Icon(
-                  Icons.store,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-              BottomNavigationBarItem(
-                title: Text('Search', style: TextStyle(color: Colors.black)),
-                icon: Icon(
-                  Icons.search,
-                  color: Colors.black54,
-                ),
-                activeIcon: Icon(
-                  Icons.search,
-                  color: Theme.of(context).accentColor,
-                ),
-              ),
-            ],
-    );
+          );
+        });
   }
 }
 
 class StoresRoute extends StatefulWidget {
-  final Address address;
+  // final Address address;
   final bool isDemo;
   StoresRoute({
-    @required key,
-    @required this.address,
+    Key key,
+    // @required this.address,
     @required this.isDemo,
   }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
-    return StoresRouteState(address);
+    return StoresRouteState();
   }
 }
 
 class StoresRouteState extends State<StoresRoute> {
-  Address selectedAddress;
-  List<Store> stores;
-  List<Store> filtered;
-
-  filterStores(String query) {
-    filtered.clear();
-    stores.forEach((store) {
-      if (store.storeName.toLowerCase().contains(query.toLowerCase())) {
-        filtered.add(store);
-      }
-    });
-    setState(() {});
-  }
-
-  StoresRouteState(this.selectedAddress);
-
-  bool initialized = false;
-  bool requestTimedOut = false;
+  StoresRouteState();
+  RxAddress addressService = GetIt.I.get<RxAddress>();
 
   @override
   void initState() {
     super.initState();
-    initialized = false;
-    requestTimedOut = false;
-    getStoresWidget();
   }
 
   @override
   Widget build(BuildContext context) {
-    return requestTimedOut
-        ? InkWell(
-            onTap: () {
-              initialized = false;
-              requestTimedOut = false;
-              initialize();
-              setState(() {});
-            },
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.replay),
-                  SizedBox(
-                    height: 2,
-                  ),
-                  Text('Reload'),
-                ],
-              ),
+    return StreamBuilder<Map<String, Store>>(
+      stream: GetIt.I.get<RxStoresAndItems>().filteredStores.stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Unable to Fetch Stores. Please Check you Network Connection',
             ),
-          )
-        : initialized
-            ? filtered.length <= 0
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        Map<String, Store> allStores = snapshot?.data ?? {};
+        var keys = allStores?.keys?.toList() ?? [];
+        RxAddress rxAddress = GetIt.I.get<RxAddress>();
+        Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+        return StreamBuilder<Map<String, Address>>(
+          stream: rxAddress.stream$,
+          builder: (context, addressSnapshot) {
+            if (addressSnapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                  child:
+                      CircularProgressIndicator(backgroundColor: Colors.black));
+            }
+            Map<String, Store> filtered = {};
+            var filteredKeys = [];
+            for (String key in keys) {
+              LatLng storeLatLng = allStores[key].storeLatLng;
+              LatLng myLatLng = Utils.latLngFromCoordinates(
+                  addressSnapshot.data['myAddress'].coordinates);
+              if (Utils.calculateDistance(storeLatLng, myLatLng) <=
+                      config['receiveItMinimumStoreDistance'] ??
+                  15) {
+                filteredKeys.add(key);
+                filtered.putIfAbsent(key, () => allStores[key]);
+              }
+            }
+            return (filtered?.length ?? 0) <= 0
                 ? Center(child: Text('No Stores Available Near You '))
                 : SingleChildScrollView(
                     physics: BouncingScrollPhysics(),
                     child: Column(
                       children: List.generate(
                         filtered.length,
-                        (index) {
+                        (int i) {
+                          String storeKey = filteredKeys[i];
                           return IgnorePointer(
-                            ignoring: !filtered[index].isOpened,
+                            ignoring: !filtered[storeKey].isOpened,
                             child: InkWell(
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) {
                                       return StoreMainPage(
-                                        store: filtered[index],
+                                        store: filtered[storeKey],
                                         demo: widget.isDemo ?? false,
                                       );
                                     },
@@ -728,7 +713,7 @@ class StoresRouteState extends State<StoresRoute> {
                               child: Container(
                                 margin: EdgeInsets.only(bottom: 10),
                                 child: StoreItem(
-                                  store: filtered[index],
+                                  store: filtered[storeKey],
                                 ),
                               ),
                             ),
@@ -736,15 +721,11 @@ class StoresRouteState extends State<StoresRoute> {
                         },
                       ),
                     ),
-                  )
-            : Container(
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height,
-                color: Colors.white.withAlpha(90),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+                  );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -754,84 +735,6 @@ class StoresRouteState extends State<StoresRoute> {
         super.setState(fn);
       });
     }
-  }
-
-  Future<void> initialize() async {
-    stores = [];
-    filtered = [];
-    var querySnapshot = await Firestore.instance
-        .collection('stores')
-        .getDocuments(
-          source: Source.serverAndCache,
-        )
-        .timeout(
-      Duration(
-        seconds: 10,
-      ),
-      onTimeout: () async {
-        requestTimedOut = true;
-        print('Request Timed Out');
-        Utils.showSnackBarError(context, 'Request Timed out');
-        if (mounted) {
-          setState(() {});
-        }
-        return null;
-      },
-    ).catchError((_) async {
-      print(_);
-      Utils.showSnackBarError(
-        context,
-        _.toString(),
-      );
-    });
-    if (querySnapshot == null) return;
-    LatLng latlng = await Utils.getMyLocation().then<LatLng>((latlng) {
-      return latlng;
-    }).timeout(Duration(seconds: 1), onTimeout: () {
-      LatLng latlng = Utils.getLastKnowLocation();
-      return latlng ?? LatLng(0, 0);
-    });
-    for (var documentSnapshot in querySnapshot.documents) {
-      if (documentSnapshot.data.containsKey('storeName')) {
-        Store store;
-        var storeId = documentSnapshot.documentID;
-        var storeAsMap = documentSnapshot.data;
-        storeAsMap.putIfAbsent('storeId', () {
-          return storeId;
-        });
-        store = Store.fromMap(storeAsMap);
-
-        if (Utils.calculateDistance(store.storeLatLng, latlng) <= 8 * 1.6) {
-          var itemIds = storeAsMap['items'];
-          List<Future<DocumentSnapshot>> requests = [];
-          for (String itemId in itemIds) {
-            var request =
-                Firestore.instance.collection('items').document(itemId).get();
-            requests.add(request);
-          }
-          for (var request in requests) {
-            var item = await request;
-            model.StoreItem storeItem = model.StoreItem.fromMap(item.data);
-            storeItem.store = store;
-            store.storeItems.add(storeItem);
-          }
-          stores.add(store);
-          filtered.add(store);
-        }
-      }
-    }
-    return;
-  }
-
-  void getStoresWidget() async {
-    await initialize();
-    // if (mounted) {
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    setState(() {
-      initialized = true;
-      // });
-    });
-    // }
   }
 }
 
@@ -843,6 +746,8 @@ class StoreItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
+    Map<String, model.StoreItem> items = storesAndItems?.items?.value ?? {};
     return IgnorePointer(
       ignoring: !(store?.isOpened ?? false),
       child: Stack(
@@ -938,7 +843,7 @@ class StoreItem extends StatelessWidget {
                                         child: FadeInImage.assetNetwork(
                                           placeholder: 'assets/images/logo.png',
                                           image:
-                                              '${(store.storeItems[index].images == null || store.storeItems[index].images.length == 0) ? '' : store.storeItems[index].images[0]}',
+                                              '${(items[store.items[index]]?.images == null || items[store.items[index]].images.length == 0) ? '' : items[store.items[index]].images[0]}',
                                           height: 100,
                                           fit: BoxFit.contain,
                                         ),
@@ -956,7 +861,8 @@ class StoreItem extends StatelessWidget {
                                               height: 4,
                                             ),
                                             Text(
-                                              store.storeItems[index].itemName,
+                                              items[store.items[index]]
+                                                  .itemName,
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .subtitle1,
@@ -965,7 +871,7 @@ class StoreItem extends StatelessWidget {
                                               height: 4,
                                             ),
                                             Text(
-                                              "R${store.storeItems[index].price.toInt()}",
+                                              "R${items[store.items[index]].price.toInt()}",
                                               overflow: TextOverflow.ellipsis,
                                               maxLines: 1,
                                               style: TextStyle(fontSize: 20),
@@ -981,13 +887,11 @@ class StoreItem extends StatelessWidget {
                                 ),
                               ),
                               onTap: () async {
-                                Utils.showLoadingDialog(context);
-                                Navigator.pop(context);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) {
                                       return ItemDetailsRoute(
-                                          item: store.storeItems[index],
+                                          item: items[store.items[index]],
                                           isDemo: demo);
                                     },
                                     maintainState: false,
@@ -1186,7 +1090,7 @@ class StoreMenuState extends State<StoreMenu> {
           height: 10,
         ),
         MenuCategorize(
-          items: widget.store.storeItems,
+          items: widget.store.items,
           isDemo: widget.isDemo ?? false,
         ),
       ],
@@ -1195,8 +1099,9 @@ class StoreMenuState extends State<StoreMenu> {
 }
 
 class MenuCategorize extends StatelessWidget {
-  final List<model.StoreItem> items;
+  final List<String> items;
   final bool isDemo;
+  final RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
   MenuCategorize({
     Key key,
     @required this.items,
@@ -1205,18 +1110,19 @@ class MenuCategorize extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Map<String, model.StoreItem> allItems = storesAndItems.items.value;
     return Column(
       children: List.generate(items.length, (index) {
         return InkWell(
           child: MenuItem(
-            item: items[index],
+            item: allItems[items[index]],
           ),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) {
                   return ItemDetailsRoute(
-                    item: items[index],
+                    item: allItems[items[index]],
                     isDemo: isDemo ?? false,
                   );
                 },
@@ -1325,7 +1231,10 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
       return false;
     }
     bool found = false;
-    if (cart.itemsData.containsKey(item.itemId)) {
+    if ((cart?.itemsData?.itemDetails ?? {})[item.storeId]
+            ?.itemDetails
+            ?.containsKey(item.itemId) ??
+        false) {
       found = true;
     }
     return found;
@@ -1337,7 +1246,11 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
         .document(ItemDetailsRoute._item.storeId)
         .get(
           source: Source.server,
-        );
+        )
+        .catchError((error) {
+      Utils.showSnackBarError(null, error.toString());
+      return null;
+    });
   }
 
   @override
@@ -1345,6 +1258,7 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
     return FutureBuilder<DocumentSnapshot>(
         future: refreshStore,
         builder: (context, snapshot) {
+          if (snapshot.data == null) {}
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container(
               width: MediaQuery.of(context).size.width,
@@ -1354,156 +1268,120 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
               ),
             );
           }
+          Store store = Store.fromMap(snapshot?.data?.data ?? {});
           return Padding(
             padding: EdgeInsets.all(0),
-            child: InkWell(
-              child: Container(
-                color: (((snapshot?.data?.data ?? {})['isOpened']) ?? false)
-                    ? isInCart ? Colors.green : Colors.white
-                    : Colors.red,
-                padding: EdgeInsets.all(10),
-                alignment: Alignment.center,
-                width: MediaQuery.of(context).size.width,
-                height: 50,
-                child: addingToCart
-                    ? CircularProgressIndicator()
-                    : Text(
-                        (((snapshot?.data?.data ?? {})['isOpened']) ?? false)
-                            ? isInCart ? 'Added to Cart' : 'Add to Cart'
-                            : 'Store is Closed',
-                        style: Theme.of(context).textTheme.subtitle1,
-                      ),
-              ),
-              onTap: () async {
-                if (!((snapshot?.data?.data ?? {})['isOpened']) ?? false) {
-                  return;
-                }
-                setState(() {
-                  addingToCart = true;
-                });
-                // FirebaseUser fUser = await FirebaseAuth.instance.currentUser();
-                // User user = Session.data['user'] ??
-                //     User(
-                //       email: fUser.email,
-                //       userId: fUser.uid,
-                //     );
+            child: StreamBuilder<DocumentSnapshot>(
+                stream: Firestore.instance
+                    .collection('items')
+                    .document(ItemDetailsRoute._item.itemId)
+                    .snapshots(),
+                builder: (context, itemSnapshot) {
+                  bool isWaiting = false;
+                  bool error = false;
+                  model.StoreItem item;
+                  if (itemSnapshot.connectionState == ConnectionState.waiting) {
+                    isWaiting = true;
+                  } else if (!itemSnapshot.hasData || itemSnapshot.hasError) {
+                    error = true;
+                  } else {
+                    item = model.StoreItem.fromMap(itemSnapshot.data.data);
+                  }
+                  bool inStock = (item?.remainingInStock ?? 0) > 0;
+                  return InkWell(
+                    child: Container(
+                      color: ((store?.isOpened ?? false) && !error && inStock)
+                          ? isWaiting
+                              ? Colors.yellow
+                              : isInCart ? Colors.green : Colors.white
+                          : Colors.red,
+                      padding: EdgeInsets.all(10),
+                      alignment: Alignment.center,
+                      width: MediaQuery.of(context).size.width,
+                      height: 50,
+                      child: addingToCart
+                          ? CircularProgressIndicator()
+                          : Text(
+                              (store?.isOpened ?? false)
+                                  ? isWaiting
+                                      ? 'Checking stock'
+                                      : error
+                                          ? 'Error Fetching Stock ...'
+                                          : !inStock
+                                              ? 'Out of Stock'
+                                              : isInCart
+                                                  ? 'Added to Cart'
+                                                  : 'Add to Cart'
+                                  : 'Store is Closed',
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                    ),
+                    onTap: (isWaiting || error || !inStock)
+                        ? null
+                        : () async {
+                            if (!(store?.isOpened ?? false)) {
+                              return;
+                            }
+                            setState(() {
+                              addingToCart = true;
+                            });
 
-                UserCart cart = Session.data['cart'];
-                if (cart == null) {
-                  cart = UserCart(itemsData: {});
-                  Session.data.putIfAbsent('cart', () {
-                    return cart;
-                  });
-                }
-                if (!isInCart) {
-                  cart.itemsData.update(
-                    ItemDetailsRoute._item.itemId,
-                    (x) => {
-                      'quantity': 1,
-                      'flavour': '',
-                    },
-                    ifAbsent: () => {
-                      'quantity': 1,
-                      'flavour': '',
-                    },
+                            UserCart cart = Session.data['cart'];
+                            if (cart == null) {
+                              cart = UserCart(
+                                  itemsData: model.StoreToReceiveItOrderItems(
+                                itemDetails: {},
+                              ));
+                              Session.data.putIfAbsent('cart', () {
+                                return cart;
+                              });
+                            }
+                            if (!isInCart) {
+                              cart.itemsData.itemDetails.putIfAbsent(
+                                ItemDetailsRoute._item.storeId,
+                                () => model.ReceiveItOrderItem(itemDetails: {}),
+                              );
+                              cart
+                                  .itemsData
+                                  .itemDetails[ItemDetailsRoute._item.storeId]
+                                  .itemDetails
+                                  .update(
+                                ItemDetailsRoute._item.itemId,
+                                (x) => model.ReceiveItOrderItemDetails(
+                                  flavour: '',
+                                  quantity: 1,
+                                ),
+                                ifAbsent: () => model.ReceiveItOrderItemDetails(
+                                  flavour: '',
+                                  quantity: 1,
+                                ),
+                              );
+                              // cart.items.add(ItemDetailsRoute._item);
+                              setState(() {
+                                addingToCart = false;
+                                isInCart = true;
+                              });
+                            } else {
+                              // cart.items.removeWhere(
+                              //   (item) => item.itemId == ItemDetailsRoute._item.itemId,
+                              // );
+                              cart
+                                  .itemsData
+                                  .itemDetails[ItemDetailsRoute._item.storeId]
+                                  .itemDetails
+                                  .removeWhere(
+                                (key, value) =>
+                                    key == ItemDetailsRoute._item.itemId,
+                              );
+                              // cart.quantities.removeAt(index);
+                              setState(() {
+                                addingToCart = false;
+                                isInCart = false;
+                              });
+                            }
+                          },
                   );
-                  cart.items.add(ItemDetailsRoute._item);
-                  setState(() {
-                    addingToCart = false;
-                    isInCart = true;
-                  });
-                  //Note: Storing Cart Item on Firebase
-                  // Firestore.instance
-                  //     .collection('carts')
-                  //     .document(user.userId)
-                  //     .setData(
-                  //   {
-                  //     'itemsData': {
-                  //       ItemDetailsRoute._item.itemId: {
-                  //         'quantity': 1,
-                  //         'flavour': '',
-                  //       }
-                  //     },
-                  //   },
-                  //   merge: true,
-                  // ).catchError((error) {
-                  //   Utils.showSnackBarError(
-                  //       context, "Network Problem Occurred! Try Again");
-                  //   setState(() {
-                  //     addingToCart = false;
-                  //   });
-                  // }).then((_) {
-                  //   cart.itemsData.update(
-                  //     ItemDetailsRoute._item.itemId,
-                  //     (x) => {
-                  //       'quantity': 1,
-                  //       'flavour': '',
-                  //     },
-                  //     ifAbsent: () => {
-                  //       'quantity': 1,
-                  //       'flavour': '',
-                  //     },
-                  //   );
-                  //   cart.items.add(ItemDetailsRoute._item);
-                  //   setState(() {
-                  //     addingToCart = false;
-                  //     isInCart = true;
-                  //   });
-                  // });
-
-                } else {
-                  // var itemsData =
-                  //     Map<String, Map<String, dynamic>>.from(cart.itemsData);
-                  cart.items.removeWhere(
-                    (item) => item.itemId == ItemDetailsRoute._item.itemId,
-                  );
-                  cart.itemsData.removeWhere(
-                      (key, value) => key == ItemDetailsRoute._item.itemId);
-                  // cart.quantities.removeAt(index);
-                  setState(() {
-                    addingToCart = false;
-                    isInCart = false;
-                  });
-                  // var quantities = List.from(cart.quantities);
-                  // itemsData.removeWhere(
-                  //   (Map<String, double> e) {
-                  //     return e.containsKey(ItemDetailsRoute._item.itemId);
-                  //   },
-                  // );
-
-                  // itemsData.remove(ItemDetailsRoute._item);
-                  // itemsData.removeWhere(
-                  //   (key, value) => key == ItemDetailsRoute._item.itemId,
-                  // );
-                  // quantities.removeAt(index);
-                  // Firestore.instance
-                  //     .collection('carts')
-                  //     .document(user.userId)
-                  //     .setData(
-                  //   {
-                  //     'itemsData': itemsData,
-                  //     // 'quantities': quantities,
-                  //   },
-                  // ).catchError((error) {
-                  //   Utils.showSnackBarError(context, error.toString());
-                  //   setState(() {
-                  //     addingToCart = false;
-                  //   });
-                  // }).then((_) {
-                  //   cart.items.removeWhere(
-                  //     (item) => item.itemId == ItemDetailsRoute._item.itemId,
-                  //   );
-                  //   cart.itemsData.removeWhere(
-                  //       (key, value) => key == ItemDetailsRoute._item.itemId);
-                  //   // cart.quantities.removeAt(index);
-                  //   setState(() {
-                  //     addingToCart = false;
-                  //     isInCart = false;
-                  //   });
-                  // });
-                }
-              },
-            ),
+                }),
           );
         });
   }
@@ -1577,21 +1455,9 @@ class ItemDetailsRouteState extends State<ItemDetailsRoute> {
           return BottomSheetButton();
         },
       ),
-      // persistentFooterButtons: <Widget>[
-      //   Container(
-      //     width: MediaQuery.of(context).size.width,
-      //     child: FlatButton(
-      //       child: Text(
-      //         'Add to Cart',
-      //         style: Theme.of(context).textTheme.subtitle1,
-      //       ),
-      //       onPressed: () {},
-      //     ),
-      //   ),
-      // ],
       floatingActionButton: FloatingMenu(
         onRouteChange: () {
-          setState(() {});
+          // setState(() {});
         },
         itemId: ItemDetailsRoute._item.itemId,
         // onComeBack: () {
@@ -1668,8 +1534,6 @@ class _FloatingMenuState extends State<FloatingMenu> {
                       itemId: widget.itemId,
                     );
                   }));
-                  // setState(() {
-                  // });
                 },
         ),
         SpeedDialChild(
@@ -1686,13 +1550,11 @@ class _FloatingMenuState extends State<FloatingMenu> {
                 builder: (context) => ShoppingCartRoute(
                   toAddress: address,
                   demo: widget.demo,
-                  // onAddressChange: (address) {},
                 ),
                 maintainState: false,
               ),
             );
             widget.onRouteChange();
-            // setState(() {});
           },
         ),
       ],
@@ -1701,7 +1563,6 @@ class _FloatingMenuState extends State<FloatingMenu> {
 }
 
 class _ItemDetailsBody extends StatefulWidget {
-  // final ItemDetails itemDetails;
   final model.StoreItem item;
   static GlobalKey<_ItemDetailsBodyState> _key =
       GlobalKey<_ItemDetailsBodyState>();
@@ -1729,11 +1590,6 @@ class _ItemDetailsBody extends StatefulWidget {
           ),
         ],
       );
-  // Future<model.StoreItem> getSpecificationAndReviews(model.StoreItem storeItem) async {
-  //   // await Future.delayed(Duration(seconds: 3))
-
-  //   return storeItem;
-  // }
 }
 
 class _ItemDetailsBodyState extends State<_ItemDetailsBody>
@@ -1779,8 +1635,10 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                   fit: StackFit.expand,
                   children: <Widget>[
                     CarouselSlider(
-                      autoPlay: true,
-                      enlargeCenterPage: true,
+                      options: CarouselOptions(
+                        autoPlay: true,
+                        enlargeCenterPage: true,
+                      ),
                       items: List.generate(
                         widget.item.images.length,
                         (index) {
@@ -1799,21 +1657,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                                   ),
                                 ),
                               ),
-                              Container(
-                                decoration: BoxDecoration(
-                                    // gradient: RadialGradient(
-                                    //   // begin: Alignment.topCenter,
-                                    //   // end: Alignment.bottomCenter,
-                                    //   colors: [
-                                    //     Colors.transparent,
-                                    //     Colors.white30,
-                                    //   ],
-                                    //   center: Alignment.center,
-                                    //   radius: .4,
-                                    //   tileMode: TileMode.clamp,
-                                    // ),
-                                    ),
-                              ),
                             ],
                           );
                         },
@@ -1822,12 +1665,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                   ],
                 ),
               ),
-              // bottom: TabBar(
-              //     controller: _tabController,
-              //     labelColor: Theme.of(context).accentColor,
-              //     indicatorColor: Theme.of(context).accentColor,
-              //     unselectedLabelColor: Colors.black,
-              //     tabs: _getTabs()),
             ),
           ];
         },
@@ -1955,152 +1792,141 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
                         future: Firestore.instance
                             .collection("reviews")
                             .document(widget.item.itemId)
-                            .get(),
+                            .get()
+                            .catchError((error) {
+                          BotToast.showText(text: error.toString());
+                          throw error;
+                        }),
                         builder: (context,
                             AsyncSnapshot<DocumentSnapshot> asyncData) {
-                          if (asyncData.data == null ||
-                              asyncData.connectionState ==
-                                  ConnectionState.waiting) {
+                          if (asyncData.connectionState ==
+                              ConnectionState.waiting) {
                             return widget._getProgressBar();
-                          } else {
-                            if (asyncData.connectionState ==
-                                ConnectionState.done) {
-                              if (asyncData.data == null ||
-                                  !asyncData.data.exists ||
-                                  asyncData.data.data.length == 0) {
-                                return Center(child: Text('No Review Yet'));
-                              }
-                              List<String> keys =
-                                  asyncData.data.data.keys.toList();
-                              return ListView.builder(
-                                  itemBuilder: (context, index) {
-                                    var map = Map<String, dynamic>.from(
-                                        asyncData.data.data);
-                                    Review review = Review.fromMap(Map.from(
-                                      map[keys[index]],
-                                    ));
-                                    return Card(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(4),
-                                        ),
-                                      ),
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          left: 8,
-                                          right: 8,
-                                          top: 16,
-                                          bottom: 8,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              decoration: ShapeDecoration(
-                                                color: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.all(
-                                                    Radius.circular(24),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 24,
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Container(
-                                                padding:
-                                                    EdgeInsets.only(right: 4),
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: <Widget>[
-                                                    Text(
-                                                      '${review.reviewedBy}',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .subtitle1,
-                                                    ),
-                                                    // mainAxisSize: MainAxisSize.max,
-                                                    Text(
-                                                        '${review.reviewDescription}\n'),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: 12,
-                                            ),
-                                            Container(
-                                              margin: EdgeInsets.only(top: 10),
-                                              width: 1,
-                                              height: 80,
-                                              color: Colors.black,
-                                            ),
-                                            SizedBox(
-                                              width: 12,
-                                            ),
-                                            Column(
-                                              children: <Widget>[
-                                                Icon(
-                                                  Icons.star,
-                                                  color: Colors.yellow,
-                                                ),
-                                                SizedBox(
-                                                  height: 2,
-                                                ),
-                                                Text(
-                                                    '${review.rating.toStringAsFixed(1)}'),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              width: 8,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  itemCount: asyncData.data.data.length);
-                            } else {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: <Widget>[
-                                    IconButton(
-                                      icon: Icon(Icons.replay),
-                                      onPressed: () {
-                                        setState(() {});
-                                      },
-                                    ),
-                                    SizedBox(
-                                      height: 6,
-                                    ),
-                                    Text('Unable to Load Data'),
-                                  ],
-                                ),
-                              );
+                          } else if (asyncData.hasData) {
+                            List<String> keys =
+                                asyncData.data?.data?.keys?.toList() ?? [];
+                            if (keys.length <= 0) {
+                              return Center(child: Text('No Review Yet'));
                             }
+                            return ListView.builder(
+                                itemBuilder: (context, index) {
+                                  var map = Map<String, dynamic>.from(
+                                      asyncData.data.data);
+                                  Review review = Review.fromMap(Map.from(
+                                    map[keys[index]],
+                                  ));
+                                  return Card(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(4),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        left: 8,
+                                        right: 8,
+                                        top: 16,
+                                        bottom: 8,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            decoration: ShapeDecoration(
+                                              color: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.all(
+                                                  Radius.circular(24),
+                                                ),
+                                              ),
+                                            ),
+                                            child: Icon(
+                                              Icons.person,
+                                              color: Colors.white,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Container(
+                                              padding:
+                                                  EdgeInsets.only(right: 4),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: <Widget>[
+                                                  Text(
+                                                    '${review.reviewedBy}',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .subtitle1,
+                                                  ),
+                                                  // mainAxisSize: MainAxisSize.max,
+                                                  Text(
+                                                      '${review.reviewDescription}\n'),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 12,
+                                          ),
+                                          Container(
+                                            margin: EdgeInsets.only(top: 10),
+                                            width: 1,
+                                            height: 80,
+                                            color: Colors.black,
+                                          ),
+                                          SizedBox(
+                                            width: 12,
+                                          ),
+                                          Column(
+                                            children: <Widget>[
+                                              Icon(
+                                                Icons.star,
+                                                color: Colors.yellow,
+                                              ),
+                                              SizedBox(
+                                                height: 2,
+                                              ),
+                                              Text(
+                                                  '${review.rating.toStringAsFixed(1)}'),
+                                            ],
+                                          ),
+                                          SizedBox(
+                                            width: 8,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                                itemCount: asyncData.data.data.length);
+                          } else if (asyncData.hasError) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: Icon(Icons.replay),
+                                    onPressed: () {
+                                      setState(() {});
+                                    },
+                                  ),
+                                  SizedBox(
+                                    height: 6,
+                                  ),
+                                  Text('Unable to Load Data'),
+                                ],
+                              ),
+                            );
+                          } else {
+                            return Center(child: Text('No Review Yet'));
                           }
                         },
                       ),
                     ],
                   ),
                 ),
-                // FloatingActionButton(
-                //   child: Tooltip(
-                //     child: Icon(Icons.rate_review),
-                //     message: 'Leave a review',
-                //   ),
-                //   onPressed: () {
-
-                //   },
-                // ),
               ],
             ),
           ],
@@ -2108,110 +1934,6 @@ class _ItemDetailsBodyState extends State<_ItemDetailsBody>
       ),
     );
   }
-
-  // List<Widget> _getAllSpecifications() {
-  //   return [
-  //     SizedBox(
-  //       height: 20,
-  //     ),
-  //     SizedBox(
-  //       height: 10,
-  //     ),
-  //     Row(
-  //       children: <Widget>[
-  //         SizedBox(
-  //           width: 20,
-  //         ),
-  //         Text(
-  //           'Spec1: ',
-  //           style: TextStyle(
-  //             fontSize: 12,
-  //             fontWeight: FontWeight.bold,
-  //             color: Theme.of(context).primaryColor,
-  //           ),
-  //         ),
-  //         SizedBox(
-  //           width: 15,
-  //         ),
-  //         Expanded(
-  //           child: Container(
-  //             // color: Colors.pink,
-  //             child: Text(
-  //               'Value of Spec 1',
-  //               style: Theme.of(context).textTheme.caption,
-  //               textAlign: TextAlign.start,
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //     SizedBox(
-  //       height: 10,
-  //     ),
-  //     Row(
-  //       children: <Widget>[
-  //         SizedBox(
-  //           width: 20,
-  //         ),
-  //         Text(
-  //           'Spec1: ',
-  //           style: TextStyle(
-  //             fontSize: 12,
-  //             fontWeight: FontWeight.bold,
-  //             color: Theme.of(context).primaryColor,
-  //           ),
-  //         ),
-  //         SizedBox(
-  //           width: 15,
-  //         ),
-  //         Expanded(
-  //           child: Container(
-  //             // color: Colors.pink,
-  //             child: Text(
-  //               'Value of Spec 1',
-  //               style: Theme.of(context).textTheme.caption,
-  //               textAlign: TextAlign.start,
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //     SizedBox(
-  //       height: 10,
-  //     ),
-  //     Row(
-  //       children: <Widget>[
-  //         SizedBox(
-  //           width: 20,
-  //         ),
-  //         Text(
-  //           'Spec1: ',
-  //           style: TextStyle(
-  //             fontSize: 12,
-  //             fontWeight: FontWeight.bold,
-  //             color: Theme.of(context).primaryColor,
-  //           ),
-  //         ),
-  //         SizedBox(
-  //           width: 15,
-  //         ),
-  //         Expanded(
-  //           child: Container(
-  //             // color: Colors.pink,
-  //             child: Text(
-  //               'Value of Spec 1',
-  //               style: Theme.of(context).textTheme.caption,
-  //               textAlign: TextAlign.start,
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //     SizedBox(
-  //       height: 10,
-  //     ),
-  //   ];
-  // }
 
   List<Tab> _getTabs() {
     return <Tab>[
@@ -2240,27 +1962,13 @@ class ShoppingCartRoute extends StatefulWidget {
   });
   @override
   State<StatefulWidget> createState() {
-    return ShoppingCartRouteState(toAddress: toAddress);
+    return ShoppingCartRouteState();
   }
 }
 
 class ShoppingCartRouteState extends State<ShoppingCartRoute> {
-  Address toAddress;
-  ShoppingCartRouteState({this.toAddress});
+  ShoppingCartRouteState();
   var _shoppingCartRouteBodyKey = GlobalKey<ShoppingCartRouteBodyState>();
-  // static Address _fromAddress;
-  // final Function(Address) onAddressChange;
-  // : body = ShoppingCartRouteBody(demo: demo) {
-  //   // _fromAddress = fromAddress;
-
-  //   if (toAddress != null) {
-  //     _toAddress = toAddress;
-  //   } else if (_toAddress == null) {
-  //     _toAddress = Utils.getLastKnowAddress();
-  //   }
-  // }
-
-  // final ShoppingCartRouteBody body;
 
   @override
   void initState() {
@@ -2275,6 +1983,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
 
   @override
   Widget build(BuildContext context) {
+    Address toAddress = GetIt.I.get<RxAddress>().currentToAddress;
     return Scaffold(
       key: widget._key,
       appBar: AppBar(
@@ -2283,6 +1992,13 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
               ? FlatButton(
                   onPressed: () async {
                     try {
+                      bool networkState =
+                          GetIt.I.get<RxConnectivity>().currentState;
+                      if (!networkState) {
+                        Utils.showSnackBarError(
+                            context, 'No Internet Connection');
+                        return;
+                      }
                       Utils.showLoadingDialog(context);
                       NavigatorState navigator = Navigator.of(context);
                       ShoppingCartRouteBodyState state =
@@ -2297,14 +2013,16 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                           null,
                           'Please Provide your email Address',
                         );
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         return;
                       } else if (phoneNumber == "" || phoneNumber == null) {
                         Utils.showSnackBarErrorUsingKey(
                           null,
                           'Please Provide your Phone Number',
                         );
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         return;
                       } else if (phoneNumber.length != 10 ||
                           !phoneNumber.startsWith('0')) {
@@ -2312,18 +2030,21 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                           null,
                           'The Phone number Should start with 0 and Should Contain total of 10 digits',
                         );
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         return;
                       } else if (!Utils.isEmailCorrect(email)) {
                         Utils.showSnackBarErrorUsingKey(
                           null,
                           'Invalid Email Format',
                         );
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         return;
                       } else if (cart.itemsData == null ||
-                          cart.itemsData.length == 0) {
-                        Navigator.pop(context);
+                          cart.itemsData.itemDetails.length == 0) {
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
 
                         BotToast.showNotification(
                           title: (_) {
@@ -2339,24 +2060,23 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                               style: TextStyle(color: Colors.white),
                             ),
                             onPressed: () {
+                              BotToast.closeAllLoading();
                               navigator.popUntil((route) {
                                 return route.settings.name == 'receiveIt';
                               });
                             },
                           ),
                         );
-
-                        // BotToast.showText(
-                        //     text: "Your Cart is Empty", duration: Duration(seconds: 2));
                         return;
                       } else if (toAddress == null ||
                           ((toAddress.coordinates?.latitude ?? 0) == 0 &&
                               (toAddress.coordinates?.longitude ?? 0) == 0)) {
-                        BotToast.showText(
-                            text: 'Please Select a Destination First!',
-                            duration: Duration(seconds: 2));
-                        // Utils.showSnackBarError(context, 'Please Select a Destination');
-                        navigator.pop();
+                        Utils.showSnackBarError(
+                          null,
+                          'Please Select a Destination First!',
+                        );
+                        BotToast.closeAllLoading();
+
                         return;
                       }
 
@@ -2374,14 +2094,15 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       if (result['status'] == RaveStatus.cancelled) {
                         Utils.showSnackBarWarningUsingKey(
                             null, 'Payment Cancelled');
-                        navigator.pop();
+                        // navigator.pop();
+                        BotToast.closeAllLoading();
                         return;
                       } else if (result['status'] == RaveStatus.error) {
                         Utils.showSnackBarErrorUsingKey(
                           null,
                           result['errorMessage'],
                         );
-                        navigator.pop();
+                        BotToast.closeAllLoading();
                         return;
                       } else {
                         Utils.showSnackBarSuccessUsingKey(
@@ -2391,27 +2112,36 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       User user = Session.data['user'];
                       model.OrderFromReceiveIt order =
                           model.OrderFromReceiveIt();
-                      List<model.StoreItem> items = cart.items;
-                      double price = totalCharges;
+                      // List<model.StoreItem> items = cart.items;
+                      // double price = totalCharges;
 
                       List<LatLng> pickups = [];
-                      Map<String, Map<String, dynamic>> itemsData =
-                          cart.itemsData;
+                      StoreToReceiveItOrderItems itemsData = cart.itemsData;
                       order.pickups = pickups;
-                      List<String> stores = [];
+                      // List<String> stores = [];
                       List<double> pricePerItem = [];
                       List<double> totalPricePerItem = [];
-                      order.stores = stores;
-                      for (model.StoreItem item in items) {
-                        // price += item.price * itemsData[item.itemId];
-                        pickups.add(item.latlng);
-                        stores.add(item.storeName);
-                        pricePerItem.add(item.price);
-                        totalPricePerItem.add(
-                          (item.price * itemsData[item.itemId]['quantity']
-                                  as num)
-                              .toDouble(),
-                        );
+                      RxStoresAndItems storesAndItems =
+                          GetIt.I.get<RxStoresAndItems>();
+                      Map<String, model.StoreItem> itemsMap =
+                          storesAndItems.items.value;
+                      // order.stores = stores;
+                      for (var storeId in itemsData.itemDetails.keys) {
+                        for (var itemId in itemsData
+                            .itemDetails[storeId].itemDetails.keys) {
+                          model.StoreItem item = itemsMap[itemId];
+                          // price += item.price *
+                          //     (itemsData.itemDetails[item.itemId]
+                          //             .itemDetails['quantity'] as num)
+                          //         .toDouble();
+                          pickups.add(item.latlng);
+                          pricePerItem.add(item.price);
+                          totalPricePerItem.add(
+                            item.price *
+                                itemsData.itemDetails[storeId]
+                                    .itemDetails[itemId].quantity,
+                          );
+                        }
                       }
                       order.pricePerItem = pricePerItem;
                       order.totalPricePerItem = totalPricePerItem;
@@ -2422,7 +2152,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       order.phoneNumber = phoneNumber;
                       order.house = house;
                       order.itemsData = itemsData;
-                      order.price = price;
+                      order.price = totalCharges;
                       order.status = 'Pending';
                       order.destination = LatLng(
                         toAddress?.coordinates?.latitude ?? 0,
@@ -2434,8 +2164,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       var response = await post(
                         url,
                       ).catchError((_) {
-                        // Utils.showSnackBarErrorUsingKey(
-                        //     _key, 'Error While Sending sms');
+                        print(_.toString());
                       });
                       // final response = Response('', 200);
 
@@ -2458,18 +2187,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                             duration: Duration(seconds: 4),
                             align: Alignment.bottomCenter,
                             subtitle: (_) => Text("Retrying Attempt: $count"),
-                            // trailing: (_) => RaisedButton(
-                            //   color: Theme.of(context).primaryColor,
-                            //   child: Text(
-                            //     'Shop now',
-                            //     style: TextStyle(color: Colors.white),
-                            //   ),
-                            //   onPressed: () {
-                            //     Navigator.popUntil(context, (route) {
-                            //       return route.settings.name == 'receiveIt';
-                            //     });
-                            //   },
-                            // ),
                           );
 
                           var url =
@@ -2487,313 +2204,289 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                             align: Alignment.bottomCenter,
                             subtitle: (_) => Text(
                                 "Please Manually send the OTP\nYour OTP is $otp."),
-                            // trailing: (_) => RaisedButton(
-                            //   color: Theme.of(context).primaryColor,
-                            //   child: Text(
-                            //     'Shop now',
-                            //     style: TextStyle(color: Colors.white),
-                            //   ),
-                            //   onPressed: () {
-                            //     Navigator.popUntil(context, (route) {
-                            //       return route.settings.name == 'receiveIt';
-                            //     });
-                            //   },
-                            // ),
                           );
                         }
-                        // print('Response status: ${response.statusCode}');
-                        // print('Response body: ${response.body}');
-                        // print('Response reason: ${response.reasonPhrase}');
                       }
-                      {
-                        // Utils.showSnackBarSuccessUsingKey(
-                        //     _key, 'Successfully Message Sent');
-                        // if (true) {
-                        var now = DateTime.now().toUtc();
-                        String orderId =
-                            '${user.userId}${now.millisecondsSinceEpoch}';
-                        order.orderId = orderId;
-                        String shortId = shortid.generate();
-                        order.shortId = shortId;
-                        // var today12AM = DateTime.utc(now.year, now.month, now.day);
-                        // if(user.firstName == '' || user.firstName.length < 3) {
-                        //   shortId = 'ANY${}';
-                        // }
-                        // else {
-                        //   shortId = '${user.firstName.substring(0, 3)}';
-                        // }
 
-                        Map<String, dynamic> orderData = order.toMap()
-                          ..putIfAbsent('otp', () => otp);
-                        var postedOrderRef = Firestore.instance
-                            .collection('postedOrders')
-                            .document(orderId);
-                        // .setData(orderData);
-                        //     .catchError((error) {
-                        //   Utils.showSnackBarErrorUsingKey(
-                        //     _key,
-                        //     'Error Posting Order',
-                        //   );
-                        // });
-                        // .then((data) async {
-                        // orderData.update('orderId', (old) => orderId,
-                        //     ifAbsent: () => orderId);
-                        var batch = Firestore.instance.batch();
-                        batch.setData(postedOrderRef, orderData);
-                        var userOrderRef = Firestore.instance
-                            .collection("users")
-                            .document(user.userId)
-                            .collection('orders')
-                            .document(orderId);
+                      var now = DateTime.now().toUtc();
+                      String orderId =
+                          '${user.userId}${now.millisecondsSinceEpoch ~/ 1000}';
 
-                        batch.setData(
-                          userOrderRef,
-                          orderData,
-                          merge: true,
-                        );
-                        // await Firestore.instance
-                        //     .collection("verificationCodes")
-                        //     .document(data.documentID)
-                        //     .setData(
-                        //   {
-                        //     "key": otp,
-                        //   },
-                        // );
+                      order.orderId = orderId;
+                      String shortId = shortid.generate();
+                      order.shortId = shortId;
+                      // Map<String, dynamic> orderData = order.toMap();
+                      order.otp = otp;
+                      order.stores = order.itemsData.itemDetails.keys.toList();
+                      // orderData.putIfAbsent(
+                      //   'stores',
+                      //   () => order.itemsData.itemDetails.keys.toList(),
+                      // );
+                      StoreToReceiveItOrderItems storeToReceiveItOrderItems =
+                          order.itemsData;
+                      Map<String, Store> allStores =
+                          GetIt.I.get<RxStoresAndItems>().stores.value;
+                      List<String> deviceTokens = [];
+                      List<String> allItemsInOrder = [];
+                      storeToReceiveItOrderItems.itemDetails
+                          .forEach((key, value) {
+                        List<String> itemKeys = value.itemDetails.keys.toList();
+                        allItemsInOrder.addAll(itemKeys);
+                        deviceTokens.addAll(allStores[key].deviceTokens);
+                      });
+                      Map<String, dynamic> orderData = order.toMap();
+                      orderData.putIfAbsent('itemKeys', () => allItemsInOrder);
+                      String _fcmServerKey = await Utils.getFCMServerKey();
+                      Future request = post(
+                        'https://fcm.googleapis.com/fcm/send',
+                        headers: <String, String>{
+                          'Content-Type': 'application/json',
+                          'Authorization': 'key=$_fcmServerKey',
+                        },
+                        body: jsonEncode(
+                          <String, dynamic>{
+                            'notification': <String, dynamic>{
+                              'body': 'An Order is just Arrived',
+                              'title': 'Order'
+                            },
+                            'type': 'partnerStoreOrder',
+                            'priority': 'high',
+                            'data': <String, dynamic>{
+                              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                              'orderId': '${order.orderId}',
+                              'status': 'posted',
+                              'userId': order.userId,
+                            },
+                            'registration_ids': deviceTokens,
+                          },
+                        ),
+                      );
+                      // orderData.putIfAbsent('status', () => 'Pending');
+                      await Firestore.instance
+                          .collection('orders')
+                          .document(order.orderId)
+                          .setData(orderData);
+                      await request;
 
-                        // print('Response status: ${response.statusCode}');
-                        // print('Response body: ${response.body}');
-                        // print('Response reason: ${response.reasonPhrase}');
-                        // print('${response.request.url}');
+                      BotToast.closeAllLoading();
 
-                        Map<String, dynamic> storeOrders = {};
-                        List<String> deviceIds = [];
-
-                        for (model.StoreItem item in items) {
-                          final itemKey = item.itemId;
-                          if (storeOrders.containsKey(item.storeId)) {
-                            double price = storeOrders[item.storeId]['price'];
-                            price +=
-                                item.price * itemsData[item.itemId]['quantity'];
-                            storeOrders[item.storeId].update(
-                                'price', (old) => price,
-                                ifAbsent: () => price);
-                            storeOrders[item.storeId]['pricePerItem']
-                                .add(item.price);
-                            storeOrders[item.storeId]['totalPricePerItem'].add(
-                                item.price *
-                                    itemsData[item.itemId]['quantity']);
-                            (storeOrders[item.storeId]['itemsData']
-                                    as Map<String, Map<String, dynamic>>)
-                                .putIfAbsent(
-                              itemKey,
-                              () => itemsData[itemKey],
-                            );
-                          } else {
-                            if (item.store == null) {
-                              var snapshot = await Firestore.instance
-                                  .collection('stores')
-                                  .document(item.storeId)
-                                  .get();
-                              item.store = Store.fromMap(snapshot.data);
-                              deviceIds.addAll(item.store.deviceTokens);
-                            } else if (item?.store?.deviceTokens != null &&
-                                item.store.deviceTokens.length > 0) {
-                              deviceIds.addAll(item.store.deviceTokens);
-                            } else {
-                              var snapshot = await Firestore.instance
-                                  .collection('stores')
-                                  .document(item.storeId)
-                                  .get();
-                              item.store = Store.fromMap(snapshot.data);
-                              deviceIds.addAll(item.store.deviceTokens);
+                      try {
+                        navigator.pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) {
+                              return OrderTracking(
+                                type: OrderTrackingType.RECEIVE_IT,
+                                data: orderData,
+                              );
+                            },
+                            settings: RouteSettings(name: OrderTracking.NAME),
+                          ),
+                          (route) {
+                            if (route?.settings?.name == null) {
+                              return false;
                             }
-                            OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
-                              destination: Utils.latLngFromString(
-                                  orderData['destination']),
-                              date: now,
-                              deliveryTime: null,
-                              email: order.email,
-                              house: order.house,
-                              price: item.price *
-                                  itemsData[item.itemId]['quantity'],
-                              orderId: orderId,
-                              pricePerItem: [item.price],
-                              totalPricePerItem: [
-                                item.price * itemsData[item.itemId]['quantity']
-                              ],
-                              itemsData: {
-                                itemKey: itemsData[itemKey],
-                              },
-                              phoneNumber: order.phoneNumber,
-                              userId: order.userId,
-                            );
-                            Map<String, dynamic> tempOrder = receiveIt.toMap();
-                            tempOrder.putIfAbsent(
-                              'storeId',
-                              () => item.storeId,
-                            );
-                            tempOrder.putIfAbsent(
-                                'storeName', () => item.storeName);
-                            tempOrder.putIfAbsent(
-                                'storeAddress', () => item.storeAddress);
-                            tempOrder.putIfAbsent(
-                              'storeLatLng',
-                              () =>
-                                  Utils.latLngToString(item.store.storeLatLng),
-                            );
-                            storeOrders.putIfAbsent(
-                              item.storeId,
-                              () {
-                                return tempOrder;
-                              },
-                            );
-                          }
-                          // Map<String, dynamic> item = (await Firestore
-                          //         .instance
-                          //         .collection('items')
-                          //         .document(itemKey)
-                          //         .get())
-                          // .data;
-                          // LatLng latLng = Utils.latLngFromString(
-                          //     orderData['destination']);
-                          // String address = (await Geocoder.google(
-                          //             await Utils.getAPIKey())
-                          //         .findAddressesFromCoordinates(Coordinates(
-                          //             latLng.latitude, latLng.longitude)))[0]
-                          //     .addressLine;
-                        }
-                        Future<Response> request;
-                        final _fcmServerKey = await Utils.getFCMServerKey();
-                        storeOrders.forEach((k, v) {
-                          var storeOrderRef = Firestore.instance
-                              .collection('stores')
-                              .document(k)
-                              .collection('pendingOrderedItems')
-                              .document(orderData['orderId']);
-
-                          batch.setData(
-                            storeOrderRef,
-                            v,
-                            merge: true,
-                          );
-
-                          // deviceIds.forEach((id) {
-                          request = post(
-                            'https://fcm.googleapis.com/fcm/send',
-                            headers: <String, String>{
-                              'Content-Type': 'application/json',
-                              'Authorization': 'key=$_fcmServerKey',
-                            },
-                            body: jsonEncode(
-                              <String, dynamic>{
-                                'notification': <String, dynamic>{
-                                  'body': 'An Order is just Arrived',
-                                  'title': 'Order'
-                                },
-                                'type': 'partnerStoreOrder',
-                                'priority': 'high',
-                                'data': <String, dynamic>{
-                                  'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                                  'orderId': '${order.orderId}',
-                                  'status': 'posted',
-                                  'userId': order.userId,
-                                },
-                                'registration_ids': deviceIds,
-                              },
-                            ),
-                          );
-                          // });
-                        });
-                        var _ = await request;
-                        // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                        // Navigator.pop(context);
-                        Session.data['cart'] = UserCart(itemsData: {});
-                        Utils.showSuccessDialog('Your Order is on its way!');
-                        Future.delayed(Duration(seconds: 2)).then((_) {
-                          BotToast.cleanAll();
-                        });
-                        try {
-                          navigator.pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) {
-                                return OrderTracking(
-                                  type: OrderTrackingType.RECEIVE_IT,
-                                  data: orderData,
-                                );
-                              },
-                              settings: RouteSettings(name: OrderTracking.NAME),
-                            ),
-                            (route) {
-                              if (route?.settings?.name == null) {
-                                return false;
-                              }
-                              return route.settings.name == 'receiveIt';
-                            },
-                          );
-                        } on dynamic catch (_) {
-                          navigator.pop();
-                          BotToast.showText(
-                              text: _.toString(),
-                              duration: Duration(
-                                seconds: 10,
-                              ));
-                        }
-                        // var cartRef = Firestore.instance
-                        //     .collection('carts')
-                        //     .document(user.userId);
-                        // batch.delete(cartRef);
-                        // batch.commit().catchError((error) {
-                        //   Utils.showSnackBarErrorUsingKey(
-                        //       _key, 'error clearing cart');
-                        // }).then(
-                        //   (_) async {
-                        // await Firestore.instance
-                        //     .collection('carts')
-                        //     .document(user.userId)
-                        //     .setData({}).catchError((error) {
-                        //   Utils.showSnackBarErrorUsingKey(
-                        //       _key, 'error re initializing cart');
-                        // });
-                        // await request;
-                        // // Utils.showSnackBarSuccess(context, 'Order Submitted');
-                        // // Navigator.pop(context);
-                        // Session.data['cart'] = UserCart(itemsData: {});
-                        // Utils.showSuccessDialog(
-                        //     'Your Order is on its way!');
-                        // Future.delayed(Duration(seconds: 2)).then((_) {
-                        //   BotToast.cleanAll();
-                        // });
-                        // try {
-                        //   navigator.pushAndRemoveUntil(
-                        //     MaterialPageRoute(
-                        //       builder: (context) {
-                        //         return OrderTracking(
-                        //           type: OrderTrackingType.RECEIVE_IT,
-                        //           data: orderData,
-                        //         );
-                        //       },
-                        //       settings:
-                        //           RouteSettings(name: OrderTracking.NAME),
-                        //     ),
-                        //     (route) {
-                        //       if (route?.settings?.name == null) {
-                        //         return false;
-                        //       }
-                        //       return route.settings.name == 'receiveIt';
-                        //     },
-                        //   );
-                        // } on dynamic catch (_) {
-                        //   navigator.pop();
-                        //   BotToast.showText(
-                        //       text: _.toString(),
-                        //       duration: Duration(
-                        //         seconds: 10,
-                        //       ));
-                        // }
-                        // },
-                        // );
-                        // });
+                            return route.settings.name == 'receiveIt';
+                          },
+                        );
+                      } catch (ex) {
+                        navigator.pop();
+                        print(ex.toString());
                       }
+
+                      // var postedOrderRef = Firestore.instance
+                      //     .collection('postedOrders')
+                      //     .document(orderId);
+                      // var batch = Firestore.instance.batch();
+                      // batch.setData(postedOrderRef, orderData);
+                      // var userOrderRef = Firestore.instance
+                      //     .collection("users")
+                      //     .document(user.userId)
+                      //     .collection('orders')
+                      //     .document(orderId);
+
+                      // batch.setData(
+                      //   userOrderRef,
+                      //   orderData,
+                      //   merge: true,
+                      // );
+                      // Map<String, dynamic> storeOrders = {};
+                      // List<String> deviceIds = [];
+
+                      // for (model.StoreItem item in items) {
+                      //   final itemKey = item.itemId;
+                      //   if (storeOrders.containsKey(item.storeId)) {
+                      //     double price = storeOrders[item.storeId]['price'];
+                      //     price += item.price *
+                      //         itemsData.itemDetails[item.storeId]
+                      //             .itemDetails[item.itemId].quantity;
+                      //     storeOrders[item.storeId].update(
+                      //         'price', (old) => price,
+                      //         ifAbsent: () => price);
+                      //     storeOrders[item.storeId]['pricePerItem']
+                      //         .add(item.price);
+                      //     storeOrders[item.storeId]['totalPricePerItem'].add(
+                      //       item.price *
+                      //           itemsData.itemDetails[item.storeId]
+                      //               .itemDetails[item.itemId].quantity,
+                      //     );
+                      //     (storeOrders[item.storeId]['itemsData']
+                      //             as Map<String, Map<String, dynamic>>)
+                      //         .putIfAbsent(
+                      //       itemKey,
+                      //       () => itemsData[itemKey],
+                      //     );
+                      //   } else {
+                      //     RxStoresAndItems storesAndItems =
+                      //         GetIt.I.get<RxStoresAndItems>();
+                      //     if (item.store == null) {
+                      //       var store =
+                      //           storesAndItems.stores.value[item.storeId];
+                      //       item.store = store;
+                      //       deviceIds.addAll(item.store.deviceTokens);
+                      //     } else if (item?.store?.deviceTokens != null &&
+                      //         item.store.deviceTokens.length > 0) {
+                      //       deviceIds.addAll(item.store.deviceTokens);
+                      //     } else {
+                      //       var store =
+                      //           storesAndItems.stores.value[item.storeId];
+                      //       item.store = store;
+                      //       deviceIds.addAll(item.store.deviceTokens);
+                      //     }
+                      //     OrderFromReceiveIt receiveIt = OrderFromReceiveIt(
+                      //       destination: Utils.latLngFromString(
+                      //           orderData['destination']),
+                      //       date: now,
+                      //       deliveryTime: null,
+                      //       email: order.email,
+                      //       house: order.house,
+                      //       price: item.price *
+                      //           (itemsData[item.itemId]['quantity'] as num)
+                      //               .toInt(),
+                      //       orderId: orderId,
+                      //       pricePerItem: [item.price],
+                      //       totalPricePerItem: [
+                      //         item.price *
+                      //             (itemsData[item.itemId]['quantity'] as num)
+                      //                 .toInt()
+                      //       ],
+                      //       itemsData: model.StoreToReceiveItOrderItems(
+                      //           itemDetails: {
+                      //             item.storeId:
+                      //                 model.ReceiveItOrderItem(itemDetails: {
+                      //               itemKey: model.ReceiveItOrderItemDetails(
+                      //                 flavour: itemsData[itemKey]['flavour'],
+                      //                 quantity: (itemsData[itemKey]
+                      //                         ['quantity'] as num)
+                      //                     .toInt(),
+                      //               ),
+                      //             }),
+                      //           }),
+                      //       phoneNumber: order.phoneNumber,
+                      //       userId: order.userId,
+                      //       shortId: order.shortId,
+                      //     );
+                      //     Map<String, dynamic> tempOrder = receiveIt.toMap();
+                      //     tempOrder.putIfAbsent(
+                      //       'storeId',
+                      //       () => item.storeId,
+                      //     );
+                      //     tempOrder.putIfAbsent(
+                      //         'storeName', () => item.storeName);
+                      //     tempOrder.putIfAbsent(
+                      //         'storeAddress', () => item.storeAddress);
+                      //     tempOrder.putIfAbsent(
+                      //       'storeLatLng',
+                      //       () =>
+                      //           Utils.latLngToString(item.store.storeLatLng),
+                      //     );
+                      //     storeOrders.putIfAbsent(
+                      //       item.storeId,
+                      //       () {
+                      //         return tempOrder;
+                      //       },
+                      //     );
+                      //   }
+                      // }
+                      // List<Future<Response>> requests = [];
+                      // final _fcmServerKey = await Utils.getFCMServerKey();
+                      // storeOrders.forEach((k, v) {
+                      //   var storeOrderRef = Firestore.instance
+                      //       .collection('stores')
+                      //       .document(k)
+                      //       .collection('pendingOrderedItems')
+                      //       .document(orderData['orderId']);
+
+                      //   batch.setData(
+                      //     storeOrderRef,
+                      //     v,
+                      //     merge: true,
+                      //   );
+                      //   // deviceIds.forEach((id) {
+                      //   var request = post(
+                      //     'https://fcm.googleapis.com/fcm/send',
+                      //     headers: <String, String>{
+                      //       'Content-Type': 'application/json',
+                      //       'Authorization': 'key=$_fcmServerKey',
+                      //     },
+                      //     body: jsonEncode(
+                      //       <String, dynamic>{
+                      //         'notification': <String, dynamic>{
+                      //           'body': 'An Order is just Arrived',
+                      //           'title': 'Order'
+                      //         },
+                      //         'type': 'partnerStoreOrder',
+                      //         'priority': 'high',
+                      //         'data': <String, dynamic>{
+                      //           'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+                      //           'orderId': '${order.orderId}',
+                      //           'status': 'posted',
+                      //           'userId': order.userId,
+                      //         },
+                      //         'registration_ids': deviceIds,
+                      //       },
+                      //     ),
+                      //   );
+                      //   requests.add(request);
+                      //   // });
+                      // });
+                      // await batch.commit();
+                      // for (var request in requests) {
+                      //   var _ = await request;
+                      // }
+                      // Utils.showSnackBarSuccess(context, 'Order Submitted');
+                      // Navigator.pop(context);
+                      // Session.data['cart'] = UserCart(itemsData: {});
+                      // Utils.showSuccessDialog('Your Order is on its way!');
+                      // Future.delayed(Duration(seconds: 2)).then((_) {
+                      //   BotToast.cleanAll();
+                      // });
+                      // try {
+                      //   navigator.pushAndRemoveUntil(
+                      //     MaterialPageRoute(
+                      //       builder: (context) {
+                      //         return OrderTracking(
+                      //           type: OrderTrackingType.RECEIVE_IT,
+                      //           data: orderData,
+                      //         );
+                      //       },
+                      //       settings: RouteSettings(name: OrderTracking.NAME),
+                      //     ),
+                      //     (route) {
+                      //       if (route?.settings?.name == null) {
+                      //         return false;
+                      //       }
+                      //       return route.settings.name == 'receiveIt';
+                      //     },
+                      //   );
+                      // } on dynamic catch (_) {
+                      //   navigator.pop();
+                      //   BotToast.showText(
+                      //       text: _.toString(),
+                      //       duration: Duration(
+                      //         seconds: 10,
+                      //       ));
+                      // }
+
                     } on dynamic catch (ex) {
                       BotToast.showText(
                           text: ex.toString(), duration: Duration(seconds: 10));
@@ -2819,11 +2512,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
         // backgroundColor: Theme.of(context).accentColor,
       ),
       body: ShoppingCartRouteBody(
-        onAddressChange: (address) {
-          toAddress = address;
-          setState(() {});
-        },
-        toAddress: toAddress,
         demo: widget.demo,
         key: _shoppingCartRouteBodyKey,
       ),
@@ -2884,19 +2572,21 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
               ),
             )
           : null,
-      // backgroundColor: Theme.of(context).accentColor,
     );
   }
 
   performTransaction(context, amount) async {
+    RxConfig config = GetIt.I.get<RxConfig>();
+    bool testing = config.config.value['testing'] ?? false;
     User user = Session.data['user'];
     DateTime time = DateTime.now();
     var initializer = RavePayInitializer(
       amount: amount,
-      publicKey: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      // 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X', //<-Test //Live-> Version: 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X',
-      encryptionKey: 'eded539f04b38a2af712eb7d',
-      // '27e4c95e939cba30b53d9105' //<-Test ,//Live-> 'eded539f04b38a2af712eb7d',
+      publicKey: testing
+          ? 'FLWPUBK-fc9fc6e2a846ce0acde3e09e6ee9d11a-X' //Testing
+          : 'FLWPUBK-dd01d6fa251fe0ce8bb95b03b0406569-X', //Live
+      encryptionKey: testing
+          ? '27e4c95e939cba30b53d9105' /**Testing */ : 'eded539f04b38a2af712eb7d', //Live
     )
       ..country = "ZA"
       ..currency = "ZAR"
@@ -2919,7 +2609,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
       ..acceptUgMobileMoneyPayments = false
       ..companyName =
           Text('Sennit', style: Theme.of(context).textTheme.subtitle1)
-      ..staging = false
+      ..staging = testing
       ..isPreAuth = false
       ..displayFee = true;
 
@@ -2933,9 +2623,6 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
     });
     print(response.message);
 
-    // Utils.showSnackBarErrorUsingKey(
-    //     _key, 'Error: ${response.status}, Message: ${response.message}');
-
     return <String, dynamic>{
       'status': response.status,
       'errorMessage': response.message,
@@ -2946,19 +2633,14 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
 class ShoppingCartRouteBody extends StatefulWidget {
   final bool demo;
   final GlobalKey<ShoppingCartRouteBodyState> key;
-  final toAddress;
-  final Function(Address) onAddressChange;
   ShoppingCartRouteBody({
     this.key,
     @required this.demo,
-    @required this.toAddress,
-    @required this.onAddressChange,
   }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
     return ShoppingCartRouteBodyState(
-      toAddress: toAddress,
       demo: demo,
     );
   }
@@ -2971,8 +2653,8 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   double cardPadding = 20;
   double groupMargin = 30;
   double itemMargin = 10;
-  List<TextEditingController> _controllers;
-  List<TextEditingController> _flavourControllers;
+  // List<TextEditingController> _controllers;
+  // List<TextEditingController> _flavourControllers;
   TextEditingController _emailController;
   TextEditingController _houseController;
   TextEditingController _phoneNumberController;
@@ -2981,23 +2663,20 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   bool boxSizeLarge = false;
   bool sleeveNeeded = false;
   bool demo;
-  Address toAddress;
 
-  List<bool> isAnimationVisibleList = [];
-  List<bool> isItemDeleteConfirmationVisibleList = [];
+  double totalDeliveryCharges = 0;
+  double totalPrice = 0;
 
-  List<bool> isButtonActiveList = [];
+  Map<String, Map<String, Map<String, dynamic>>> controllersAndConfigs = {};
 
-  var isLoadingBarVisibleList = [];
-
-  Future removeUnnecessaryItemsAndInitialize;
+  // List<bool> isAnimationVisibleList = [];
+  // List<bool> isItemDeleteConfirmationVisibleList = [];
+  // List<bool> isButtonActiveList = [];
+  Future<void> initializeCart;
 
   ShoppingCartRouteBodyState({
     @required this.demo,
-    @required this.toAddress,
   }) {
-    _controllers = [];
-    _flavourControllers = [];
     _emailController = TextEditingController();
     _houseController = TextEditingController();
     _phoneNumberController = TextEditingController();
@@ -3006,7 +2685,23 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   @override
   void initState() {
     super.initState();
-    removeUnnecessaryItemsAndInitialize = checkStoresAvailability();
+    initializeCart = initialize();
+    Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+    if (config['maintenanceNotice'] != null) {
+      try {
+        BotToast.showNotification(
+          align: Alignment.topCenter,
+          title: (fn) => Text('Maintenance Notice'),
+          duration: Duration(seconds: 5),
+          crossPage: true,
+          subtitle: (fn) => Text(
+            'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+          ),
+        );
+      } catch (ex) {
+        print(ex.toString());
+      }
+    }
   }
 
   @override
@@ -3014,92 +2709,134 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
     super.dispose();
     totalDeliveryCharges = 0;
     totalPrice = 0;
-    // _emailController.dispose();
-    // _houseController.dispose();
-    // _phoneNumberController.dispose();
-    // _controllers.forEach((c) => c.dispose());
-    // _controllers = null;
   }
 
-  Map<String, model.Store> stores = {};
+  // Map<String, model.Store> stores = {};
 
-  Future<void> checkStoresAvailability() async {
+  Future<void> initialize() async {
     if (demo == null || !widget.demo) {
       User user = Session.data['user'];
       _emailController.text = user.email;
       _phoneNumberController.text = user.phoneNumber;
     }
-    _phoneNumberController.addListener(() {
-      if (_phoneNumberController.text == null ||
-          _phoneNumberController.text == "") {
-        // _phoneNumberController.text = '27';
-        setState(() {});
-      }
-    });
+    // _phoneNumberController.addListener(() {
+    //   if (_phoneNumberController.text == null ||
+    //       _phoneNumberController.text == "") {
+    //     // _phoneNumberController.text = '27';
+    //   }
+    // });
     totalDeliveryCharges = 0;
     totalPrice = 0;
     UserCart cart = Session.getCart();
-    for (var key in cart.itemsData.keys) {
-      final TextEditingController controller = TextEditingController();
-      final TextEditingController flavourController = TextEditingController();
-      _controllers.add(controller);
-      _flavourControllers.add(flavourController);
-      controller.text = cart.itemsData[key]['quantity'].toInt().toString();
-      flavourController.text = cart.itemsData[key]['flavour'];
-      isAnimationVisibleList.add(false);
-      isItemDeleteConfirmationVisibleList.add(false);
-      isButtonActiveList.add(false);
-      isLoadingBarVisibleList.add(false);
+    StoreToReceiveItOrderItems storeAndItsItems = cart.itemsData;
+
+    RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
+
+    // List<Future<DocumentSnapshot>> requests = [];
+    controllersAndConfigs = {};
+    for (var storeId in storeAndItsItems.itemDetails.keys) {
+      ReceiveItOrderItem orderItems = storeAndItsItems.itemDetails[storeId];
+      // var request = Firestore.instance
+      //     .collection('stores')
+      //     .document(storeId)
+      //     .get(source: Source.server);
+      // requests.add(request);
+      for (var itemId in orderItems.itemDetails.keys) {
+        final TextEditingController controller = TextEditingController();
+        final TextEditingController flavourController = TextEditingController();
+        controller.text =
+            '${storeAndItsItems?.itemDetails[storeId]?.itemDetails[itemId]?.quantity ?? 1}';
+        flavourController.text =
+            '${storeAndItsItems?.itemDetails[storeId]?.itemDetails[itemId]?.flavour ?? ''}';
+        controllersAndConfigs.putIfAbsent(storeId, () => {});
+        controllersAndConfigs[storeId].putIfAbsent(
+          itemId,
+          () => {
+            'item': storesAndItems.items.value[itemId],
+            'quantityController': controller,
+            'flavourController': flavourController,
+            'animationVisible': false,
+            'itemDeletionVisible': false,
+            'buttonActive': false,
+          },
+        );
+      }
     }
-    bool removed = false;
+
+    // for (var key in cart.itemsData.keys) {
+    //   final TextEditingController controller = TextEditingController();
+    //   final TextEditingController flavourController = TextEditingController();
+    //   _controllers.add(controller);
+    //   _flavourControllers.add(flavourController);
+    //   controller.text = cart.itemsData[key]['quantity'].toInt().toString();
+    //   flavourController.text = cart.itemsData[key]['flavour'];
+    //   isAnimationVisibleList.add(false);
+    //   isItemDeleteConfirmationVisibleList.add(false);
+    //   isButtonActiveList.add(false);
+    // }
+    // bool removed = false;
     // UserCart cart = Session.data['cart'];
-    final itemsData = cart.itemsData;
-    final items = cart.items;
-    if (items == null || items.length <= 0) {
-      return;
-    }
-    List<Future<DocumentSnapshot>> requests = [];
-    Map<String, String> idsDone = {};
-    for (var storeItem in items) {
-      if (!idsDone.containsKey(storeItem.storeId)) {
-        var request = Firestore.instance
-            .collection('stores')
-            .document(storeItem.storeId)
-            .get(source: Source.server);
-        requests.add(request);
-        idsDone.putIfAbsent(storeItem.storeId, () => 'done');
-      }
-    }
-    for (var request in requests) {
-      var snapshot = await request;
-      stores.putIfAbsent(
-          snapshot.documentID, () => model.Store.fromMap(snapshot.data));
-    }
-    final tempStoreItems = List<model.StoreItem>.from(items);
-    for (int i = 0; i < tempStoreItems.length; i++) {
-      if (!((stores[tempStoreItems[i].storeId]?.isOpened) ?? false)) {
-        items.remove(tempStoreItems[i]);
-        itemsData.remove(tempStoreItems[i].itemId);
-        removed = true;
-      }
-    }
-    if (removed) {
-      Utils.showSnackBarWarning(
-        context,
-        '''Removed Some Items from Cart, Because their respective Store is Closed''',
-        Duration(
-          seconds: 6,
-        ),
-      );
-    }
+    // final itemsData = cart.itemsData.itemDetails;
+    // final items = cart.items;
+    // if (items == null || items.length <= 0) {
+    //   return;
+    // }
+    // List<Future<DocumentSnapshot>> requests = [];
+    // Map<String, String> idsDone = {};
+    // for (var storeItem in items) {
+    //   if (!idsDone.containsKey(storeItem.storeId)) {
+    //     var request = Firestore.instance
+    //         .collection('stores')
+    //         .document(storeItem.storeId)
+    //         .get(source: Source.server);
+    //     requests.add(request);
+    //     idsDone.putIfAbsent(storeItem.storeId, () => 'done');
+    //   }
+    // }
+    // for (var request in requests) {
+    //   var snapshot = await request;
+    //   model.Store store = model.Store.fromMap(snapshot.data);
+    //   storesAndItems.stores.value.update(
+    //     snapshot.documentID,
+    //     (value) => store,
+    //   );
+    //   if (store.isOpened ?? false) {
+    //     itemsData.remove(store.storeId);
+    //   }
+    //   // stores.putIfAbsent(
+    //   //     snapshot.documentID, () => model.Store.fromMap(snapshot.data));
+    // }
+    // final tempStoreItems = List<model.StoreItem>.from();
+    // for (int i = 0; i < tempStoreItems.length; i++) {
+    //   if (!((stores[tempStoreItems[i].storeId]?.isOpened) ?? false)) {
+    //     items.remove(tempStoreItems[i]);
+    //     itemsData.remove(tempStoreItems[i].itemId);
+    //     removed = true;
+    //   }
+    // }
+
+    // if (removed) {
+    //   Utils.showSnackBarWarning(
+    //     context,
+    //     '''Removed Some Items from Cart, Because their respective Store is Closed''',
+    //     Duration(
+    //       seconds: 6,
+    //     ),
+    //   );
+    // }
     return;
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
-        future: removeUnnecessaryItemsAndInitialize,
+        future: initializeCart,
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
           return SingleChildScrollView(
             physics: BouncingScrollPhysics(),
             child: Column(
@@ -3120,79 +2857,69 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
                             height: itemMargin,
                           ),
                         ),
-                        ListTile(
-                          onTap: () async {
-                            Coordinates destination = toAddress?.coordinates;
-                            LatLng latlng = destination == null
-                                ? null
-                                : LatLng(
-                                    destination.latitude,
-                                    destination.longitude,
+                        StreamBuilder<Map<String, Address>>(
+                            stream: GetIt.I.get<RxAddress>().stream$,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+                              var toAddress = snapshot.data['toAddress'];
+                              return ListTile(
+                                onTap: () async {
+                                  Coordinates destination =
+                                      toAddress?.coordinates;
+                                  LatLng latlng = destination == null
+                                      ? null
+                                      : LatLng(
+                                          destination.latitude,
+                                          destination.longitude,
+                                        );
+                                  LocationResult result =
+                                      await Utils.showPlacePicker(
+                                    context,
+                                    initialLocation: latlng,
                                   );
-                            LocationResult result = await Utils.showPlacePicker(
-                              context,
-                              initialLocation: latlng,
-                            );
-                            if (result != null) {
-                              Coordinates coordinates = Coordinates(
-                                result.latLng.latitude,
-                                result.latLng.longitude,
+                                  if (result != null) {
+                                    Coordinates coordinates = Coordinates(
+                                      result.latLng.latitude,
+                                      result.latLng.longitude,
+                                    );
+                                    GetIt.I
+                                        .get<RxAddress>()
+                                        .setToAddress(Address(
+                                          addressLine: result.address,
+                                          coordinates: coordinates,
+                                        ));
+                                  }
+                                },
+                                leading: Icon(
+                                  Icons.location_on,
+                                  color: Theme.of(context).accentColor,
+                                ),
+                                title: Text(
+                                  ((toAddress?.coordinates?.latitude ?? 0) ==
+                                              0 &&
+                                          (toAddress?.coordinates?.longitude ??
+                                                  0) ==
+                                              0)
+                                      ? 'Address Not Set'
+                                      : toAddress?.addressLine ??
+                                          'Address Not Set',
+                                  style: TextStyle(
+                                    color: Theme.of(context).accentColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  Icons.edit,
+                                  color: Theme.of(context).accentColor,
+                                  size: 18,
+                                ),
                               );
-                              toAddress = Address(
-                                addressLine: result.address,
-                                coordinates: coordinates,
-                              );
-                              // toAddress = (await Geocoder.google(
-                              //   await Utils.getAPIKey(),
-                              // ).findAddressesFromCoordinates(coordinates))[0];
-                              setState(() {});
-                              widget.onAddressChange(toAddress);
-                              // if (mounted) {
-                              // WidgetsBinding.instance.addPostFrameCallback((_) {
-                              // if (mounted) {
-                              // try {
-                              //   widget.key.currentState.setState(() {});
-                              // } catch (ex) {
-                              //   print('Error Error Error');
-                              //   print('Error Error Error');
-                              //   print('Error Error Error');
-                              //   print('Error Error Error');
-                              //   print('Error Error Error');
-                              //   debugPrint(ex.toString());
-                              // }
-                              //   debugPrint(ex.toString());
-                              //   Future.delayed(Duration(seconds: 3), () {
-                              //     if (mounted) {
-                              //       setState(() {});
-                              //     }
-                              //   });
-                              // }
-                              // }
-                              // });
-                              // }
-                            }
-                          },
-                          leading: Icon(
-                            Icons.location_on,
-                            color: Theme.of(context).accentColor,
-                          ),
-                          title: Text(
-                            ((toAddress?.coordinates?.latitude ?? 0) == 0 &&
-                                    (toAddress?.coordinates?.longitude ?? 0) ==
-                                        0)
-                                ? 'Address Not Set'
-                                : toAddress?.addressLine ?? 'Address Not Set',
-                            style: TextStyle(
-                              color: Theme.of(context).accentColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                          trailing: Icon(
-                            Icons.edit,
-                            color: Theme.of(context).accentColor,
-                            size: 18,
-                          ),
-                        ),
+                            }),
                         Opacity(
                           opacity: 0,
                           child: Container(
@@ -3307,30 +3034,6 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
                 SizedBox(
                   height: 140,
                 ),
-                // SizedBox(
-                //   height: 10,
-                // ),
-                // FutureBuilder(
-                //   future: getDeliveryCharges(),
-                //   builder: (context, snapshot) {
-
-                //   },
-                // ),
-                // FutureBuilder<Widget>(
-                //   future: _getCartItems(),
-                //   builder: (context, snapshot) {
-                //     if (snapshot.connectionState == ConnectionState.waiting) {
-                //       return Center(
-                //         child: CircularProgressIndicator(),
-                //       );
-                //     } else if(snapshot.data != null){
-                //       return snapshot.data;
-                //     }
-                //     else {
-                //       return Center(child: Text('No Item in Cart'));
-                //     }
-                //   },
-                // // ),
 
                 /***************************************************** */
                 //*****************Payment Methods*******************
@@ -3387,512 +3090,691 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
         });
   }
 
-  List<model.StoreItem> items;
-  Map<String, Map<String, dynamic>> itemsData;
-  double totalDeliveryCharges = 0;
-  double totalPrice = 0;
-  List<GlobalKey<CartItemState>> globalKeysForCartItem = [];
-  // List<double> quantities;
-
-  // var count = [0, 0, 0, 0];
-  // Widget cartItems;
+  // List<model.StoreItem> items;
+  // Map<String, Map<String, dynamic>> itemsData;
 
   Widget _getCartItems() {
-    UserCart cart = Session.data['cart'];
-    itemsData = cart.itemsData;
-    items = cart.items;
-    if (items.length == 0) {
-      return Card(
-        child: Container(
-          padding: EdgeInsets.only(
-            top: 50,
-            bottom: 50,
-          ),
-          child: Center(
-            child: Text(
-              'Cart is Empty',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headline5,
-            ),
-          ),
-        ),
-      );
-    }
-    totalDeliveryCharges = 0;
-    totalPrice = 0;
-    // List<double> deliveryCharges = [];
-    // for (int i = 0; i < items.length; i++) {
-    //   isAnimationVisibleList.add(false);
-    //   isItemDeleteConfirmationVisibleList.add(false);
-    // }
-    return Card(
-      margin: EdgeInsets.only(
-        top: groupMargin,
-      ), //left: cardMargin, right: cardMargin),
-      elevation: 5,
-      child: Container(
-        padding: EdgeInsets.only(top: cardPadding, bottom: cardPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Center(
-              child: Text(
-                'Items In Cart',
-                style: Theme.of(context).textTheme.headline5,
+    return StreamBuilder<Map<String, Address>>(
+        stream: GetIt.I.get<RxAddress>().stream$,
+        builder: (ctx, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          Address toAddress;
+          if (snapshot.data == null) {
+            toAddress = null;
+          } else {
+            toAddress = snapshot.data['toAddress'];
+          }
+          UserCart cart = Session.data['cart'];
+          Map<String, ReceiveItOrderItem> itemsData =
+              cart.itemsData.itemDetails;
+          // bool itemFound = false;
+          // items = cart.items;
+
+          if (itemsData.keys.length <= 0) {
+            return Card(
+              child: Container(
+                padding: EdgeInsets.only(
+                  top: 50,
+                  bottom: 50,
+                ),
+                child: Center(
+                  child: Text(
+                    'Cart is Empty',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline5,
+                  ),
+                ),
               ),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List<Widget>.generate(items.length, (index) {
-                globalKeysForCartItem.add(GlobalKey<CartItemState>());
-                // model.StoreItem item = items[index];
-                totalPrice += items[index].price *
-                    itemsData[items[index].itemId]['quantity'];
-                if (toAddress != null) {
-                  // double distance = Utils.calculateDistance(
-                  //   LatLng(ShoppingCartRoute._toAddress.coordinates.latitude,
-                  //       ShoppingCartRoute._toAddress.coordinates.longitude),
-                  //   items[index].latlng,
-                  // );
+            );
+          }
+          totalDeliveryCharges = 0;
+          totalPrice = 0;
 
-                  print('To Coordinates: ${toAddress?.coordinates ?? ''}');
-                  print(
-                    'Item: ${items[index]?.latlng ?? ''}',
-                  );
+          List<Widget> cartItems = [];
 
-                  // if (distance <= 5) {
-                  //   deliveryCharges.add(
-                  //     List<double>.generate(
-                  //       itemsData[items[index].itemId].toInt(),
-                  //       (i) => 30,
-                  //     ),
-                  //   );
-                  // } else {
-                  //   distance -= 5;
-                  //   double kiloMeters = distance.ceilToDouble();
-                  //   deliveryCharges.add(
-                  //     List<double>.generate(
-                  //       itemsData[items[index].itemId].toInt(),
-                  //       (i) => double.parse(
-                  //         (30 + (4.5 * kiloMeters)).toStringAsFixed(2),
-                  //       ),
-                  //     ),
-                  //   );
-                  // }
-                  // deliveryCharges.add()
-                }
-                return Stack(
-                  children: <Widget>[
-                    CartItem(
-                      key: globalKeysForCartItem[index],
-                      onDelete: () {
-                        isAnimationVisibleList[index] = true;
-                        Future.delayed(Duration(milliseconds: 100)).then(
-                          (_) {
-                            isItemDeleteConfirmationVisibleList[index] = true;
-                            setState(() {});
-                          },
-                        );
-                        setState(() {});
-                      },
-                      onFlavourChange: (index, value) async {
-                        items[index].flavour = value;
-                        // await Firestore.instance
-                        //     .collection('carts')
-                        //     .document((Session.data['user'] as User).userId)
-                        //     .setData(
-                        //   {
-                        //     'itemsData': {
-                        //       items[index].itemId: {
-                        //         'flavour': value,
-                        //         'quantity':
-                        //             items[index].quantity?.toDouble() ?? 1,
-                        //       },
-                        //     }
-                        //   },
-                        //   merge: true,
-                        // );
-                        itemsData.update(items[index].itemId, (a) {
-                          return {
-                            'quantity': (items[index]?.quantity ?? 0) == 0
-                                ? 1
-                                : items[index].quantity,
-                            'flavour': value ?? '',
-                          };
-                        }, ifAbsent: () {
-                          return {
-                            'quantity': (items[index]?.quantity ?? 0) == 0
-                                ? 1
-                                : items[index].quantity,
-                            'flavour': value ?? '',
-                          };
-                        });
-                      },
-                      onQuantityChange: (value, index) async {
-                        if (value == null || value == 0) {
-                          return;
-                        }
-                        items[index].quantity = value.toDouble();
-                        // Firestore.instance
-                        //     .collection('carts')
-                        //     .document((Session.data['user'] as User).userId)
-                        //     .setData(
-                        //   {
-                        //     'itemsData': {
-                        //       items[index].itemId: {
-                        //         'quantity': value?.toDouble() ?? 1,
-                        //         'flavour': items[index]?.flavour ?? '',
-                        //       },
-                        //     }
-                        //   },
-                        //   merge: true,
-                        // );
-                        itemsData.update(items[index].itemId, (a) {
-                          return {
-                            'quantity': value?.toDouble() ?? 1,
-                            'flavour': items[index].flavour ?? '',
-                          };
-                        });
-                        totalPrice = 0;
-                        for (var item in items) {
-                          totalPrice +=
-                              item.price * itemsData[item.itemId]['quantity'];
-                        }
-                        totalPrice += totalDeliveryCharges;
-
-                        // if (value != null) {
-                        //   totalPrice += item.price * value;
-                        setState(() {});
-                        // }
-                      },
-                      item: items[index],
-                      controller: _controllers[index],
-                      flavourController: _flavourControllers[index],
-                      itemIndex: index,
-                    ),
-                    isAnimationVisibleList[index]
-                        ? Positioned(
-                            left: 0,
-                            right: 0,
-                            top: 4,
-                            bottom: 4,
-                            child: AnimatedOpacity(
-                                duration: Duration(milliseconds: 800),
-                                opacity:
-                                    isItemDeleteConfirmationVisibleList[index]
-                                        ? 1
-                                        : 0,
-                                onEnd: () {
-                                  if (isItemDeleteConfirmationVisibleList[
-                                      index]) {
-                                    isAnimationVisibleList[index] = true;
-                                    isButtonActiveList[index] = true;
-                                  } else {
-                                    isAnimationVisibleList[index] = false;
-                                  }
-                                  setState(() {});
-                                },
-                                child: Container(
-                                  color: Colors.white.withAlpha(240),
-                                  padding: EdgeInsets.only(
-                                      top: 8,
-                                      bottom: 8,
-                                      left: MediaQuery.of(context).size.width *
-                                          0.2,
-                                      right: MediaQuery.of(context).size.width *
-                                          0.2),
-                                  child: isLoadingBarVisibleList[index]
-                                      ? Center(
-                                          child: CircularProgressIndicator(),
-                                        )
-                                      : Row(
-                                          children: <Widget>[
-                                            Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: <Widget>[
-                                                IconButton(
-                                                  splashColor: Theme.of(context)
-                                                      .primaryColor,
-                                                  tooltip: "Cancel",
-                                                  onPressed:
-                                                      isButtonActiveList[index]
-                                                          ? () {
-                                                              isButtonActiveList[
-                                                                      index] =
-                                                                  false;
-                                                              isItemDeleteConfirmationVisibleList[
-                                                                      index] =
-                                                                  false;
-                                                              setState(() {});
-                                                            }
-                                                          : null,
-                                                  icon: Icon(
-                                                    Icons.close,
-                                                    color: Theme.of(context)
-                                                        .primaryColor,
-                                                    size: 36,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                  'Cancel',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .subtitle1,
-                                                ),
-                                              ],
-                                            ),
-                                            Spacer(),
-                                            Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: <Widget>[
-                                                IconButton(
-                                                  tooltip: "Confirm",
-                                                  splashColor: Theme.of(context)
-                                                      .primaryColor,
-                                                  onPressed: isButtonActiveList[
-                                                          index]
-                                                      ? () async {
-                                                          // isButtonActiveList[index] =
-                                                          //     false;
-                                                          // isItemDeleteConfirmationVisibleList[
-                                                          //     index] = false;
-                                                          // setState(() {});
-
-                                                          isLoadingBarVisibleList[
-                                                              index] = true;
-                                                          setState(() {});
-
-                                                          User user = Session
-                                                              .data['user'];
-                                                          UserCart cart =
-                                                              Session
-                                                                  .data['cart'];
-                                                          var itemsData = Map<
-                                                              String,
-                                                              Map<String,
-                                                                  dynamic>>.from(
-                                                            cart.itemsData,
-                                                          );
-
-                                                          itemsData.removeWhere(
-                                                            (key, value) =>
-                                                                key ==
-                                                                items[index]
-                                                                    .itemId,
-                                                          );
-                                                          // quantities.removeAt(index);
-                                                          Firestore.instance
-                                                              .collection(
-                                                                  'carts')
-                                                              .document(
-                                                                  user.userId)
-                                                              .setData(
-                                                            {
-                                                              'itemsData':
-                                                                  itemsData,
-                                                              // 'quantities': quantities,
-                                                            },
-                                                          ).catchError((error) {
-                                                            Utils.showSnackBarError(
-                                                                context,
-                                                                error
-                                                                    .toString());
-                                                            setState(() {
-                                                              isButtonActiveList[
-                                                                      index] =
-                                                                  false;
-                                                              isItemDeleteConfirmationVisibleList[
-                                                                      index] =
-                                                                  false;
-                                                              isLoadingBarVisibleList[
-                                                                      index] =
-                                                                  false;
-                                                            });
-                                                          }).then((_) {
-                                                            cart.items.remove(
-                                                              items[index]
-                                                                  .itemId,
-                                                            );
-                                                            cart.itemsData
-                                                                .removeWhere(
-                                                                    (key,
-                                                                        value) {
-                                                              if (key ==
-                                                                  items[index]
-                                                                      .itemId) {
-                                                                return true;
-                                                              }
-                                                              return false;
-                                                            });
-                                                            // cart.quantities.removeAt(index);
-                                                            setState(() {
-                                                              isButtonActiveList[
-                                                                      index] =
-                                                                  false;
-                                                              isItemDeleteConfirmationVisibleList[
-                                                                      index] =
-                                                                  false;
-                                                              isLoadingBarVisibleList[
-                                                                      index] =
-                                                                  false;
-                                                              items.removeAt(
-                                                                  index);
-                                                              _controllers
-                                                                  .removeAt(
-                                                                      index);
-                                                              _flavourControllers
-                                                                  .removeAt(
-                                                                      index);
-                                                              print(_controllers
-                                                                  .length);
-                                                              print(
-                                                                  _flavourControllers
-                                                                      .length);
-                                                            });
-                                                          });
-                                                        }
-                                                      : null,
-                                                  icon: Icon(
-                                                    Icons.check,
-                                                    color: Colors.red,
-                                                    size: 36,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                  'Yes',
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .subtitle1
-                                                      .copyWith(
-                                                        color: Colors.red,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                )),
-                          )
-                        : Opacity(opacity: 0),
-                  ],
-                );
-              }),
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Container(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.end,
+          RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
+          Map<String, Store> storesMap = storesAndItems.stores.value;
+          Map<String, model.StoreItem> itemsMap = storesAndItems.items.value;
+          String deliveryChargesAsString = getDeliveryCharges(toAddress);
+          LatLng toLatLng = Utils.latLngFromCoordinates(toAddress?.coordinates);
+          totalPrice += totalDeliveryCharges;
+          for (var storeId in itemsData.keys) {
+            Store store = storesMap[storeId];
+            LatLng storeLatLng = store.storeLatLng;
+            String distance = 'N/A';
+            if (toLatLng != null) {
+              distance =
+                  '${Utils.calculateDistance(storeLatLng, toLatLng).toStringAsFixed(1)} Km';
+            }
+            cartItems.add(SizedBox(
+              height: 16.0,
+            ));
+            cartItems.add(
+              Row(
                 children: <Widget>[
                   Text(
-                    'Delivery\nCharges',
-                    style: Theme.of(context).textTheme.subtitle1,
+                    '   ${store.storeName}',
+                    style: Theme.of(context).textTheme.subtitle2.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
-                  Container(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                    height: 40,
-                    margin: EdgeInsets.all(8),
-                  ),
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 180),
-                    child: Text(
-                      '''${toAddress == null ? 'Select a Destination' : ((toAddress?.coordinates?.latitude ?? 0) == 0 && (toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : getDeliveryCharges()}''',
-                      style: Theme.of(context).textTheme.subtitle2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.visible,
+                  Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Transform.rotate(
+                      angle: 45,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.navigation,
+                        size: 16,
+                      ),
                     ),
                   ),
-                  Container(
-                    color: Theme.of(context).primaryColor,
-                    width: 2,
-                    height: 40,
-                    margin: EdgeInsets.all(8),
-                  ),
                   Text(
-                    'Total\nR${totalDeliveryCharges.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.subtitle1,
-                    textAlign: TextAlign.center,
+                    ' $distance',
+                    style: Theme.of(context).textTheme.caption,
+                  ),
+                ],
+              ),
+            );
+            cartItems.add(SizedBox(
+              height: 8.0,
+            ));
+
+            // controllersAndConfigs.putIfAbsent(storeId, () => {});
+
+            for (var itemId in itemsData[storeId].itemDetails.keys) {
+              GlobalKey<CartItemState> cartItemKey = GlobalKey<CartItemState>();
+              controllersAndConfigs[storeId].putIfAbsent(itemId, () => {});
+              controllersAndConfigs[storeId][itemId]
+                  .putIfAbsent('cartItemKey', () => cartItemKey);
+              totalPrice += itemsMap[itemId].price *
+                  itemsData[storeId].itemDetails[itemId].quantity;
+              Widget widget = Stack(
+                children: <Widget>[
+                  CartItem(
+                    key: cartItemKey,
+                    onDelete: () {
+                      controllersAndConfigs[storeId][itemId].update(
+                        'animationVisible',
+                        (old) => true,
+                        ifAbsent: () => true,
+                      );
+                      Future.delayed(Duration(milliseconds: 100)).then(
+                        (_) {
+                          controllersAndConfigs[storeId][itemId].update(
+                            'itemDeletionVisible',
+                            (old) => true,
+                            ifAbsent: () => true,
+                          );
+                          // isItemDeleteConfirmationVisibleList[index] = true;
+                          setState(() {});
+                        },
+                      );
+                      setState(() {});
+                    },
+                    onFlavourChange: (value) async {
+                      itemsData[storeId].itemDetails[itemId].flavour = value;
+                      // itemsData.update(items[index].itemId, (a) {
+                      //   return {
+                      //     'quantity': (items[index]?.quantity ?? 0) == 0
+                      //         ? 1
+                      //         : items[index].quantity,
+                      //     'flavour': value ?? '',
+                      //   };
+                      // }, ifAbsent: () {
+                      //   return {
+                      //     'quantity': (items[index]?.quantity ?? 0) == 0
+                      //         ? 1
+                      //         : items[index].quantity,
+                      //     'flavour': value ?? '',
+                      //   };
+                      // });
+                    },
+                    onQuantityChange: (value) async {
+                      if (value == null || value == 0) {
+                        return;
+                      }
+                      // items[index].quantity = value.toDouble();
+                      // itemsData.update(items[index].itemId, (a) {
+                      //   return {
+                      //     'quantity': value?.toDouble() ?? 1,
+                      //     'flavour': items[index].flavour ?? '',
+                      //   };
+                      // });
+                      itemsData[storeId].itemDetails[itemId].quantity = value;
+                      totalPrice = 0;
+
+                      for (var storeId in itemsData.keys) {
+                        for (var itemId
+                            in itemsData[storeId].itemDetails.keys) {
+                          model.StoreItem item = itemsMap[itemId];
+                          int quantity =
+                              itemsData[storeId].itemDetails[itemId].quantity;
+                          totalPrice += item.price * quantity;
+                        }
+                      }
+
+                      // for (var item in items) {
+                      //   totalPrice +=
+                      //       item.price * itemsData[item.itemId]['quantity'];
+                      // }
+                      totalPrice += totalDeliveryCharges;
+                      setState(() {});
+                    },
+                    item: itemsMap[itemId],
+                    controller: controllersAndConfigs[storeId][itemId]
+                        ['quantityController'],
+                    flavourController: controllersAndConfigs[storeId][itemId]
+                        ['flavourController'],
+                    // itemIndex: index,
+                  ),
+                  controllersAndConfigs[storeId][itemId]['animationVisible'] ??
+                          false
+                      ? Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 4,
+                          bottom: 4,
+                          child: AnimatedOpacity(
+                              duration: Duration(milliseconds: 800),
+                              opacity: controllersAndConfigs[storeId][itemId]
+                                      ['itemDeletionVisible']
+                                  ? 1
+                                  : 0,
+                              onEnd: () {
+                                if (controllersAndConfigs[storeId][itemId]
+                                    ['itemDeletionVisible']) {
+                                  controllersAndConfigs[storeId][itemId].update(
+                                      'animationVisible', (old) => true,
+                                      ifAbsent: () => true);
+                                  // isAnimationVisibleList[index] = true;
+
+                                  controllersAndConfigs[storeId][itemId].update(
+                                      'buttonActive', (old) => true,
+                                      ifAbsent: () => true);
+                                  // isButtonActiveList[index] = true;
+                                } else {
+                                  controllersAndConfigs[storeId][itemId].update(
+                                    'animationVisible',
+                                    (old) => false,
+                                    ifAbsent: () => false,
+                                  );
+                                }
+                                setState(() {});
+                              },
+                              child: Container(
+                                color: Colors.white.withAlpha(240),
+                                padding: EdgeInsets.only(
+                                    top: 8,
+                                    bottom: 8,
+                                    left:
+                                        MediaQuery.of(context).size.width * 0.2,
+                                    right: MediaQuery.of(context).size.width *
+                                        0.2),
+                                child: Row(
+                                  children: <Widget>[
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        IconButton(
+                                          splashColor:
+                                              Theme.of(context).primaryColor,
+                                          tooltip: "Cancel",
+                                          onPressed: controllersAndConfigs[
+                                                      storeId][itemId]
+                                                  ['buttonActive']
+                                              ? () {
+                                                  controllersAndConfigs[storeId]
+                                                          [itemId]
+                                                      .update(
+                                                    'buttonActive',
+                                                    (old) => false,
+                                                    ifAbsent: () => false,
+                                                  );
+                                                  controllersAndConfigs[storeId]
+                                                          [itemId]
+                                                      .update(
+                                                    'itemDeletionVisible',
+                                                    (old) => false,
+                                                    ifAbsent: () => false,
+                                                  );
+                                                  setState(() {});
+                                                }
+                                              : null,
+                                          icon: Icon(
+                                            Icons.close,
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                            size: 36,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: 4,
+                                        ),
+                                        Text(
+                                          'Cancel',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                    Spacer(),
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        IconButton(
+                                          tooltip: "Confirm",
+                                          splashColor:
+                                              Theme.of(context).primaryColor,
+                                          onPressed:
+                                              controllersAndConfigs[storeId]
+                                                      [itemId]['buttonActive']
+                                                  ? () async {
+                                                      // cart.items.remove(
+                                                      //   items[index].itemId,
+                                                      // );
+                                                      itemsData[storeId]
+                                                          .itemDetails
+                                                          .remove(itemId);
+                                                      if (itemsData[storeId]
+                                                              .itemDetails
+                                                              .length <=
+                                                          0) {
+                                                        itemsData
+                                                            .remove(storeId);
+                                                      }
+                                                      setState(() {
+                                                        controllersAndConfigs[
+                                                                storeId]
+                                                            .remove(itemId);
+                                                        if (controllersAndConfigs[
+                                                                    storeId]
+                                                                .length <=
+                                                            0) {
+                                                          controllersAndConfigs
+                                                              .remove(storeId);
+                                                        }
+                                                        // isButtonActiveList[index] =
+                                                        //     false;
+                                                        // isItemDeleteConfirmationVisibleList[
+                                                        //     index] = false;
+                                                        // // items.removeAt(index);
+                                                        // _controllers
+                                                        //     .removeAt(index);
+                                                        // _flavourControllers
+                                                        //     .removeAt(index);
+                                                      });
+                                                    }
+                                                  : null,
+                                          icon: Icon(
+                                            Icons.check,
+                                            color: Colors.red,
+                                            size: 36,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          height: 4,
+                                        ),
+                                        Text(
+                                          'Yes',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .subtitle1
+                                              .copyWith(
+                                                color: Colors.red,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        )
+                      : Opacity(opacity: 0),
+                ],
+              );
+              cartItems.add(
+                widget,
+              );
+              cartItems.add(SizedBox(height: 4));
+            }
+          }
+
+          return Card(
+            margin: EdgeInsets.only(
+              top: groupMargin,
+            ),
+            elevation: 5,
+            child: Container(
+              padding: EdgeInsets.only(
+                top: cardPadding,
+                bottom: cardPadding,
+                left: 10,
+                right: 10.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Center(
+                    child: Text(
+                      'Items In Cart',
+                      style: Theme.of(context).textTheme.headline5,
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: cartItems,
+                    // List<Widget>.generate(items.length, (index) {
+                    //   // globalKeysForCartItem.add(GlobalKey<CartItemState>());
+                    //   // model.StoreItem item = items[index];
+                    //   totalPrice += items[index].price *
+                    //       itemsData[items[index].itemId]['quantity'];
+                    //   if (toAddress != null) {
+                    //     print(
+                    //         'To Coordinates: ${toAddress?.coordinates ?? ''}');
+                    //     print(
+                    //       'Item: ${items[index]?.latlng ?? ''}',
+                    //     );
+                    //   }
+                    //   return Stack(
+                    //     children: <Widget>[
+                    //       CartItem(
+                    //         key: globalKeysForCartItem[index],
+                    //         onDelete: () {
+                    //           isAnimationVisibleList[index] = true;
+                    //           Future.delayed(Duration(milliseconds: 100)).then(
+                    //             (_) {
+                    //               isItemDeleteConfirmationVisibleList[index] =
+                    //                   true;
+                    //               setState(() {});
+                    //             },
+                    //           );
+                    //           setState(() {});
+                    //         },
+                    //         onFlavourChange: (index, value) async {
+                    //           items[index].flavour = value;
+                    //           itemsData.update(items[index].itemId, (a) {
+                    //             return {
+                    //               'quantity': (items[index]?.quantity ?? 0) == 0
+                    //                   ? 1
+                    //                   : items[index].quantity,
+                    //               'flavour': value ?? '',
+                    //             };
+                    //           }, ifAbsent: () {
+                    //             return {
+                    //               'quantity': (items[index]?.quantity ?? 0) == 0
+                    //                   ? 1
+                    //                   : items[index].quantity,
+                    //               'flavour': value ?? '',
+                    //             };
+                    //           });
+                    //         },
+                    //         onQuantityChange: (value, index) async {
+                    //           if (value == null || value == 0) {
+                    //             return;
+                    //           }
+                    //           items[index].quantity = value.toDouble();
+                    //           itemsData.update(items[index].itemId, (a) {
+                    //             return {
+                    //               'quantity': value?.toDouble() ?? 1,
+                    //               'flavour': items[index].flavour ?? '',
+                    //             };
+                    //           });
+                    //           totalPrice = 0;
+                    //           for (var item in items) {
+                    //             totalPrice += item.price *
+                    //                 itemsData[item.itemId]['quantity'];
+                    //           }
+                    //           totalPrice += totalDeliveryCharges;
+                    //           setState(() {});
+                    //         },
+                    //         item: items[index],
+                    //         controller: _controllers[index],
+                    //         flavourController: _flavourControllers[index],
+                    //         itemIndex: index,
+                    //       ),
+                    //       isAnimationVisibleList[index]
+                    //           ? Positioned(
+                    //               left: 0,
+                    //               right: 0,
+                    //               top: 4,
+                    //               bottom: 4,
+                    //               child: AnimatedOpacity(
+                    //                   duration: Duration(milliseconds: 800),
+                    //                   opacity:
+                    //                       isItemDeleteConfirmationVisibleList[
+                    //                               index]
+                    //                           ? 1
+                    //                           : 0,
+                    //                   onEnd: () {
+                    //                     if (isItemDeleteConfirmationVisibleList[
+                    //                         index]) {
+                    //                       isAnimationVisibleList[index] = true;
+                    //                       isButtonActiveList[index] = true;
+                    //                     } else {
+                    //                       isAnimationVisibleList[index] = false;
+                    //                     }
+                    //                     setState(() {});
+                    //                   },
+                    //                   child: Container(
+                    //                     color: Colors.white.withAlpha(240),
+                    //                     padding: EdgeInsets.only(
+                    //                         top: 8,
+                    //                         bottom: 8,
+                    //                         left: MediaQuery.of(context)
+                    //                                 .size
+                    //                                 .width *
+                    //                             0.2,
+                    //                         right: MediaQuery.of(context)
+                    //                                 .size
+                    //                                 .width *
+                    //                             0.2),
+                    //                     child: Row(
+                    //                       children: <Widget>[
+                    //                         Column(
+                    //                           mainAxisSize: MainAxisSize.min,
+                    //                           children: <Widget>[
+                    //                             IconButton(
+                    //                               splashColor: Theme.of(context)
+                    //                                   .primaryColor,
+                    //                               tooltip: "Cancel",
+                    //                               onPressed:
+                    //                                   isButtonActiveList[index]
+                    //                                       ? () {
+                    //                                           isButtonActiveList[
+                    //                                                   index] =
+                    //                                               false;
+                    //                                           isItemDeleteConfirmationVisibleList[
+                    //                                                   index] =
+                    //                                               false;
+                    //                                           setState(() {});
+                    //                                         }
+                    //                                       : null,
+                    //                               icon: Icon(
+                    //                                 Icons.close,
+                    //                                 color: Theme.of(context)
+                    //                                     .primaryColor,
+                    //                                 size: 36,
+                    //                               ),
+                    //                             ),
+                    //                             SizedBox(
+                    //                               height: 4,
+                    //                             ),
+                    //                             Text(
+                    //                               'Cancel',
+                    //                               style: Theme.of(context)
+                    //                                   .textTheme
+                    //                                   .subtitle1,
+                    //                             ),
+                    //                           ],
+                    //                         ),
+                    //                         Spacer(),
+                    //                         Column(
+                    //                           mainAxisSize: MainAxisSize.min,
+                    //                           children: <Widget>[
+                    //                             IconButton(
+                    //                               tooltip: "Confirm",
+                    //                               splashColor: Theme.of(context)
+                    //                                   .primaryColor,
+                    //                               onPressed: isButtonActiveList[
+                    //                                       index]
+                    //                                   ? () async {
+                    //                                       UserCart cart =
+                    //                                           Session
+                    //                                               .data['cart'];
+                    //                                       cart.items.remove(
+                    //                                         items[index].itemId,
+                    //                                       );
+                    //                                       cart.itemsData
+                    //                                           .removeWhere(
+                    //                                               (key, value) {
+                    //                                         if (key ==
+                    //                                             items[index]
+                    //                                                 .itemId) {
+                    //                                           return true;
+                    //                                         }
+                    //                                         return false;
+                    //                                       });
+                    //                                       setState(() {
+                    //                                         isButtonActiveList[
+                    //                                             index] = false;
+                    //                                         isItemDeleteConfirmationVisibleList[
+                    //                                             index] = false;
+                    //                                         items.removeAt(
+                    //                                             index);
+                    //                                         _controllers
+                    //                                             .removeAt(
+                    //                                                 index);
+                    //                                         _flavourControllers
+                    //                                             .removeAt(
+                    //                                                 index);
+                    //                                       });
+                    //                                     }
+                    //                                   : null,
+                    //                               icon: Icon(
+                    //                                 Icons.check,
+                    //                                 color: Colors.red,
+                    //                                 size: 36,
+                    //                               ),
+                    //                             ),
+                    //                             SizedBox(
+                    //                               height: 4,
+                    //                             ),
+                    //                             Text(
+                    //                               'Yes',
+                    //                               style: Theme.of(context)
+                    //                                   .textTheme
+                    //                                   .subtitle1
+                    //                                   .copyWith(
+                    //                                     color: Colors.red,
+                    //                                   ),
+                    //                             ),
+                    //                           ],
+                    //                         ),
+                    //                       ],
+                    //                     ),
+                    //                   )),
+                    //             )
+                    //           : Opacity(opacity: 0),
+                    //     ],
+                    //   );
+                    // }),
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Container(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: <Widget>[
+                        Text(
+                          'Delivery\nCharges',
+                          style: Theme.of(context).textTheme.subtitle1,
+                        ),
+                        Container(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                          height: 40,
+                          margin: EdgeInsets.all(8),
+                        ),
+                        Container(
+                          constraints: BoxConstraints(maxWidth: 180),
+                          child: Text(
+                            '''${toAddress == null ? 'Select a Destination' : ((toAddress?.coordinates?.latitude ?? 0) == 0 && (toAddress?.coordinates?.longitude ?? 0) == 0) ? 'Select a Destination' : deliveryChargesAsString}''',
+                            style: Theme.of(context).textTheme.subtitle2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.visible,
+                          ),
+                        ),
+                        Container(
+                          color: Theme.of(context).primaryColor,
+                          width: 2,
+                          height: 40,
+                          margin: EdgeInsets.all(8),
+                        ),
+                        Text(
+                          'Total\nR${totalDeliveryCharges.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.subtitle1,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Container(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Total: R${(totalPrice).toStringAsFixed(1)}',
+                      style: Theme.of(context).textTheme.headline6.copyWith(
+                            inherit: true,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 100,
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 10),
-            Container(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'Total: R${(totalPrice + totalDeliveryCharges).toStringAsFixed(1)}',
-                style: Theme.of(context).textTheme.headline6.copyWith(
-                      inherit: true,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ),
-            SizedBox(
-              height: 100,
-            ),
-          ],
-        ),
-      ),
-    );
+          );
+        });
   }
 
-  String getDeliveryCharges() {
+  String getDeliveryCharges(Address toAddress) {
+    if (toAddress == null) {
+      return '';
+    }
     String finalString = '';
     double total = 0;
     // int index = 0;
+    Map<String, ReceiveItOrderItem> cartEachStoreItemsMap =
+        (Session.data['cart'] as UserCart).itemsData.itemDetails;
     Map<String, dynamic> uniqueStores = {};
+    RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
 
-    for (var item in items) {
-      if (uniqueStores.containsKey(item.latlng.toString())) {
-      } else {
-        Coordinates coordinates = toAddress?.coordinates ?? Coordinates(0, 0);
-        double distance = Utils.calculateDistance(
-            LatLng(coordinates.latitude, coordinates.longitude), item.latlng);
-        uniqueStores.putIfAbsent(item.latlng.toString(), () {
-          return {
-            'distance': distance,
-          };
-        });
-      }
+    for (var storeId in cartEachStoreItemsMap.keys) {
+      Store store = storesAndItems.stores.value[storeId];
+      Coordinates coordinates = toAddress?.coordinates ?? Coordinates(0, 0);
+      double distance = Utils.calculateDistance(
+          LatLng(coordinates.latitude, coordinates.longitude),
+          store.storeLatLng);
+      uniqueStores.putIfAbsent(store.storeLatLng.toString(), () {
+        return {
+          'distance': distance,
+        };
+      });
     }
-
-    // for (var item in items) {
-    //   if (deliveryCharges.containsKey(item.latlng.toString())) {
-    //     deliveryCharges[item.latlng.toString()].update(
-    //       'count',
-    //       (old) => old + 1,
-    //     );
-    //   } else {
-    //     Coordinates coordinates =
-    //         ShoppingCartRoute?._toAddress?.coordinates ?? Coordinates(0, 0);
-    //     double distance = Utils.calculateDistance(
-    //         LatLng(coordinates., coordinates.longitude), item.latlng);
-    //     deliveryCharges.putIfAbsent(
-    //       item.latlng.toString(),
-    //       () {
-    //         return {
-    //           'count': 1,
-    //           'distance': distance,
-    //         };
-    //       },
-    //     );
-    //   }
-    // }
 
     uniqueStores.forEach((k, v) {
       final distance = v['distance'];
-      // if (v['count'] == 1) {
       double charges = 30;
       final tempDistance = distance - 5;
       if (tempDistance <= 0) {
@@ -3901,16 +3783,6 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
         charges += ((tempDistance as double) * 4.5);
         v.putIfAbsent('charges', () => charges);
       }
-      // } else {
-      // if (distance <= 10) {
-      //   v.putIfAbsent('charges', () => 60.0);
-      // } else {
-      //   double charges = 60.0;
-      //   final tempDistance = distance - 10;
-      //   charges += ((tempDistance as double).ceilToDouble()) * 4.5;
-      //   v.putIfAbsent('charges', () => charges);
-      // }
-      // }
 
       total += v['charges'];
 
@@ -3920,16 +3792,6 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
         finalString += ' + R${(v['charges'] as double).toStringAsFixed(1)}';
       }
     });
-
-    totalDeliveryCharges = total;
-    // for (List<double> value in deliveryCharges) {
-    //   total += value[0]; // * value.length;
-    //   finalString += '${value[0]}R'; // x ${value.length}';
-    //   if (++index < deliveryCharges.length) {
-    //     finalString += ' + ';
-    //   }
-    // }
-    // finalString += '$total';
     totalDeliveryCharges = total;
     return finalString;
   }
@@ -3939,9 +3801,9 @@ class CartItem extends StatefulWidget {
   final TextEditingController controller;
   final model.StoreItem item;
   final Function onDelete;
-  final int itemIndex;
-  final Function(int value, int index) onQuantityChange;
-  final Function(int index, String value) onFlavourChange;
+  // final int itemIndex;
+  final Function(int value) onQuantityChange;
+  final Function(String value) onFlavourChange;
   final _quantityFocusNode = FocusNode();
   final _flavourFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
@@ -3951,63 +3813,11 @@ class CartItem extends StatefulWidget {
     this.item,
     this.controller,
     this.flavourController,
-    this.itemIndex,
+    // this.itemIndex,
     @required this.onQuantityChange,
     @required this.onDelete,
     @required this.onFlavourChange,
-  }) : super(key: key) {
-    UserCart cart = Session.data['cart'];
-    // controller.removeListener(() {});
-    // flavourController.removeListener((){});
-    controller.addListener(() {
-      if (controller.text == null || controller.text.isEmpty) {
-        return;
-      }
-      int value = int.parse(controller.text);
-      if (value <= 0) {
-        controller.text = '1';
-        cart.itemsData[item.itemId].update(
-          'quantity',
-          (old) => 1,
-          ifAbsent: () => 1,
-        );
-        onQuantityChange(1, itemIndex);
-      } else if (value > 99) {
-        cart.itemsData[item.itemId].update(
-          'quantity',
-          (old) => 99,
-          ifAbsent: () => 99,
-        );
-        onQuantityChange(99, itemIndex);
-      } else {
-        cart.itemsData[item.itemId].update(
-          'quantity',
-          (old) => value.toDouble(),
-          ifAbsent: () => value.toDouble(),
-        );
-        onQuantityChange(value, itemIndex);
-      }
-    });
-    _quantityFocusNode.addListener(() {
-      if (controller.text == '') {
-        controller.text = '1';
-      }
-      key?.currentState?.refresh();
-    });
-    _flavourFocusNode.addListener(() {
-      if (!_flavourFocusNode.hasFocus) {
-        cart.itemsData[item.itemId].update(
-          'flavour',
-          (old) => flavourController?.text ?? '',
-          ifAbsent: () => flavourController?.text ?? '',
-        );
-        onFlavourChange(itemIndex, flavourController?.text ?? '');
-
-        key?.currentState?.refresh();
-      }
-    });
-  }
-
+  }) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return CartItemState();
@@ -4015,26 +3825,57 @@ class CartItem extends StatefulWidget {
 }
 
 class CartItemState extends State<CartItem> {
-  // model.StoreItem item;
-  // TextEditingController controller;
-  // Function(int) onQuantityChange;
-
   bool isPressed = false;
 
-  CartItemState() {
-    // final keys = cart.itemsData.keys;
-  }
+  CartItemState();
+
   @override
   void initState() {
     super.initState();
-  }
 
-  void refresh() {
-    if (mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    Map<String, ReceiveItOrderItem> cartItemsGroupByStores =
+        (Session.data['cart'] as UserCart).itemsData.itemDetails;
+    // controller.removeListener(() {});
+    // flavourController.removeListener((){});
+    widget.controller.addListener(() {
+      if (widget.controller.text == null || widget.controller.text.isEmpty) {
+        return;
+      }
+      int value = int.parse(widget.controller.text);
+      if (value <= 0) {
+        widget.controller.text = '1';
+        cartItemsGroupByStores[widget.item.storeId]
+            .itemDetails[widget.item.itemId]
+            .quantity = 1;
+        widget.onQuantityChange(1);
+      } else if (value > widget.item.remainingInStock) {
+        widget.controller.text = '$value';
+        cartItemsGroupByStores[widget.item.storeId]
+            .itemDetails[widget.item.itemId]
+            .quantity = widget.item.remainingInStock;
+        widget.onQuantityChange(widget.item.remainingInStock);
+      } else {
+        cartItemsGroupByStores[widget.item.storeId]
+            .itemDetails[widget.item.itemId]
+            .quantity = value;
+        widget.onQuantityChange(value);
+      }
+    });
+    widget._quantityFocusNode.addListener(() {
+      if (widget.controller.text == '') {
+        widget.controller.text = '1';
+      }
+      setState(() {});
+    });
+    widget._flavourFocusNode.addListener(() {
+      if (!widget._flavourFocusNode.hasFocus) {
+        cartItemsGroupByStores[widget.item.storeId]
+            .itemDetails[widget.item.itemId]
+            .flavour = widget.flavourController?.text ?? '';
+        widget.onFlavourChange(widget.flavourController?.text ?? '');
         setState(() {});
-      });
-    }
+      }
+    });
   }
 
   @override
@@ -4049,6 +3890,7 @@ class CartItemState extends State<CartItem> {
             Container(
               width: MediaQuery.of(context).size.width,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Container(
@@ -4080,7 +3922,7 @@ class CartItemState extends State<CartItem> {
                         Row(
                           children: [
                             Expanded(
-                              flex: 6,
+                              flex: 8,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4088,7 +3930,7 @@ class CartItemState extends State<CartItem> {
                                   Text(
                                     widget.item.itemName,
                                     style:
-                                        Theme.of(context).textTheme.headline6,
+                                        Theme.of(context).textTheme.subtitle1,
                                   ),
                                   Text(
                                     widget.item.description,
@@ -4098,8 +3940,8 @@ class CartItemState extends State<CartItem> {
                                 ],
                               ),
                             ),
-                            Expanded(
-                              flex: 3,
+                            SizedBox(
+                              width: 80,
                               child: Row(
                                 children: <Widget>[
                                   InkWell(
@@ -4144,7 +3986,7 @@ class CartItemState extends State<CartItem> {
                                   ),
                                   InkWell(
                                     child: Text(
-                                      ' +',
+                                      ' + ',
                                       style: TextStyle(
                                           color: Theme.of(context).accentColor,
                                           fontStyle: FontStyle.normal,
@@ -4167,6 +4009,7 @@ class CartItemState extends State<CartItem> {
                               ),
                             ),
                             Expanded(
+                              flex: 2,
                               child: IconButton(
                                 onPressed: () {
                                   if (!isPressed) {
@@ -4214,10 +4057,6 @@ class CartItemState extends State<CartItem> {
                 helperText:
                     'Add your Flavour here. If Applicable. For Food Deliveries Only',
               ),
-              // onEditingComplete: () {
-              //   widget.onFlavourChange(
-              //       widget.itemIndex, widget.flavourController.text ?? '');
-              // },
             ),
           ],
         ),

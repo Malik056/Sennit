@@ -1,4 +1,5 @@
 import 'package:argon_buttons_flutter/argon_buttons_flutter.dart';
+import 'package:bot_toast/bot_toast.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -6,21 +7,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../main.dart';
 
 class VerifyEmailRoute extends StatelessWidget {
-  VerifyEmailRoute({BuildContext context}) {
-    // FirebaseAuth.instance.currentUser().then((user) async {
-    //   bool done = false;
-    //   while (!done) {
-    //     await Future.delayed(Duration(seconds: 4), () {
-    //       print('inside');
-    //       if (user.isEmailVerified) {
-    //         Navigator.popAndPushNamed(context, MyApp.userHome);
-    //         done = true;
-    //       }
-    //     });
-    //   }
-    // });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,16 +71,19 @@ class VerifyEmailRoute extends StatelessWidget {
                       if ((await FirebaseAuth.instance.currentUser())
                           .isEmailVerified) {
                         if (Session.data['user'] == null) {
+                          BotToast.closeAllLoading();
                           Navigator.popAndPushNamed(
                             context,
                             MyApp.driverHome,
                           );
                         } else {
+                          BotToast.closeAllLoading();
                           Navigator.popAndPushNamed(context, MyApp.userHome);
                         }
                         print('Email Verified');
                       } else {
-                        Navigator.pop(context);
+                        // Navigator.pop(context);
+                        BotToast.closeAllLoading();
                       }
                     },
                   ),

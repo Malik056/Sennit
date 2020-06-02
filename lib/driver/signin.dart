@@ -348,6 +348,7 @@
 //   }
 // }
 
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -358,6 +359,7 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/forgot_password.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DriverSignInRoute extends StatelessWidget {
   @override
@@ -401,7 +403,7 @@ class _DriverSignInState extends State<DriverSignIn> {
   final _formKey = GlobalKey<FormState>();
 
   void performSignin(
-      Map<String, dynamic> userData, AuthResult result, String userId) {
+      Map<String, dynamic> userData, AuthResult result, String userId) async {
     Driver driver = Driver.fromMap(userData);
     driver.driverId = userId;
     Session.data.update(
@@ -424,18 +426,23 @@ class _DriverSignInState extends State<DriverSignIn> {
     //   },
     // );
     // Navigator.pop(context);
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.setString('user', 'driver');
     if (result.user.isEmailVerified) {
       // Navigator.popUntil(
       //     context, (route) => route.isFirst);
+      BotToast.closeAllLoading();
       Navigator.of(context).pushNamedAndRemoveUntil(
         MyApp.driverHome,
         (route) => false,
       );
     } else {
       result.user.sendEmailVerification();
+      BotToast.closeAllLoading();
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (c) {
-          return VerifyEmailRoute(context: context);
+          return VerifyEmailRoute();
         }),
         (route) => false,
       );
@@ -583,7 +590,8 @@ class _DriverSignInState extends State<DriverSignIn> {
                                         .get()
                                         .timeout(Duration(seconds: 20),
                                             onTimeout: () {
-                                      Navigator.pop(context);
+                                      // Navigator.pop(context);
+                                      BotToast.closeAllLoading();
                                       signInButtonEnabled = true;
                                       setState(() {});
                                       Utils.showSnackBarError(
@@ -594,7 +602,9 @@ class _DriverSignInState extends State<DriverSignIn> {
                                           !data.exists ||
                                           data.data == null ||
                                           data.data.length <= 0) {
-                                        Navigator.pop(context);
+                                        // Navigator.pop(context);
+                                        BotToast.closeAllLoading();
+
                                         // result.user.delete();
                                         signInButtonEnabled = true;
                                         setState(() {});
@@ -616,7 +626,9 @@ class _DriverSignInState extends State<DriverSignIn> {
                                           Duration(seconds: 20),
                                           onTimeout: () {
                                             signInButtonEnabled = true;
-                                            Navigator.pop(context);
+                                            // Navigator.pop(context);
+                                            BotToast.closeAllLoading();
+
                                             Utils.showSnackBarError(context,
                                                 'Request Timed out please Try Again!');
                                             setState(() {});

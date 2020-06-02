@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating/flutter_rating.dart';
@@ -297,34 +298,58 @@ class _ActionButtonState extends State<_ActionButton> {
           );
           Utils.showLoadingDialog(context);
           try {
-            Firestore.instance
+            final batch = Firestore.instance.batch();
+            DocumentReference driverRef =
+                Firestore.instance.collection('drivers').document(driverId);
+            DocumentReference driverReviewRef = Firestore.instance
                 .collection('drivers')
                 .document(driverId)
                 .collection('reviews')
-                .add(
-                  review.toMap(),
-                );
-            int totalReviews = (driver.totalReviews ?? 0) + 1;
-            double newRating = (driver.rating ?? 0) + rating;
-            Firestore.instance.collection('drivers').document(driverId).setData(
-              {
-                'rating': newRating / 2.0,
-                'totalReviews': totalReviews,
-              },
-              merge: true,
-            );
-            await Firestore.instance
+                .document('$userId${DateTime.now().millisecondsSinceEpoch}');
+            DocumentReference userNotificationRef = Firestore.instance
                 .collection('users')
                 .document(userId)
                 .collection('notifications')
-                .document(widget.orderId)
-                .updateData({
-              'rated': true,
+                .document(widget.orderId);
+
+            batch.setData(
+              driverReviewRef,
+              review.toMap(),
+            );
+
+            batch.setData(
+              userNotificationRef,
+              {
+                'rated': true,
+              },
+              merge: true,
+            );
+            Future batchReq = batch.commit();
+            await Firestore.instance.runTransaction((transaction) async {
+              DocumentSnapshot newDriverSnapshot =
+                  await transaction.get(driverRef);
+              final driverData = newDriverSnapshot.data;
+              Driver driver = Driver.fromMap(driverData);
+              driver.totalReviews = (driver.totalReviews ?? 0) + 1;
+              driver.rating = (driver.rating ?? 0) + rating;
+              // Firestore.instance
+              //     .collection('drivers')
+              //     .document(driverId)
+              //     .setData(
+              //   {
+              //     'rating': newRating / 2.0,
+              //     'totalReviews': totalReviews,
+              //   },
+              //   merge: true,
+              // );
+              transaction.set(driverRef, driver.toMap());
             });
+            await batchReq;
           } on dynamic catch (_) {
             print(_.toString());
           }
-          Navigator.pop(context);
+          // Navigator.pop(context);
+          BotToast.closeAllLoading();
           Navigator.of(context).pop(true);
         } else if (!update && rating != null && rating > 0) {
           DateTime lastUpdated = DateTime.now();
@@ -345,6 +370,7 @@ class _ActionButtonState extends State<_ActionButton> {
             {"${widget.user.userId}": review.toMap()},
             merge: true,
           );
+          // BotToast.closeAllLoading();
           Navigator.of(context).pop(true);
         } else if (rating != null && rating > 0) {
           myReview.lastUpdated = DateTime.now();

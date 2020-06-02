@@ -73,7 +73,8 @@ class ChangePasswordRoute extends StatelessWidget {
                           await (await FirebaseAuth.instance.currentUser())
                               .updatePassword(_controller.text)
                               .catchError((error) {
-                            Navigator.pop(context);
+                            // Navigator.pop(context);
+                            BotToast.closeAllLoading();
                             Utils.showSnackBarError(context, error.message);
                             pressed = false;
                           }).then((v) async {
@@ -81,20 +82,21 @@ class ChangePasswordRoute extends StatelessWidget {
                             Future.delayed(Duration(seconds: 2), () {
                               BotToast.cleanAll();
                             });
-                            // Navigator.popUntil(
-                            //   context,
-                            //   ModalRoute.withName(
-                            //     MyApp.receiveItRoute,
-                            //   ),
-                            // );
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                            Navigator.pop(context);
-                            Navigator.pop(context);
+                            Navigator.popUntil(
+                              context,
+                              ModalRoute.withName(
+                                MyApp.userHome,
+                              ),
+                            );
+                            // Navigator.pop(context);
+                            // Navigator.pop(context);
+                            // Navigator.pop(context);
+                            // Navigator.pop(context);
                           });
                         } else {
                           pressed = false;
-                          Navigator.pop(context);
+                          // Navigator.pop(context);
+                          BotToast.closeAllLoading();
                         }
                       }
                     },
@@ -167,9 +169,10 @@ class AuthenticateAgainRoute extends StatelessWidget {
                               .currentUser()
                               .catchError((error) {
                             pressed = false;
-                            try {
-                              Navigator.pop(context);
-                            } on dynamic catch (_) {}
+                            BotToast.closeAllLoading();
+                            // try {
+                            //   Navigator.pop(context);
+                            // } on dynamic catch (_) {}
                             Utils.showSnackBarError(
                               context,
                               'Unknown Error! Please try again.',
@@ -184,19 +187,16 @@ class AuthenticateAgainRoute extends StatelessWidget {
                             (error) async {
                               Utils.showSnackBarError(
                                 context,
-                                error.message,
+                                error?.message ?? error.toString(),
                               );
-                              print(
-                                '\n\n\n\\n\n\n\n\n\n\n\n\nMy Error\n\n\n\n\n\n',
-                              );
-                              print((await FirebaseAuth.instance.currentUser())
-                                  .email);
-                              print(error);
-                              Navigator.pop(context);
+                              print(error.toString());
+                              // Navigator.pop(context);
+                              BotToast.closeAllLoading();
                               pressed = false;
                             },
                           );
                           if (result.user != null) {
+                            BotToast.closeAllLoading();
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -206,20 +206,23 @@ class AuthenticateAgainRoute extends StatelessWidget {
                               ),
                             );
                           } else {
-                            try {
-                              Navigator.pop(context);
-                            } on dynamic catch (_) {}
+                            BotToast.closeAllLoading();
+                            // try {
+                            //   Navigator.pop(context);
+                            // } on dynamic catch (_) {}
                             pressed = true;
                             Utils.showSnackBarError(
                               context,
                               'Your password is not correct',
                             );
-                            print((await FirebaseAuth.instance.currentUser()));
+                            print((await FirebaseAuth.instance.currentUser())
+                                .toString());
                           }
                         } else {
-                          try {
-                            Navigator.pop(context);
-                          } on dynamic catch (_) {}
+                          // try {
+                          //   Navigator.pop(context);
+                          // } on dynamic catch (_) {}
+                          BotToast.closeAllLoading();
                           Utils.showSnackBarError(
                             context,
                             'Invalid Password',

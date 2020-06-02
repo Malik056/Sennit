@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:open_appstore/open_appstore.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/rx_models/rx_config.dart';
 
 class UpdateNoticeRoute extends StatelessWidget {
-  final bool compulsory;
-  final String version;
-
-  UpdateNoticeRoute(this.compulsory, this.version);
+  UpdateNoticeRoute();
 
   @override
   Widget build(BuildContext context) {
+    RxConfig rxConfig = GetIt.I.get<RxConfig>();
     return WillPopScope(
       onWillPop: () async {
         return false;
@@ -18,7 +18,7 @@ class UpdateNoticeRoute extends StatelessWidget {
         appBar: AppBar(
           title: Text('Update Notice'),
           centerTitle: true,
-          actions: compulsory
+          actions: rxConfig.config.value['compulsory']
               ? null
               : <Widget>[
                   FlatButton(
@@ -34,7 +34,9 @@ class UpdateNoticeRoute extends StatelessWidget {
         ),
         body: Card(
           margin: EdgeInsets.only(
-            top: 130, left: 8.0, right: 8.0,
+            top: 130,
+            left: 8.0,
+            right: 8.0,
           ),
           elevation: 16.0,
           child: Container(
@@ -63,14 +65,14 @@ class UpdateNoticeRoute extends StatelessWidget {
                 SizedBox(
                   height: 15,
                 ),
-                compulsory
+                rxConfig.config.value['compulsory']
                     ? Text(
-                        '''A new version $version of the app is available.\nThis is a compulsory update.\nPlease Update Your App!''',
+                        '''A new version ${rxConfig.config.value['versionName']} (${rxConfig.config.value['versionCode']}) of the app is available.\nThis is a compulsory update.\nPlease Update Your App!''',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.subtitle1,
                       )
                     : Text(
-                        '''A new version $version is available.\nPlease update the app and get the most out of it.''',
+                        '''A new version ${rxConfig.config.value['versionName']} (${rxConfig.config.value['versionCode']}) is available.\nPlease update the app and get the most out of it.''',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.subtitle1,
                       ),
@@ -81,7 +83,7 @@ class UpdateNoticeRoute extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Spacer(),
-                    !compulsory
+                    !rxConfig.config.value['compulsory']
                         ? RaisedButton(
                             color: Colors.white,
                             onPressed: () {
@@ -100,14 +102,16 @@ class UpdateNoticeRoute extends StatelessWidget {
                         : Opacity(
                             opacity: 0,
                           ),
-                    !compulsory
+                    !rxConfig.config.value['compulsory']
                         ? Spacer()
                         : Opacity(
                             opacity: 0,
                           ),
                     RaisedButton(
                       onPressed: () {
-                        OpenAppstore.launch(androidAppId: 'za.co.sennit', iOSAppId: "1500676443");
+                        OpenAppstore.launch(
+                            androidAppId: 'za.co.sennit',
+                            iOSAppId: "1500676443");
                       },
                       child: Text(
                         'Update',

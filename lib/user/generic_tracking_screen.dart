@@ -7,9 +7,13 @@ import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart'
     as mapbox;
 import 'package:geocoder/geocoder.dart';
 import 'package:geocoder/model.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/models/models.dart';
+import 'package:sennit/rx_models/rx_address.dart';
+import 'package:sennit/rx_models/rx_storesAndItems.dart';
 import 'package:solid_bottom_sheet/solid_bottom_sheet.dart';
 
 enum OrderTrackingType {
@@ -82,6 +86,7 @@ class OrderTracking extends StatefulWidget {
 class _OrderTrackingState extends State<OrderTracking> {
   // _Body body;
   // _MyStatefulAppBar appbar;
+  RxAddress addressService = GetIt.I.get<RxAddress>();
   _MySolidBottomSheetForReceiveIt solidBottomSheet;
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -92,12 +97,13 @@ class _OrderTrackingState extends State<OrderTracking> {
 
   @override
   Widget build(BuildContext context) {
+    LatLng myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.my_location),
         onPressed: () {
-          (_Body._key?.currentWidget as _Body)
-              ?.animateToLatLng(Utils.getLastKnowLocation());
+          (_Body._key?.currentWidget as _Body)?.animateToLatLng(myLatLng);
         },
       ),
       key: scaffoldKey,
@@ -248,7 +254,7 @@ class _Body extends StatefulWidget {
   }
 
   void centerCamera() async {
-    LatLng myLocation = await Utils.getMyLocation();
+    LatLng myLocation = await Utils.getLatestLocation();
     _key?.currentState?._controller?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: myLocation, zoom: 15.0),
@@ -281,6 +287,7 @@ class __BodyState extends State<_Body> {
   BitmapDescriptor dropOffIcon;
   Future<LatLng> initializeTracking;
   StreamSubscription<DocumentSnapshot> _firebaseSubscription;
+  RxAddress addressService = GetIt.I.get<RxAddress>();
 
   String driverId;
   String driverLicencePlateNumber;
@@ -352,9 +359,10 @@ class __BodyState extends State<_Body> {
     driverName = widget.data['driverName'];
     driverImage = widget.data['driverImage'];
 
-    await Utils.getMyLocation().timeout(Duration(seconds: 2), onTimeout: () {
-      return;
-    });
+    // await Utils.getMyLocation().timeout(Duration(seconds: 2), onTimeout: () {
+    //   return;
+    // });
+    // LatLng myLatLng = await Utils.getLatestLocation();
     driverIcon = await BitmapDescriptor.fromAssetImage(
       ImageConfiguration(),
       'assets/images/car.png',
@@ -414,8 +422,6 @@ class __BodyState extends State<_Body> {
       visible: driverLatLng != null,
     );
     _firebaseSubscription = Firestore.instance
-        .collection('users')
-        .document(widget.data['userId'])
         .collection('orders')
         .document(widget.data['orderId'])
         .snapshots()
@@ -498,7 +504,10 @@ class __BodyState extends State<_Body> {
                     GoogleMap(
                       myLocationEnabled: true,
                       initialCameraPosition: CameraPosition(
-                        target: snapshot.data ?? Utils.getLastKnowLocation(),
+                        target: snapshot.data ??
+                            Utils.latLngFromCoordinates(
+                              addressService.currentMyAddress.coordinates,
+                            ),
                         zoom: 14,
                       ),
                       buildingsEnabled: false,
@@ -556,7 +565,7 @@ class __BodyState extends State<_Body> {
                                           color: Theme.of(context).primaryColor,
                                         )
                                       : FadeInImage.assetNetwork(
-                                          placeholder: 'assets/user.png',
+                                          placeholder: 'assets/images/user.png',
                                           image: driverImage,
                                           width: 80,
                                           height: 80,
@@ -629,9 +638,12 @@ class __BodyState extends State<_Body> {
                                   trailing: InkWell(
                                     onTap: () {
                                       OrderTracking.startNavigation(
-                                          context,
-                                          driverLatLng,
-                                          Utils.getLastKnowLocation());
+                                        context,
+                                        driverLatLng,
+                                        Utils.latLngFromCoordinates(
+                                            addressService
+                                                .currentMyAddress.coordinates),
+                                      );
                                     },
                                     child: Container(
                                       height: 80,
@@ -714,8 +726,8 @@ class __BodyState extends State<_Body> {
 }
 
 class _MySolidBottomSheetForReceiveIt extends StatefulWidget {
-  static GlobalKey<_MySolidBottomSheetForReceiveItState> _key =
-      GlobalKey<_MySolidBottomSheetForReceiveItState>();
+  // static GlobalKey<_MySolidBottomSheetForReceiveItState> _key =
+  //     GlobalKey<_MySolidBottomSheetForReceiveItState>();
   final data;
 
   final Function(LatLng) animateToLatLng;
@@ -723,7 +735,7 @@ class _MySolidBottomSheetForReceiveIt extends StatefulWidget {
   _MySolidBottomSheetForReceiveIt({
     @required this.data,
     @required this.animateToLatLng,
-  }) : super(key: _key);
+  }); // : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -736,7 +748,8 @@ class _MySolidBottomSheetForReceiveItState
   var _solidController = SolidController();
   Future<Map<String, dynamic>> items;
   final BottomBarIcon _icon = BottomBarIcon();
-
+  RxAddress addressService = GetIt.I.get<RxAddress>();
+  OrderFromReceiveIt order;
   show() {
     _solidController?.show();
     // _icon?.setIconState(true);
@@ -749,11 +762,11 @@ class _MySolidBottomSheetForReceiveItState
 
   Future<Map<String, dynamic>> getItems(data) async {
     LatLng destination = Utils.latLngFromString(data['destination']);
-    Map<String, Map<String, dynamic>> itemsData =
-        Map<String, Map<String, dynamic>>.from(data['itemsData']);
+    StoreToReceiveItOrderItems itemsData =
+        StoreToReceiveItOrderItems.fromMap(data['itemsData']);
     List<Map<String, dynamic>> itemDetails = [];
     Map<String, dynamic> result = {};
-    final keys = itemsData.keys;
+    final keys = itemsData.itemDetails.keys;
     for (String itemKey in keys) {
       final result =
           await Firestore.instance.collection('items').document(itemKey).get();
@@ -790,368 +803,1151 @@ class _MySolidBottomSheetForReceiveItState
   @override
   void initState() {
     super.initState();
-    items = getItems(widget.data);
+    _solidController = SolidController();
+    order = OrderFromReceiveIt.fromMap(widget.data);
   }
+
+  Future<Address> initializeItemsAndGetAddress() async {
+    // LatLng destination = Utils.latLngFromString(order.destination);
+    StoreToReceiveItOrderItems itemsData = order.itemsData;
+    // List<Map<String, dynamic>> itemDetails = [];
+    // Map<String, dynamic> finalResult = {};
+    final keys = itemsData.itemDetails.keys;
+    List<Future<DocumentSnapshot>> requests = [];
+    RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
+    Map<String, StoreItem> itemsMap = storesAndItems.items.value;
+    // Map<String, Store> storesMap = storesAndItems.stores.value;
+
+    for (String itemKey in keys) {
+      final request =
+          Firestore.instance.collection('items').document(itemKey).get();
+      requests.add(request);
+    }
+    for (var request in requests) {
+      final result = await request;
+      itemsMap.putIfAbsent(
+        result.documentID,
+        () => StoreItem.fromMap(result.data),
+      );
+    }
+    Address address = (await Geocoder.google(await Utils.getAPIKey())
+        .findAddressesFromCoordinates(Coordinates(
+            order.destination.latitude, order.destination.longitude)))[0];
+    return address;
+    // itemDetails.add({'destination' : address.addressLine});
+    // finalResult.putIfAbsent('destinationLatLng', () {
+    //   return destination;
+    // });
+
+    // finalResult.putIfAbsent('itemDetails', () {
+    //   return itemDetails;
+    // });
+  }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   items = getItems(widget.data);
+  // }
 
   @override
   Widget build(BuildContext context) {
+    LatLng myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     return SolidBottomSheet(
-      controller: _solidController,
-      // enableDrag: true,
-      // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
-      maxHeight: 550,
+      controller: _solidController..hide(),
+      toggleVisibilityOnTap: true,
       onShow: () async {
-        _icon?.setIconState(true);
+        (BottomBarIcon._key?.currentWidget as BottomBarIcon)
+            ?.setIconState(true);
       },
       onHide: () async {
-        _icon?.setIconState(false);
+        (BottomBarIcon._key?.currentWidget as BottomBarIcon)
+            ?.setIconState(false);
       },
+      // enableDrag: true,
+      // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
+      maxHeight: 500,
       elevation: 8.0,
       draggableBody: true,
-      toggleVisibilityOnTap: true,
-      // headerBar: InkWell(
-      //   onTap: () {
-      //     if(_solidController != null && _solidController.isOpened) {
-      //       hide();
-      //     }
-      //     else {
-      //       show();
-      //     }
-      //   },
-      // child:
-      headerBar: Container(
-        height: 40,
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+      headerBar: InkWell(
+        onTap: () {
+          if (_solidController.isOpened ?? false) {
+            _solidController?.hide();
+          } else {
+            _solidController?.show();
+          }
+        },
+        child: Container(
+          height: 40,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+            ),
           ),
+          child: BottomBarIcon(),
         ),
-        child: _icon,
       ),
-      // ),
-
-      body: FutureBuilder<Map<String, dynamic>>(
-          future: items,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting ||
-                snapshot.data == null) {
+      body: FutureBuilder<Address>(
+          future: initializeItemsAndGetAddress(),
+          builder: (context, destinationSnapshot) {
+            if (destinationSnapshot.connectionState ==
+                ConnectionState.waiting) {
               return Center(
                 child: CircularProgressIndicator(),
               );
             }
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  SizedBox(
-                    height: 8,
-                  ),
-                  Text(
-                    'OrderId: ${widget.data['shortId']}',
-                    style: Theme.of(context).textTheme.subtitle1,
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Container(
-                    color: Theme.of(context).primaryColor,
-                    padding: EdgeInsets.all(6),
-                    child: Text(
-                      ' P i c k u p ',
+            return StreamBuilder<Map<String, Address>>(
+                stream: addressService.stream$,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  RxStoresAndItems storesAndItems =
+                      GetIt.I.get<RxStoresAndItems>();
+
+                  Map<String, Store> stores = storesAndItems.stores.value;
+                  Map<String, StoreItem> items = storesAndItems.items.value;
+
+                  List<Widget> widgets = [];
+                  //Adding Top Widgets Before Stores and Items.
+                  widgets.addAll([
+                    SizedBox(height: 10),
+                    Text(
+                      'OrderId: ${widget.data['shortId']}',
+                      style: Theme.of(context).textTheme.subtitle1,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Container(
-                    // color: Colors.black,
-                    // width: MediaQuery.of(context).size.width,
-                    height: 200,
-                    child: ListView.builder(
-                      // padding: EdgeInsets.only(right: 20),
-                      scrollDirection: Axis.horizontal,
-                      // dragStartBehavior: DragStartBehavior.start,
-                      physics: BouncingScrollPhysics(),
-                      itemCount: snapshot.data['itemDetails'].length,
-                      itemBuilder: (context, index) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Card(
-                              elevation: 8,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: InkWell(
-                                  splashColor: Theme.of(context)
-                                      .primaryColor
-                                      .withAlpha(190),
-                                  onTap: () async {
-                                    widget.animateToLatLng(
-                                      Utils.latLngFromString(
-                                        snapshot.data['itemDetails'][index]
-                                            ['latlng'],
+                    SizedBox(
+                      height: 16,
+                    ),
+                    Text('Phone: ${order.phoneNumber}'),
+                    SizedBox(
+                      height: 16,
+                    ),
+                    (order.house ?? '') != ''
+                        ? Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                    text: 'Apt: ',
+                                    style:
+                                        Theme.of(context).textTheme.subtitle1),
+                                TextSpan(
+                                    text: order.house,
+                                    style:
+                                        Theme.of(context).textTheme.subtitle2),
+                              ],
+                            ),
+                          )
+                        : Opacity(opacity: 0),
+                    SizedBox(height: 6),
+                    Text(
+                      order.dropToDoor
+                          ? 'Bring Order to Door'
+                          : 'You Meet at Vehicle',
+                      style: Theme.of(context).textTheme.subtitle1,
+                    ),
+                    SizedBox(
+                      height: 40,
+                    ),
+                    Container(
+                      color: Theme.of(context).primaryColor,
+                      padding: EdgeInsets.all(6),
+                      child: Text(
+                        ' P i c k u p ',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                  ]);
+
+                  //Adding Lists of Stores and their Items.
+                  Map<String, ReceiveItOrderItem> storeAndItsItems =
+                      order.itemsData.itemDetails;
+                  for (var storeId in order.itemsData.itemDetails.keys) {
+                    Store store = stores[storeId];
+                    var itemKeysOfCurrentStore =
+                        storeAndItsItems[storeId].itemDetails.keys.toList();
+                    widgets.add(
+                      SizedBox(height: 14),
+                    );
+                    widgets.add(
+                      Text(
+                        '  ${store.storeName}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .subtitle2
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    );
+                    widgets.add(
+                      SizedBox(height: 7),
+                    );
+                    widgets.add(
+                      InkWell(
+                        splashColor:
+                            Theme.of(context).primaryColor.withAlpha(190),
+                        onTap: () async {
+                          widget.animateToLatLng(
+                            store.storeLatLng,
+                          );
+                          _solidController.hide();
+                        },
+                        child: SizedBox(
+                          height: 110,
+                          child: Row(
+                            // crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              SizedBox(width: 10),
+                              SizedBox(
+                                height: 110,
+                                width: 150,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                          text: 'Address: ',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .subtitle2),
+                                      TextSpan(
+                                        text: store.storeAddress,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2,
                                       ),
-                                    );
-                                    hide();
-                                  },
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          Container(
-                                            color: Colors.black,
-                                            child: Image.network(
-                                              '${snapshot.data['itemDetails'][index]['images'][0]}',
-                                              height: 100,
-                                              width: 100,
-                                              fit: BoxFit.fitWidth,
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-                                          Container(
-                                            width: 150,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                    ],
+                                  ),
+                                  strutStyle: StrutStyle(
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Container(
+                                  height: 110,
+                                  child: ListView.builder(
+                                    padding: EdgeInsets.only(right: 20),
+                                    scrollDirection: Axis.horizontal,
+                                    // dragStartBehavior: DragStartBehavior.start,
+                                    physics: BouncingScrollPhysics(),
+                                    itemCount: itemKeysOfCurrentStore
+                                        .length, // TODO://Fix it,
+                                    itemBuilder: (context, index) {
+                                      StoreItem item =
+                                          items[itemKeysOfCurrentStore[index]];
+                                      ReceiveItOrderItemDetails
+                                          receiveItOrderItemDetails =
+                                          storeAndItsItems[storeId]
+                                              .itemDetails[item.itemId];
+                                      // return Container(color: Colors.brown,child: Text('Hello!'));
+                                      return Card(
+                                        elevation: 8,
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: Container(
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: <Widget>[
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                  snapshot.data['itemDetails']
-                                                      [index]['itemName'],
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .subtitle1,
-                                                ),
-                                                SizedBox(
-                                                  height: 4,
-                                                ),
-                                                Text(
-                                                    '${snapshot.data['itemDetails'][index]['storeAddress']}'),
-                                                Align(
-                                                  alignment:
-                                                      Alignment.centerRight,
-                                                  child: Text(
-                                                    "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                                Container(
+                                                  color: Colors.black,
+                                                  child: Image.network(
+                                                    '${item.images[0]}',
+                                                    height: 100,
+                                                    width: 100,
+                                                    fit: BoxFit.fitWidth,
                                                   ),
-                                                )
+                                                ),
+                                                SizedBox(
+                                                  height: 0,
+                                                  width: 8,
+                                                ),
+                                                Container(
+                                                  width: 150,
+                                                  // height: 100,
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: <Widget>[
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                        item.itemName,
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .subtitle1,
+                                                      ),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                          'Price: R${item.price.toStringAsFixed(1)}'),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Text(
+                                                          'Qty: ${receiveItOrderItemDetails.quantity}'),
+                                                      SizedBox(
+                                                        height: 4,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .bottomRight,
+                                                        child: Text(
+                                                          "Total: R${(item.price * receiveItOrderItemDetails.quantity).toStringAsFixed(1)}",
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          maxLines: 1,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                                Container(
+                                                  color: Colors.grey,
+                                                  child: SizedBox(
+                                                    height: 0,
+                                                    width: 8,
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
-                                          SizedBox(
-                                            width: 8,
-                                          ),
-                                        ],
-                                      ),
-                                      InkWell(
-                                        splashColor: Theme.of(context)
-                                            .primaryColor
-                                            .withAlpha(190),
-                                        onTap: () async {
-                                          print('Opened in Maps');
-                                          LatLng latlng =
-                                              Utils.latLngFromString(
-                                            snapshot.data['itemDetails'][index]
-                                                ['latlng'],
-                                          );
-                                          OrderTracking.startNavigation(
-                                            context,
-                                            latlng,
-                                            Utils.getLastKnowLocation(),
-                                          );
-                                        },
-                                        child: Container(
-                                          width: 270.0,
-                                          color: Theme.of(context).primaryColor,
-                                          // child: Row(
-                                          //   children: [
-                                          //     Expanded(
-                                          //       child: Container(
-                                          //         padding:
-                                          //             const EdgeInsets.all(8.0),
-                                          //         child: Text(
-                                          //           'Navigate Here!',
-                                          //           style: TextStyle(
-                                          //               color: Colors.white),
-                                          //         ),
-                                          //       ),
-                                          //     ),
-                                          //   ],
-                                          // ),
                                         ),
-                                      )
-                                    ],
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
-                            ),
-                            // RaisedButton(
-                            //   onPressed: () {},
-                            //   child: Text('Open in Map',
-                            //       style: TextStyle(color: Colors.white)),
-                            // ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Card(
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: InkWell(
-                        splashColor:
-                            Theme.of(context).primaryColor.withAlpha(190),
-                        onTap: () {
-                          LatLng latLng = snapshot.data['destinationLatLng'];
-                          widget.animateToLatLng(latLng);
-                          hide();
-                        },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Container(
-                              decoration: ShapeDecoration(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(8.0),
-                                    topRight: Radius.circular(8.0),
-                                  ),
-                                ),
-                                color: Theme.of(context).primaryColor,
-                              ),
-                              padding: EdgeInsets.all(6),
-                              child: Text(
-                                ' D r o p o f f ',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: <Widget>[
-                                  Icon(Icons.location_on),
-                                  Expanded(
-                                    child: Text(
-                                      '${(snapshot.data['destination'] as Address).addressLine}',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            InkWell(
-                              splashColor:
-                                  Theme.of(context).primaryColor.withAlpha(190),
-                              onTap: () async {
-                                print('Opened in maps');
-                                LatLng latLng =
-                                    snapshot.data['destinationLatLng'];
-                                // MapsLauncher.launchCoordinates(
-                                //   latLng.latitude,
-                                //   latLng.longitude,
-                                // );
-                                OrderTracking.startNavigation(
-                                  context,
-                                  latLng,
-                                  Utils.getLastKnowLocation(),
-                                );
-                              },
-                              child: Container(
+                    );
+                    // widgets.add(
+                    //   InkWell(
+                    //     splashColor:
+                    //         Theme.of(context).primaryColor.withAlpha(190),
+                    //     onTap: () async {
+                    //       LatLng latlng = store.storeLatLng;
+                    //       print('Navigating to $latlng');
+                    //       OrderTracking.startNavigation(
+                    //         context,
+                    //         latlng,
+                    //         myLatLng,
+                    //       );
+                    //     },
+                    //     child: Container(
+                    //       width: MediaQuery.of(context).size.width,
+                    //       color: Theme.of(context).primaryColor,
+                    //       child: Row(
+                    //         children: [
+                    //           Expanded(
+                    //             child: Container(
+                    //               padding: const EdgeInsets.all(8.0),
+                    //               child: Text(
+                    //                 'Navigate Here!',
+                    //                 style: TextStyle(color: Colors.white),
+                    //               ),
+                    //             ),
+                    //           ),
+                    //         ],
+                    //       ),
+                    //     ),
+                    //   ),
+                    // );
+
+                  }
+                  widgets.add(
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: InkWell(
+                          splashColor:
+                              Theme.of(context).primaryColor.withAlpha(190),
+                          onTap: () {
+                            LatLng latLng = order.destination;
+                            widget.animateToLatLng(latLng);
+                            _solidController.hide();
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              Container(
                                 decoration: ShapeDecoration(
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.only(
-                                      bottomLeft: Radius.circular(8.0),
-                                      bottomRight: Radius.circular(8.0),
+                                      topLeft: Radius.circular(8.0),
+                                      topRight: Radius.circular(8.0),
                                     ),
                                   ),
                                   color: Theme.of(context).primaryColor,
                                 ),
-                                padding: EdgeInsets.all(8.0),
+                                padding: EdgeInsets.all(6),
                                 child: Text(
-                                  'Navigate Here!',
+                                  ' D r o p o f f ',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
-                            ),
-                          ],
+                              SizedBox(
+                                height: 10,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    Icon(Icons.location_on),
+                                    Expanded(
+                                      child: Text(
+                                        '${destinationSnapshot?.data?.addressLine ?? 'Unable to Fetch the address'}',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // InkWell(
+                              //   splashColor: Theme.of(context)
+                              //       .primaryColor
+                              //       .withAlpha(190),
+                              //   onTap: () async {
+                              //     print('Opened in maps');
+                              //     LatLng latLng = order.destination;
+                              //     // MapsLauncher.launchCoordinates(
+                              //     //   latLng.latitude,
+                              //     //   latLng.longitude,
+                              //     // );
+                              //     OrderTracking.startNavigation(
+                              //       context,
+                              //       latLng,
+                              //       myLatLng,
+                              //     );
+                              //   },
+                              //   child: Container(
+                              //     decoration: ShapeDecoration(
+                              //       shape: RoundedRectangleBorder(
+                              //         borderRadius: BorderRadius.only(
+                              //           bottomLeft: Radius.circular(8.0),
+                              //           bottomRight: Radius.circular(8.0),
+                              //         ),
+                              //       ),
+                              //       color: Theme.of(context).primaryColor,
+                              //     ),
+                              //     padding: EdgeInsets.all(8.0),
+                              //     child: Text(
+                              //       'Navigate Here!',
+                              //       style: TextStyle(
+                              //         color: Colors.white,
+                              //       ),
+                              //       textAlign: TextAlign.center,
+                              //     ),
+                              //   ),
+                              // ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
+                  );
+
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: widgets,
+                      // <Widget>[
+                      //   SizedBox(height: 10),
+                      //   Text(
+                      //     'OrderId: ${widget.data['shortId']}',
+                      //     style: Theme.of(context).textTheme.subtitle1,
+                      //     textAlign: TextAlign.center,
+                      //   ),
+                      //   SizedBox(
+                      //     height: 40,
+                      //   ),
+                      //   Container(
+                      //     color: Theme.of(context).primaryColor,
+                      //     padding: EdgeInsets.all(6),
+                      //     child: Text(
+                      //       ' P i c k u p ',
+                      //       textAlign: TextAlign.center,
+                      //       style: TextStyle(
+                      //           color: Colors.white,
+                      //           fontSize: 18,
+                      //           fontWeight: FontWeight.bold),
+                      //     ),
+                      //   ),
+                      //   SizedBox(
+                      //     height: 10,
+                      //   ),
+                      //   Container(
+                      //     // color: Colors.black,
+                      //     // width: MediaQuery.of(context).size.width,
+                      //     height: 200,
+                      //     child: ListView.builder(
+                      //       // padding: EdgeInsets.only(right: 20),
+                      //       scrollDirection: Axis.horizontal,
+                      //       // dragStartBehavior: DragStartBehavior.start,
+                      //       physics: BouncingScrollPhysics(),
+                      //       itemCount: 10, // TODO://Fix it,
+                      //       itemBuilder: (context, index) {
+                      //         return Column(
+                      //           mainAxisSize: MainAxisSize.min,
+                      //           children: <Widget>[
+                      //             Card(
+                      //               elevation: 8,
+                      //               child: ClipRRect(
+                      //                 borderRadius: BorderRadius.circular(4),
+                      //                 child: InkWell(
+                      //                   splashColor: Theme.of(context)
+                      //                       .primaryColor
+                      //                       .withAlpha(190),
+                      //                   onTap: () async {
+                      //                     widget.animateToLatLng(
+                      //                       Utils.latLngFromString(
+                      //                         snapshot.data['itemDetails']
+                      //                             [index]['latlng'],
+                      //                       ),
+                      //                     );
+                      //                     _solidController.hide();
+                      //                   },
+                      //                   child: Column(
+                      //                     mainAxisSize: MainAxisSize.min,
+                      //                     children: <Widget>[
+                      //                       Row(
+                      //                         mainAxisSize: MainAxisSize.min,
+                      //                         children: <Widget>[
+                      //                           Container(
+                      //                             color: Colors.black,
+                      //                             child: Image.network(
+                      //                               '${snapshot.data['itemDetails'][index]['images'][0]}',
+                      //                               height: 100,
+                      //                               width: 100,
+                      //                               fit: BoxFit.fitWidth,
+                      //                             ),
+                      //                           ),
+                      //                           SizedBox(
+                      //                             width: 8,
+                      //                           ),
+                      //                           Container(
+                      //                             width: 150,
+                      //                             child: Column(
+                      //                               crossAxisAlignment:
+                      //                                   CrossAxisAlignment
+                      //                                       .start,
+                      //                               children: <Widget>[
+                      //                                 SizedBox(
+                      //                                   height: 4,
+                      //                                 ),
+                      //                                 Text(
+                      //                                   snapshot.data[
+                      //                                           'itemDetails']
+                      //                                       [index]['itemName'],
+                      //                                   style: Theme.of(context)
+                      //                                       .textTheme
+                      //                                       .subtitle1,
+                      //                                 ),
+                      //                                 SizedBox(
+                      //                                   height: 4,
+                      //                                 ),
+                      //                                 Text(
+                      //                                     '${snapshot.data['itemDetails'][index]['storeAddress']}'),
+                      //                                 Align(
+                      //                                   alignment: Alignment
+                      //                                       .centerRight,
+                      //                                   child: Text(
+                      //                                     "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(2)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
+                      //                                     overflow: TextOverflow
+                      //                                         .ellipsis,
+                      //                                     maxLines: 1,
+                      //                                     style: TextStyle(
+                      //                                       fontSize: 14,
+                      //                                       fontWeight:
+                      //                                           FontWeight.bold,
+                      //                                     ),
+                      //                                   ),
+                      //                                 )
+                      //                               ],
+                      //                             ),
+                      //                           ),
+                      //                           SizedBox(
+                      //                             width: 8,
+                      //                           ),
+                      //                         ],
+                      //                       ),
+                      //                       InkWell(
+                      //                         splashColor: Theme.of(context)
+                      //                             .primaryColor
+                      //                             .withAlpha(190),
+                      //                         onTap: () async {
+                      //                           LatLng latlng =
+                      //                               Utils.latLngFromString(
+                      //                             snapshot.data['itemDetails']
+                      //                                 [index]['latlng'],
+                      //                           );
+                      //                           print('Navigating to $latlng');
+                      //                           OrderNavigationRoute
+                      //                               ._startNavigation(
+                      //                             context,
+                      //                             latlng,
+                      //                             myLatLng,
+                      //                           );
+                      //                         },
+                      //                         child: Container(
+                      //                           width: 270.0,
+                      //                           color: Theme.of(context)
+                      //                               .primaryColor,
+                      //                           child: Row(
+                      //                             children: [
+                      //                               Expanded(
+                      //                                 child: Container(
+                      //                                   padding:
+                      //                                       const EdgeInsets
+                      //                                           .all(8.0),
+                      //                                   child: Text(
+                      //                                     'Navigate Here!',
+                      //                                     style: TextStyle(
+                      //                                         color:
+                      //                                             Colors.white),
+                      //                                   ),
+                      //                                 ),
+                      //                               ),
+                      //                             ],
+                      //                           ),
+                      //                         ),
+                      //                       )
+                      //                     ],
+                      //                   ),
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             // RaisedButton(
+                      //             //   onPressed: () {},
+                      //             //   child: Text('Open in Map',
+                      //             //       style: TextStyle(color: Colors.white)),
+                      //             // ),
+                      //           ],
+                      //         );
+                      //       },
+                      //     ),
+                      //   ),
+                      //   SizedBox(
+                      //     height: 10,
+                      //   ),
+                      //   Padding(
+                      //     padding: const EdgeInsets.all(18.0),
+                      //     child: Card(
+                      //       elevation: 8,
+                      //       shape: RoundedRectangleBorder(
+                      //         borderRadius: BorderRadius.circular(8.0),
+                      //       ),
+                      //       child: InkWell(
+                      //         splashColor:
+                      //             Theme.of(context).primaryColor.withAlpha(190),
+                      //         onTap: () {
+                      //           LatLng latLng =
+                      //               snapshot.data['destinationLatLng'];
+                      //           widget.animateToLatLng(latLng);
+                      //           _solidController.hide();
+                      //         },
+                      //         child: Column(
+                      //           mainAxisSize: MainAxisSize.min,
+                      //           crossAxisAlignment: CrossAxisAlignment.stretch,
+                      //           children: <Widget>[
+                      //             Container(
+                      //               decoration: ShapeDecoration(
+                      //                 shape: RoundedRectangleBorder(
+                      //                   borderRadius: BorderRadius.only(
+                      //                     topLeft: Radius.circular(8.0),
+                      //                     topRight: Radius.circular(8.0),
+                      //                   ),
+                      //                 ),
+                      //                 color: Theme.of(context).primaryColor,
+                      //               ),
+                      //               padding: EdgeInsets.all(6),
+                      //               child: Text(
+                      //                 ' D r o p o f f ',
+                      //                 textAlign: TextAlign.center,
+                      //                 style: TextStyle(
+                      //                   color: Colors.white,
+                      //                   fontSize: 18,
+                      //                   fontWeight: FontWeight.bold,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //             SizedBox(
+                      //               height: 10,
+                      //             ),
+                      //             Container(
+                      //               padding: const EdgeInsets.all(8.0),
+                      //               child: Row(
+                      //                 crossAxisAlignment:
+                      //                     CrossAxisAlignment.center,
+                      //                 children: <Widget>[
+                      //                   Icon(Icons.location_on),
+                      //                   Expanded(
+                      //                     child: Text(
+                      //                       '${(snapshot.data['destination'] as Address).addressLine}',
+                      //                     ),
+                      //                   ),
+                      //                 ],
+                      //               ),
+                      //             ),
+                      //             SizedBox(
+                      //               height: 10,
+                      //             ),
+                      //             InkWell(
+                      //               splashColor: Theme.of(context)
+                      //                   .primaryColor
+                      //                   .withAlpha(190),
+                      //               onTap: () async {
+                      //                 print('Opened in maps');
+                      //                 LatLng latLng =
+                      //                     snapshot.data['destinationLatLng'];
+                      //                 // MapsLauncher.launchCoordinates(
+                      //                 //   latLng.latitude,
+                      //                 //   latLng.longitude,
+                      //                 // );
+                      //                 OrderNavigationRoute._startNavigation(
+                      //                   context,
+                      //                   latLng,
+                      //                   myLatLng,
+                      //                 );
+                      //               },
+                      //               child: Container(
+                      //                 decoration: ShapeDecoration(
+                      //                   shape: RoundedRectangleBorder(
+                      //                     borderRadius: BorderRadius.only(
+                      //                       bottomLeft: Radius.circular(8.0),
+                      //                       bottomRight: Radius.circular(8.0),
+                      //                     ),
+                      //                   ),
+                      //                   color: Theme.of(context).primaryColor,
+                      //                 ),
+                      //                 padding: EdgeInsets.all(8.0),
+                      //                 child: Text(
+                      //                   'Navigate Here!',
+                      //                   style: TextStyle(
+                      //                     color: Colors.white,
+                      //                   ),
+                      //                   textAlign: TextAlign.center,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ],
+                    ),
+                  );
+                });
           }),
     );
   }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   items = getItems(widget.data);
+  // }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   return SolidBottomSheet(
+  //     controller: _solidController,
+  //     // enableDrag: true,
+  //     // backgroundColor: Color.fromARGB(0, 0, 0, 0 ),
+  //     maxHeight: 550,
+  //     onShow: () async {
+  //       _icon?.setIconState(true);
+  //     },
+  //     onHide: () async {
+  //       _icon?.setIconState(false);
+  //     },
+  //     elevation: 8.0,
+  //     draggableBody: true,
+  //     toggleVisibilityOnTap: true,
+  //     // headerBar: InkWell(
+  //     //   onTap: () {
+  //     //     if(_solidController != null && _solidController.isOpened) {
+  //     //       hide();
+  //     //     }
+  //     //     else {
+  //     //       show();
+  //     //     }
+  //     //   },
+  //     // child:
+  //     headerBar: Container(
+  //       height: 40,
+  //       decoration: ShapeDecoration(
+  //         color: Colors.white,
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.only(
+  //               topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+  //         ),
+  //       ),
+  //       child: _icon,
+  //     ),
+  //     // ),
+
+  //     body: FutureBuilder<Map<String, dynamic>>(
+  //         future: items,
+  //         builder: (context, snapshot) {
+  //           if (snapshot.connectionState == ConnectionState.waiting ||
+  //               snapshot.data == null) {
+  //             return Center(
+  //               child: CircularProgressIndicator(),
+  //             );
+  //           }
+  //           return SingleChildScrollView(
+  //             child: Column(
+  //               mainAxisSize: MainAxisSize.min,
+  //               crossAxisAlignment: CrossAxisAlignment.stretch,
+  //               children: <Widget>[
+  //                 SizedBox(
+  //                   height: 8,
+  //                 ),
+  //                 Text(
+  //                   'OrderId: ${widget.data['shortId']}',
+  //                   style: Theme.of(context).textTheme.subtitle1,
+  //                 ),
+  //                 SizedBox(
+  //                   height: 10,
+  //                 ),
+  //                 Container(
+  //                   color: Theme.of(context).primaryColor,
+  //                   padding: EdgeInsets.all(6),
+  //                   child: Text(
+  //                     ' P i c k u p ',
+  //                     textAlign: TextAlign.center,
+  //                     style: TextStyle(
+  //                         color: Colors.white,
+  //                         fontSize: 18,
+  //                         fontWeight: FontWeight.bold),
+  //                   ),
+  //                 ),
+  //                 SizedBox(
+  //                   height: 10,
+  //                 ),
+  //                 Container(
+  //                   // color: Colors.black,
+  //                   // width: MediaQuery.of(context).size.width,
+  //                   height: 200,
+  //                   child: ListView.builder(
+  //                     // padding: EdgeInsets.only(right: 20),
+  //                     scrollDirection: Axis.horizontal,
+  //                     // dragStartBehavior: DragStartBehavior.start,
+  //                     physics: BouncingScrollPhysics(),
+  //                     itemCount: snapshot.data['itemDetails'].length,
+  //                     itemBuilder: (context, index) {
+  //                       return Column(
+  //                         mainAxisSize: MainAxisSize.min,
+  //                         children: <Widget>[
+  //                           Card(
+  //                             elevation: 8,
+  //                             child: ClipRRect(
+  //                               borderRadius: BorderRadius.circular(4),
+  //                               child: InkWell(
+  //                                 splashColor: Theme.of(context)
+  //                                     .primaryColor
+  //                                     .withAlpha(190),
+  //                                 onTap: () async {
+  //                                   widget.animateToLatLng(
+  //                                     Utils.latLngFromString(
+  //                                       snapshot.data['itemDetails'][index]
+  //                                           ['latlng'],
+  //                                     ),
+  //                                   );
+  //                                   hide();
+  //                                 },
+  //                                 child: Column(
+  //                                   mainAxisSize: MainAxisSize.min,
+  //                                   children: <Widget>[
+  //                                     Row(
+  //                                       mainAxisSize: MainAxisSize.min,
+  //                                       children: <Widget>[
+  //                                         Container(
+  //                                           color: Colors.black,
+  //                                           child: Image.network(
+  //                                             '${snapshot.data['itemDetails'][index]['images'][0]}',
+  //                                             height: 100,
+  //                                             width: 100,
+  //                                             fit: BoxFit.fitWidth,
+  //                                           ),
+  //                                         ),
+  //                                         SizedBox(
+  //                                           width: 8,
+  //                                         ),
+  //                                         Container(
+  //                                           width: 150,
+  //                                           child: Column(
+  //                                             crossAxisAlignment:
+  //                                                 CrossAxisAlignment.start,
+  //                                             children: <Widget>[
+  //                                               SizedBox(
+  //                                                 height: 4,
+  //                                               ),
+  //                                               Text(
+  //                                                 snapshot.data['itemDetails']
+  //                                                     [index]['itemName'],
+  //                                                 style: Theme.of(context)
+  //                                                     .textTheme
+  //                                                     .subtitle1,
+  //                                               ),
+  //                                               SizedBox(
+  //                                                 height: 4,
+  //                                               ),
+  //                                               Text(
+  //                                                   '${snapshot.data['itemDetails'][index]['storeAddress']}'),
+  //                                               Align(
+  //                                                 alignment:
+  //                                                     Alignment.centerRight,
+  //                                                 child: Text(
+  //                                                   "Price: R${(snapshot.data['itemDetails'][index]['price'] as num).toDouble().toStringAsFixed(1)} x ${widget.data['itemsData'][snapshot.data['itemDetails'][index]['itemId']]['quantity']}",
+  //                                                   overflow:
+  //                                                       TextOverflow.ellipsis,
+  //                                                   maxLines: 1,
+  //                                                   style: TextStyle(
+  //                                                     fontSize: 14,
+  //                                                     fontWeight:
+  //                                                         FontWeight.bold,
+  //                                                   ),
+  //                                                 ),
+  //                                               )
+  //                                             ],
+  //                                           ),
+  //                                         ),
+  //                                         SizedBox(
+  //                                           width: 8,
+  //                                         ),
+  //                                       ],
+  //                                     ),
+  //                                     InkWell(
+  //                                       splashColor: Theme.of(context)
+  //                                           .primaryColor
+  //                                           .withAlpha(190),
+  //                                       onTap: () async {
+  //                                         print('Opened in Maps');
+  //                                         LatLng latlng =
+  //                                             Utils.latLngFromString(
+  //                                           snapshot.data['itemDetails'][index]
+  //                                               ['latlng'],
+  //                                         );
+  //                                         OrderTracking.startNavigation(
+  //                                             context,
+  //                                             latlng,
+  //                                             Utils.latLngFromCoordinates(
+  //                                                 addressService
+  //                                                     .currentMyAddress
+  //                                                     .coordinates));
+  //                                       },
+  //                                       child: Container(
+  //                                         width: 270.0,
+  //                                         color: Theme.of(context).primaryColor,
+  //                                         // child: Row(
+  //                                         //   children: [
+  //                                         //     Expanded(
+  //                                         //       child: Container(
+  //                                         //         padding:
+  //                                         //             const EdgeInsets.all(8.0),
+  //                                         //         child: Text(
+  //                                         //           'Navigate Here!',
+  //                                         //           style: TextStyle(
+  //                                         //               color: Colors.white),
+  //                                         //         ),
+  //                                         //       ),
+  //                                         //     ),
+  //                                         //   ],
+  //                                         // ),
+  //                                       ),
+  //                                     )
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                           // RaisedButton(
+  //                           //   onPressed: () {},
+  //                           //   child: Text('Open in Map',
+  //                           //       style: TextStyle(color: Colors.white)),
+  //                           // ),
+  //                         ],
+  //                       );
+  //                     },
+  //                   ),
+  //                 ),
+  //                 SizedBox(
+  //                   height: 10,
+  //                 ),
+  //                 Padding(
+  //                   padding: const EdgeInsets.all(18.0),
+  //                   child: Card(
+  //                     elevation: 8,
+  //                     shape: RoundedRectangleBorder(
+  //                       borderRadius: BorderRadius.circular(8.0),
+  //                     ),
+  //                     child: InkWell(
+  //                       splashColor:
+  //                           Theme.of(context).primaryColor.withAlpha(190),
+  //                       onTap: () {
+  //                         LatLng latLng = snapshot.data['destinationLatLng'];
+  //                         widget.animateToLatLng(latLng);
+  //                         hide();
+  //                       },
+  //                       child: Column(
+  //                         mainAxisSize: MainAxisSize.min,
+  //                         crossAxisAlignment: CrossAxisAlignment.stretch,
+  //                         children: <Widget>[
+  //                           Container(
+  //                             decoration: ShapeDecoration(
+  //                               shape: RoundedRectangleBorder(
+  //                                 borderRadius: BorderRadius.only(
+  //                                   topLeft: Radius.circular(8.0),
+  //                                   topRight: Radius.circular(8.0),
+  //                                 ),
+  //                               ),
+  //                               color: Theme.of(context).primaryColor,
+  //                             ),
+  //                             padding: EdgeInsets.all(6),
+  //                             child: Text(
+  //                               ' D r o p o f f ',
+  //                               textAlign: TextAlign.center,
+  //                               style: TextStyle(
+  //                                 color: Colors.white,
+  //                                 fontSize: 18,
+  //                                 fontWeight: FontWeight.bold,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                           SizedBox(
+  //                             height: 10,
+  //                           ),
+  //                           Container(
+  //                             padding: const EdgeInsets.all(8.0),
+  //                             child: Row(
+  //                               crossAxisAlignment: CrossAxisAlignment.center,
+  //                               children: <Widget>[
+  //                                 Icon(Icons.location_on),
+  //                                 Expanded(
+  //                                   child: Text(
+  //                                     '${(snapshot.data['destination'] as Address).addressLine}',
+  //                                   ),
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                           ),
+  //                           SizedBox(
+  //                             height: 10,
+  //                           ),
+  //                           InkWell(
+  //                             splashColor:
+  //                                 Theme.of(context).primaryColor.withAlpha(190),
+  //                             onTap: () async {
+  //                               print('Opened in maps');
+  //                               LatLng latLng =
+  //                                   snapshot.data['destinationLatLng'];
+  //                               // MapsLauncher.launchCoordinates(
+  //                               //   latLng.latitude,
+  //                               //   latLng.longitude,
+  //                               // );
+  //                               OrderTracking.startNavigation(
+  //                                 context,
+  //                                 latLng,
+  //                                 Utils.latLngFromCoordinates(addressService
+  //                                     .currentMyAddress.coordinates),
+  //                               );
+  //                             },
+  //                             child: Container(
+  //                               decoration: ShapeDecoration(
+  //                                 shape: RoundedRectangleBorder(
+  //                                   borderRadius: BorderRadius.only(
+  //                                     bottomLeft: Radius.circular(8.0),
+  //                                     bottomRight: Radius.circular(8.0),
+  //                                   ),
+  //                                 ),
+  //                                 color: Theme.of(context).primaryColor,
+  //                               ),
+  //                               padding: EdgeInsets.all(8.0),
+  //                               child: Text(
+  //                                 'Navigate Here!',
+  //                                 style: TextStyle(
+  //                                   color: Colors.white,
+  //                                 ),
+  //                                 textAlign: TextAlign.center,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           );
+  //         }),
+  //   );
+  // }
+
 }
 
 class MySolidBottomSheet extends StatefulWidget {
   final Function(LatLng) onSelectItem;
   final data;
-  static GlobalKey<MySolidBottomSheetState> _key =
-      GlobalKey<MySolidBottomSheetState>();
-  void refreshState(LatLng driverLatLng) {
-    _key?.currentState?.refresh(driverLatLng);
-  }
+  // static GlobalKey<MySolidBottomSheetState> _key =
+  //     GlobalKey<MySolidBottomSheetState>();
+  // void refreshState(LatLng driverLatLng) {
+  //   _key?.currentState?.refresh(driverLatLng);
+  // }
 
-  MySolidBottomSheet({Key key, this.onSelectItem, this.data})
-      : super(key: _key);
+  MySolidBottomSheet({Key key, this.onSelectItem, this.data}) : super(key: key);
   @override
   State<StatefulWidget> createState() {
     return MySolidBottomSheetState();
   }
 
-  show() {
-    _key?.currentState?._controller?.show();
-  }
+  // show() {
+  //   _key?.currentState?._controller?.show();
+  // }
 
-  hide() {
-    _key?.currentState?._controller?.hide();
-  }
+  // hide() {
+  //   _key?.currentState?._controller?.hide();
+  // }
 }
 
 class MySolidBottomSheetState extends State<MySolidBottomSheet> {
@@ -1174,7 +1970,6 @@ class MySolidBottomSheetState extends State<MySolidBottomSheet> {
         widget.onSelectItem(latlng);
       },
       data: widget.data,
-      // return Container(child: SizedBox(height: , child: Text("lskjfa"),),);
     );
   }
 
@@ -1405,12 +2200,13 @@ class _OrderTileState extends State<_OrderTile> {
   void initState() {
     super.initState();
     widget.location.changeSettings(
-      accuracy: LocationAccuracy.NAVIGATION,
+      accuracy: LocationAccuracy.navigation,
     );
     driverLatLng = Utils.latLngFromString(widget.data['driverLatLng']);
   }
 
   double getDistanceFromYourLocation(LatLng source, LatLng destination) {
+    if (source == null || destination == null) return null;
     return Utils.calculateDistance(source, destination);
   }
 
@@ -1451,221 +2247,300 @@ class _OrderTileState extends State<_OrderTile> {
     LatLng pickup = Utils.latLngFromString(widget.data['pickUpLatLng']);
     LatLng destination = Utils.latLngFromString(widget.data['dropOffLatLng']);
 
-    return Card(
-      margin: EdgeInsets.all(8.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          SizedBox(
-            height: 8,
-          ),
-          Text(
-            'OrderId: ${widget.data['shortId']}',
-            style: Theme.of(context).textTheme.subtitle1,
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Row(
+    return SingleChildScrollView(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Card(
-                      elevation: 4.0,
-                      child: InkWell(
-                        splashColor:
-                            Theme.of(context).primaryColor.withAlpha(190),
-                        onTap: () async {
-                          widget.onSelectItem(pickup);
-                        },
-                        child: Container(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Container(
-                                decoration: ShapeDecoration(
-                                  color: Theme.of(context).primaryColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(4),
-                                        topRight: Radius.circular(4)),
-                                  ),
-                                ),
-                                padding: EdgeInsets.all(4),
-                                child: Text(
-                                  ' P i c k u p ',
-                                  // textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 4,
-                              ),
-                              Container(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text('${widget.data['pickUpAddress']}'),
-                              ),
-                              SizedBox(
-                                height: 4,
-                              ),
-                              Container(
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: ' Distance: ',
-                                    children: [
-                                      TextSpan(
-                                        text: driverLatLng != null
-                                            ? '${getDistanceFromYourLocation(driverLatLng, pickup).toStringAsFixed(1)} Km\n'
-                                            : 'Waiting for Driver\n',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 6,
-                    ),
-                    // Container(
-                    //   padding: EdgeInsets.all(8),
-                    //   child: RaisedButton(
-                    //     child: Text(
-                    //       'Open in Maps',
-                    //       style: TextStyle(color: Colors.white),
-                    //     ),
-                    //     onPressed: () {
-                    //       MapsLauncher.launchCoordinates(
-                    //           pickup.latitude, pickup.longitude);
-                    //     },
-                    //   ),
-                    // ),
-                  ],
-                ),
+              SizedBox(
+                height: 8,
+              ),
+              Text(
+                'OrderId: ${widget.data['shortId']}',
+                style: Theme.of(context).textTheme.subtitle1,
               ),
               SizedBox(
-                width: 2,
+                height: 10,
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Card(
-                      elevation: 4.0,
-                      child: InkWell(
-                        splashColor:
-                            Theme.of(context).primaryColor.withAlpha(190),
-                        onTap: () async {
-                          widget.onSelectItem(destination);
-                        },
-                        child: Container(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Container(
-                                decoration: ShapeDecoration(
-                                  color: Theme.of(context).primaryColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(4),
-                                        topRight: Radius.circular(4)),
-                                  ),
-                                ),
-                                padding: EdgeInsets.all(4),
-                                child: Text(
-                                  ' D r o p O f f ',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 4,
-                              ),
-                              Container(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text('${widget.data['dropOffAddress']}'),
-                              ),
-                              SizedBox(
-                                height: 4,
-                              ),
-                              Container(
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: ' Distance: ',
-                                    children: [
-                                      TextSpan(
-                                        text: driverLatLng == null
-                                            ? 'Waiting for driver\n'
-                                            : '${getDistanceFromYourLocation(driverLatLng, destination).toStringAsFixed(1)} Km\n',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.normal,
-                                        ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Card(
+                          elevation: 4.0,
+                          child: InkWell(
+                            splashColor:
+                                Theme.of(context).primaryColor.withAlpha(190),
+                            onTap: () async {
+                              widget.onSelectItem(pickup);
+                            },
+                            child: Container(
+                              height: 200,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Container(
+                                    decoration: ShapeDecoration(
+                                      color: Theme.of(context).primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4)),
                                       ),
-                                    ],
+                                    ),
+                                    padding: EdgeInsets.all(4),
+                                    child: Text(
+                                      ' P i c k u p ',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
+                                    ),
                                   ),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                  SizedBox(
+                                    height: 4,
                                   ),
-                                ),
+                                  Container(
+                                    padding: EdgeInsets.all(8.0),
+                                    child:
+                                        Text('${widget.data['pickUpAddress']}'),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.only(left: 10),
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: 'Distance: ',
+                                        children: [
+                                          TextSpan(
+                                            text: driverLatLng != null
+                                                ? '${getDistanceFromYourLocation(driverLatLng, pickup)?.toStringAsFixed(1) ?? 'N/A'} Km\n'
+                                                : 'Waiting for Driver\n',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        SizedBox(
+                          height: 6,
+                        ),
+                        // Container(
+                        //   padding: EdgeInsets.all(8),
+                        //   child: RaisedButton(
+                        //     child: Text(
+                        //       'Open in Maps',
+                        //       style: TextStyle(color: Colors.white),
+                        //     ),
+                        //     onPressed: () {
+                        //       MapsLauncher.launchCoordinates(
+                        //           pickup.latitude, pickup.longitude);
+                        //     },
+                        //   ),
+                        // ),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'Apt: ',
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                            TextSpan(
+                              text: '${widget.data['senderHouse']}',
+                              style: Theme.of(context).textTheme.subtitle2,
+                            ),
+                          ]),
+                        ),
+                        SizedBox(height: 4.0),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'Sender Phone: ',
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                            TextSpan(
+                              text: '${widget.data['senderPhone']}',
+                              style: Theme.of(context).textTheme.subtitle2,
+                            ),
+                          ]),
+                        ),
+                        SizedBox(height: 6.0),
+                        Text(
+                          (widget.data['pickFromDoor'] ?? true)
+                              ? 'Pick Order From Door'
+                              : 'You Will Meet Driver at Vehicle',
+                          style: Theme.of(context).textTheme.subtitle2,
+                        ),
+                        SizedBox(height: 10),
+                      ],
                     ),
-                    SizedBox(
-                      height: 6,
+                  ),
+                  SizedBox(
+                    width: 5,
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: <Widget>[
+                        Card(
+                          elevation: 4.0,
+                          child: InkWell(
+                            splashColor:
+                                Theme.of(context).primaryColor.withAlpha(190),
+                            onTap: () async {
+                              widget.onSelectItem(destination);
+                            },
+                            child: Container(
+                              height: 200,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Container(
+                                    decoration: ShapeDecoration(
+                                      color: Theme.of(context).primaryColor,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(4),
+                                            topRight: Radius.circular(4)),
+                                      ),
+                                    ),
+                                    padding: EdgeInsets.all(4),
+                                    child: Text(
+                                      ' D r o p O f f ',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text(
+                                        '${widget.data['dropOffAddress']}'),
+                                  ),
+                                  SizedBox(
+                                    height: 4,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.only(left: 10),
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: 'Distance: ',
+                                        children: [
+                                          TextSpan(
+                                            text: driverLatLng == null
+                                                ? 'Waiting for driver\n'
+                                                : '${getDistanceFromYourLocation(driverLatLng, destination)?.toStringAsFixed(1) ?? 'N/A'} Km\n',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 6,
+                        ),
+                        // Container(
+                        //   padding: EdgeInsets.all(8),
+                        //   child: RaisedButton(
+                        //     child: Text(
+                        //       'Open in Maps',
+                        //       style: TextStyle(color: Colors.white),
+                        //     ),
+                        //     onPressed: () {
+                        //       MapsLauncher.launchCoordinates(
+                        //           destination.latitude, destination.longitude);
+                        //     },
+                        //     onLongPress: () {},
+                        //   ),
+                        // ),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'Apt: ',
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                            TextSpan(
+                              text: '${widget.data['receiverHouse']}',
+                              style: Theme.of(context).textTheme.subtitle2,
+                            ),
+                          ]),
+                        ),
+                        SizedBox(height: 4),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: 'Receiver Phone: ',
+                              style: Theme.of(context).textTheme.subtitle1,
+                            ),
+                            TextSpan(
+                              text: '${widget.data['receiverPhone']}',
+                              style: Theme.of(context).textTheme.subtitle2,
+                            ),
+                          ]),
+                        ),
+                        SizedBox(height: 6.0),
+                        Text(
+                          (widget.data['dropAtDoor'] ?? true)
+                              ? 'Drop Order To Door'
+                              : 'Receiver Will Meet Driver at Vehicle',
+                          style: Theme.of(context).textTheme.subtitle2,
+                        ),
+                        SizedBox(height: 10),
+                      ],
                     ),
-                    // Container(
-                    //   padding: EdgeInsets.all(8),
-                    //   child: RaisedButton(
-                    //     child: Text(
-                    //       'Open in Maps',
-                    //       style: TextStyle(color: Colors.white),
-                    //     ),
-                    //     onPressed: () {
-                    //       MapsLauncher.launchCoordinates(
-                    //           destination.latitude, destination.longitude);
-                    //     },
-                    //     onLongPress: () {},
-                    //   ),
-                    // ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              Text(
+                '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'} ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
+                style: Theme.of(context)
+                    .textTheme
+                    .subtitle1
+                    .copyWith(fontSize: 16),
               ),
             ],
           ),
-          SizedBox(
-            height: 10,
-          ),
-          Text(
-            '''${(widget.data['numberOfBoxes'] == null || widget.data['numberOfBoxes'] <= 0) ? '' : '${widget.data['numberOfBoxes']} Box(s)'}
-              ${(widget.data['numberOfSleevesNeeded'] == null || widget.data['numberOfSleevesNeeded'] <= 0) ? '' : '${(widget.data['numberOfBoxes'] != null && widget.data['numberOfBoxes'] > 0) ? ', ' : ''}${widget.data['numberOfSleevesNeeded']} Sleeve(s)'}''',
-            style: Theme.of(context).textTheme.subtitle1.copyWith(fontSize: 16),
-          ),
-        ],
+        ),
       ),
     );
     // });

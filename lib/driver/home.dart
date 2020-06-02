@@ -6,14 +6,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:sennit/driver/active_order.dart';
 import 'package:sennit/driver/order_history.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/generic_order_navigation.dart';
+import 'package:sennit/rx_models/rx_config.dart';
 import 'package:sennit/start_page.dart';
-import 'package:sennit/user/receiveit.dart' as receiveIt;
+import 'package:sennit/rx_models/rx_address.dart';
 
 class Delivery {
   final LatLng pickUp;
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   Driver driver;
 
   initializeDriver(context) async {
-    await Utils.getMyLocation();
+    await Utils.getLatestLocation();
     if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
       await FirebaseAuth.instance.currentUser().then((user) {
         String driverId = user.uid;
@@ -68,9 +69,9 @@ class _HomeScreenState extends State<HomeScreenDriver>
     }
     driver = Session.data['driver'];
     await Firestore.instance
-        .collection('drivers')
-        .document(Session.data['driver'].driverId)
-        .collection('acceptedOrders')
+        .collection('orders')
+        .where('driverId', isEqualTo: driver.driverId)
+        .where('status', isEqualTo: 'Pending')
         .getDocuments()
         .then((snapshot) {
       if (snapshot != null &&
@@ -98,6 +99,22 @@ class _HomeScreenState extends State<HomeScreenDriver>
   void initState() {
     super.initState();
     initialize = initializeDriver(context);
+    Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+    if (config['maintenanceNotice'] != null) {
+      try {
+        BotToast.showNotification(
+          align: Alignment.topCenter,
+          title: (fn) => Text('Maintenance Notice'),
+          duration: Duration(seconds: 5),
+          crossPage: true,
+          subtitle: (fn) => Text(
+            'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+          ),
+        );
+      } catch (ex) {
+        print(ex.toString());
+      }
+    }
     controller = TabController(length: 3, vsync: this);
     controller.addListener(() {
       setState(() {
@@ -106,7 +123,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
     });
   }
 
-  static var _willExit = false;
+  var _willExit = false;
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +274,11 @@ class _HomeScreenState extends State<HomeScreenDriver>
                         FirebaseUser user =
                             await FirebaseAuth.instance.currentUser();
                         if (user == null) {
-                          Navigator.pop(context);
+                          // Navigator.pop(context);
+                          BotToast.closeAllLoading();
+                          Session.data.clear();
+                          Utils.showSnackBarErrorUsingKey(
+                              null, 'Your Session Timed out');
                           Navigator.popAndPushNamed(context, MyApp.startPage);
                         } else {
                           Firestore.instance
@@ -267,10 +288,11 @@ class _HomeScreenState extends State<HomeScreenDriver>
                               .timeout(Duration(seconds: 20), onTimeout: () {
                             Utils.showSnackBarError(
                                 context, 'Request Timed out');
-                            Navigator.pop(context);
+                            // Navigator.pop(context);
+                            BotToast.closeAllLoading();
                             return;
                           }).then((data) async {
-                            Navigator.pop(context);
+                            BotToast.closeAllLoading();
                             if (!data.exists) {
                               await FirebaseAuth.instance.signOut();
                               Utils.showSnackBarWarning(
@@ -329,7 +351,10 @@ class _NotificationPageState extends State<_NotificationPage> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: Firestore.instance.collection("postedOrders").snapshots(),
+      stream: Firestore.instance
+          .collection("orders")
+          .where('driverId', isNull: true)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -378,6 +403,12 @@ class _NotificationPageState extends State<_NotificationPage> {
           );
         }
 
+        Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+
+        RxAddress addressService = GetIt.I.get<RxAddress>();
+        Address myAddress = addressService.currentMyAddress;
+        LatLng myLatLng = Utils.latLngFromCoordinates(myAddress.coordinates);
+
         List<DocumentSnapshot> allDocs =
             List<DocumentSnapshot>.from(snapshot.data.documents);
         List<DocumentSnapshot> documents = [];
@@ -391,14 +422,17 @@ class _NotificationPageState extends State<_NotificationPage> {
             for (String latlng in data['pickups']) {
               LatLng pickupLatLng = Utils.latLngFromString(latlng);
               double distance = Utils.calculateDistance(
-                  pickupLatLng, Utils.getLastKnowLocation());
+                pickupLatLng,
+                myLatLng,
+              );
               if (distance < min) {
                 min = distance;
                 pickup = pickupLatLng;
               }
             }
           }
-          if (Utils.calculateDistance(pickup, Utils.getLastKnowLocation()) <=
+          if (Utils.calculateDistance(pickup, myLatLng) <=
+                  config['driverMinimumOrderTakingDistance'] ??
               15) {
             documents.add(doc);
           }
@@ -406,23 +440,22 @@ class _NotificationPageState extends State<_NotificationPage> {
         List<Widget> tiles = [];
 
         Driver driver = Session.data['driver'];
-        LatLng currLatLng = Utils.getLastKnowLocation();
         documents.sort((first, second) {
           double firstDistance = 0;
           double secondDistance = 0;
           if (first.data.containsKey('dropOffLatLng')) {
-            firstDistance = Utils.calculateDistance(currLatLng,
-                Utils.latLngFromString(first.data['dropOffLatLng']));
+            firstDistance = Utils.calculateDistance(
+                myLatLng, Utils.latLngFromString(first.data['dropOffLatLng']));
           } else {
             firstDistance = Utils.calculateDistance(
-                currLatLng, Utils.latLngFromString(first.data['destination']));
+                myLatLng, Utils.latLngFromString(first.data['destination']));
           }
           if (second.data.containsKey('dropOffLatLng')) {
-            secondDistance = Utils.calculateDistance(currLatLng,
-                Utils.latLngFromString(second.data['dropOffLatLng']));
+            secondDistance = Utils.calculateDistance(
+                myLatLng, Utils.latLngFromString(second.data['dropOffLatLng']));
           } else {
             secondDistance = Utils.calculateDistance(
-                currLatLng, Utils.latLngFromString(second.data['destination']));
+                myLatLng, Utils.latLngFromString(second.data['destination']));
           }
           return firstDistance.compareTo(secondDistance);
         });
@@ -477,6 +510,9 @@ class SennitNotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    RxAddress addressService = GetIt.I.get<RxAddress>();
+    LatLng myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     Widget card = Card(
       child: Container(
         margin: EdgeInsets.all(10.0),
@@ -698,7 +734,7 @@ class SennitNotificationTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                      ' ${Utils.calculateDistance(Utils.latLngFromString(data['pickUpLatLng']), Utils.getLastKnowLocation()).toStringAsFixed(2)} Km '),
+                      ' ${Utils.calculateDistance(Utils.latLngFromString(data['pickUpLatLng']), myLatLng).toStringAsFixed(2)} Km '),
                 ],
               ),
             ),
@@ -734,12 +770,16 @@ class SennitNotificationTile extends StatelessWidget {
 }
 
 class ReceiveItNotificationTile extends StatelessWidget {
+  final RxAddress addressService = GetIt.I.get<RxAddress>();
+
   final data;
   String getNearestPickup() {
+    LatLng myLatLng = Utils.latLngFromCoordinates(
+        addressService.currentMyAddress.coordinates);
     double min = double.infinity;
     for (String latlng in data['pickups']) {
-      double distance = Utils.calculateDistance(
-          Utils.latLngFromString(latlng), Utils.getLastKnowLocation());
+      double distance =
+          Utils.calculateDistance(Utils.latLngFromString(latlng), myLatLng);
       if (distance < min) {
         min = double.parse(distance.toStringAsFixed(2));
       }
@@ -1101,66 +1141,66 @@ class ReceiveItNotificationTile extends StatelessWidget {
   }
 }
 
-class OrderItemRoute extends StatelessWidget {
-  final List<String> items;
-  final Map<String, dynamic> data;
-  const OrderItemRoute({Key key, this.items, this.data}) : super(key: key);
+// class OrderItemRoute extends StatelessWidget {
+//   final List<String> items;
+//   final Map<String, dynamic> data;
+//   const OrderItemRoute({Key key, this.items, this.data}) : super(key: key);
 
-  Future<List<StoreItem>> getItems() async {
-    List<StoreItem> storeItems = [];
-    var documents = await Firestore.instance.collection("items").getDocuments();
-    for (DocumentSnapshot snapshot in documents.documents) {
-      StoreItem item = StoreItem.fromMap(snapshot.data);
-      storeItems.add(item);
-    }
-    return storeItems;
-  }
+//   Future<List<StoreItem>> getItems() async {
+//     List<StoreItem> storeItems = [];
+//     var documents = await Firestore.instance.collection("items").getDocuments();
+//     for (DocumentSnapshot snapshot in documents.documents) {
+//       StoreItem item = StoreItem.fromMap(snapshot.data);
+//       storeItems.add(item);
+//     }
+//     return storeItems;
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Items'),
-        centerTitle: true,
-      ),
-      body: FutureBuilder<List<StoreItem>>(
-          future: getItems(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
-                child: CircularProgressIndicator(),
-              );
-            } else if (!snapshot.hasData || snapshot.data.length == 0) {
-              return Text('No Item Available');
-            }
-            var items = snapshot.data;
-            return SingleChildScrollView(
-                child: Column(
-              children: List.generate(items.length, (index) {
-                return InkWell(
-                  child: receiveIt.MenuItem(
-                    item: items[index],
-                  ),
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) {
-                      data.update('storeItems', (a) {
-                        return items;
-                      }, ifAbsent: () {
-                        return items;
-                      });
-                      return ActiveOrder(
-                        orderData: data,
-                      );
-                    }));
-                  },
-                );
-              }),
-            ));
-          }),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text('Items'),
+//         centerTitle: true,
+//       ),
+//       body: FutureBuilder<List<StoreItem>>(
+//           future: getItems(),
+//           builder: (context, snapshot) {
+//             if (snapshot.connectionState == ConnectionState.waiting) {
+//               return Center(
+//                 child: CircularProgressIndicator(),
+//               );
+//             } else if (!snapshot.hasData || snapshot.data.length == 0) {
+//               return Text('No Item Available');
+//             }
+//             var items = snapshot.data;
+//             return SingleChildScrollView(
+//                 child: Column(
+//               children: List.generate(items.length, (index) {
+//                 return InkWell(
+//                   child: receiveIt.MenuItem(
+//                     item: items[index],
+//                   ),
+//                   onTap: () {
+//                     Navigator.push(context,
+//                         MaterialPageRoute(builder: (context) {
+//                       data.update('storeItems', (a) {
+//                         return items;
+//                       }, ifAbsent: () {
+//                         return items;
+//                       });
+//                       return ActiveOrder(
+//                         orderData: data,
+//                       );
+//                     }));
+//                   },
+//                 );
+//               }),
+//             ));
+//           }),
+//     );
+//   }
+// }
 
 class _ProfilePage extends StatelessWidget {
   @override
@@ -1217,7 +1257,7 @@ class _ProfilePage extends StatelessWidget {
                     message: "rating",
                   ),
                   Text(
-                      ' ${(snapshot.data == null || snapshot.data.rating == 0) ? 'N/A' : snapshot.data.rating}'),
+                      ' ${(snapshot.data == null || snapshot.data.rating == 0) ? 'N/A' : snapshot.data.rating.toStringAsFixed(1)}'),
                   SizedBox(
                     width: 10,
                   ),

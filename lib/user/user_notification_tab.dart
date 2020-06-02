@@ -30,33 +30,35 @@ class NotificationWidget extends StatelessWidget {
           var keys = snapshot.data.data.keys.toList();
 
           return Column(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: List<Widget>.generate(keys.length, (index) {
-            Map<String, dynamic> notification = snapshot.data.data[keys[index]];
-            return notification['status'] == "posted"
-                ? ListTile(
-                    title: Text('Your Order is on its way'),
-                    subtitle: Text(
-                        'Contents: ${snapshot.data.data[keys[index]]['contents']}'),
-                    onTap: () {},
-                  )
-                : ListTile(
-                    title: Text('Your Order has Been Delivered'),
-                    subtitle: Text('Tap to Rate the Driver'),
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (context) {
-                          return ReviewWidget(
-                            orderId: notification['orderId'],
-                            user: user,
-                            itemId: "",
-                            isDriver: true,
-                            driverId: notification['driverId'],
-                          );
+                Map<String, dynamic> notification =
+                    snapshot.data.data[keys[index]];
+                return notification['status'] == "posted"
+                    ? ListTile(
+                        title: Text('Your Order is on its way'),
+                        subtitle: Text(
+                            'Contents: ${snapshot.data.data[keys[index]]['contents']}'),
+                        onTap: () {},
+                      )
+                    : ListTile(
+                        title: Text('Your Order has Been Delivered'),
+                        subtitle: Text('Tap to Rate the Driver'),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) {
+                              return ReviewWidget(
+                                orderId: notification['orderId'],
+                                user: user,
+                                itemId: "",
+                                isDriver: true,
+                                driverId: notification['driverId'],
+                              );
+                            },
+                          ));
                         },
-                      ));
-                    },
-                  );
-          }));
+                      );
+              }));
         }
       },
     );

@@ -1,3 +1,4 @@
+import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,11 +9,12 @@ import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/forgot_password.dart';
 import 'package:sennit/my_widgets/verify_email_route.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSignInRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
+    return new WillPopScope(
       onWillPop: () async {
         // Navigator.pop(context);
         // Navigator.popAndPushNamed(context, MyApp.userStartPage);
@@ -39,9 +41,15 @@ class UserSignIn extends StatefulWidget {
     return _UserSignInState();
   }
 
-  static initializeCart(String userId) {
-    _UserSignInState.initializeCart(userId);
-  }
+  // static initializeCart(String userId) {
+  //   Session.data.putIfAbsent(
+  //     'cart',
+  //     () => UserCart(
+  //       itemsData: {},
+  //     ),
+  //   );
+  // }
+
 }
 
 class _UserSignInState extends State<UserSignIn> {
@@ -50,8 +58,8 @@ class _UserSignInState extends State<UserSignIn> {
   String password = "";
   final _formKey = GlobalKey<FormState>();
 
-  void performSignin(
-      Map<String, dynamic> userData, AuthResult result, String userId) {
+  Future<void> performSignin(
+      Map<String, dynamic> userData, AuthResult result, String userId) async {
     User user = User.fromMap(userData);
     user.userId = userId;
     Session.data.update(
@@ -73,8 +81,18 @@ class _UserSignInState extends State<UserSignIn> {
     //     return userLocationHistory;
     //   },
     // );
-    MyApp.futureCart = initializeCart(user.userId);
+    // MyApp.futureCart = initializeCart(user.userId);
+    Session.data.putIfAbsent(
+        'cart',
+        () => UserCart(
+              itemsData: StoreToReceiveItOrderItems(
+                itemDetails: {},
+              ),
+            ));
+    BotToast.closeAllLoading();
     // Navigator.pop(context);
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.setString('user', 'user');
     if (result.user.isEmailVerified) {
       // Navigator.popUntil(
       //     context, (route) => route.isFirst);
@@ -83,13 +101,13 @@ class _UserSignInState extends State<UserSignIn> {
         (route) => false,
       );
     } else {
+      BotToast.closeAllLoading();
+      // Navigator.pop(context);
       result.user.sendEmailVerification();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) {
-          return VerifyEmailRoute(
-            context: context,
-          );
+          return VerifyEmailRoute();
         }),
       );
     }
@@ -205,6 +223,7 @@ class _UserSignInState extends State<UserSignIn> {
                   borderRadius: BorderRadius.all(Radius.elliptical(100, 100)),
                 ),
                 onPressed: () async {
+                  // var data = Session.data;
                   if (signInButtonEnabled) {
                     signInButtonEnabled = false;
                     Utils.showLoadingDialog(context);
@@ -226,11 +245,12 @@ class _UserSignInState extends State<UserSignIn> {
                                   .get()
                                   .timeout(Duration(seconds: 10),
                                       onTimeout: () {
-                                Navigator.pop(context);
+                                BotToast.closeAllLoading();
+                                // Navigator.pop(context);
                                 Utils.showSnackBarError(
                                     context, 'Request Timed out try again');
                                 setState(() {
-                                  signInButtonEnabled = false;
+                                  signInButtonEnabled = true;
                                 });
                                 return null;
                               }).then(
@@ -248,7 +268,8 @@ class _UserSignInState extends State<UserSignIn> {
                                           !data.exists ||
                                           data.data == null ||
                                           data.data.length <= 0) {
-                                        Navigator.pop(context);
+                                        BotToast.closeAllLoading();
+                                        // Navigator.pop(context);
                                         // result.user.delete();
                                         signInButtonEnabled = true;
                                         setState(() {});
@@ -270,11 +291,14 @@ class _UserSignInState extends State<UserSignIn> {
                                             .timeout(
                                           Duration(seconds: 20),
                                           onTimeout: () {
-                                            Navigator.pop(context);
+                                            BotToast.closeAllLoading();
+                                            // Navigator.pop(context);
                                             signInButtonEnabled = true;
                                             setState(() {});
-                                            Utils.showSnackBarError(context,
-                                                'Request Timed out please Try Again!');
+                                            Utils.showSnackBarError(
+                                              context,
+                                              'Request Timed out please Try Again!',
+                                            );
                                           },
                                         ).then((_) {
                                           performSignin(
@@ -291,7 +315,8 @@ class _UserSignInState extends State<UserSignIn> {
                                 },
                               );
                             } else {
-                              Navigator.pop(context);
+                              BotToast.closeAllLoading();
+                              // Navigator.pop(context);
                               signInButtonEnabled = true;
                               SnackBar snackBar = SnackBar(
                                 content: Text(
@@ -309,7 +334,8 @@ class _UserSignInState extends State<UserSignIn> {
                           },
                         ).catchError(
                           (_) {
-                            Navigator.pop(context);
+                            BotToast.closeAllLoading();
+                            // Navigator.pop(context);
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
                               context,
@@ -331,7 +357,8 @@ class _UserSignInState extends State<UserSignIn> {
                         // );
                       } on dynamic catch (_) {
                         print(_);
-                        Navigator.pop(context);
+                        BotToast.closeAllLoading();
+                        // Navigator.pop(context);
                         signInButtonEnabled = true;
                         Utils.showSnackBarError(
                           context,
@@ -367,7 +394,8 @@ class _UserSignInState extends State<UserSignIn> {
                       //   });
                       // });
                     } else {
-                      Navigator.pop(context);
+                      BotToast.closeAllLoading();
+                      // Navigator.pop(context);
                       signInButtonEnabled = true;
                       SnackBar snackBar = SnackBar(
                         content: Text(
@@ -401,57 +429,57 @@ class _UserSignInState extends State<UserSignIn> {
     );
   }
 
-  static Future<void> initializeCart(String userId) async {
-    if (userId == null) return;
-    if (Session.data.containsKey('cart') &&
-        Session.data['cart'] != null &&
-        (Session.data['cart'] as UserCart).itemsData.length > 0) {
-      return Firestore.instance.collection("carts").document(userId).setData({
-        'itemsData': Session.data['cart'].itemsData,
-      });
-    }
+  // static Future<void> initializeCart(String userId) async {
+  //   if (userId == null) return;
+  //   // if (Session.data.containsKey('cart') &&
+  //   //     Session.data['cart'] != null &&
+  //   //     (Session.data['cart'] as UserCart).itemsData.length > 0) {
+  //   //   return Firestore.instance.collection("carts").document(userId).setData({
+  //   //     'itemsData': Session.data['cart'].itemsData,
+  //   //   });
+  //   // }
 
-    var value =
-        await Firestore.instance.collection("carts").document(userId).get();
+  //   var value =
+  //       await Firestore.instance.collection("carts").document(userId).get();
 
-    if (value == null || value.data == null || value.data.isEmpty) {
-      UserCart cart = UserCart(itemsData: {});
-      Session.data.update(
-        "cart",
-        (value) {
-          return cart;
-        },
-        ifAbsent: () {
-          return cart;
-        },
-      );
-      return;
-      // Firestore.instance.collection('carts').document(userId).setData(
-      //   {
-      //     'itemsData': {},
-      //   },
-      // );
-    }
-    UserCart cart = UserCart.fromMap(value.data);
-    List<StoreItem> storeItems = [];
-    var allItems =
-        (await Firestore.instance.collection("items").getDocuments()).documents;
+  //   if (value == null || value.data == null || value.data.isEmpty) {
+  //     UserCart cart = UserCart(itemsData: {});
+  //     Session.data.update(
+  //       "cart",
+  //       (value) {
+  //         return cart;
+  //       },
+  //       ifAbsent: () {
+  //         return cart;
+  //       },
+  //     );
+  //     return;
+  //     // Firestore.instance.collection('carts').document(userId).setData(
+  //     //   {
+  //     //     'itemsData': {},
+  //     //   },
+  //     // );
+  //   }
+  //   UserCart cart = UserCart.fromMap(value.data);
+  //   List<StoreItem> storeItems = [];
+  //   var allItems =
+  //       (await Firestore.instance.collection("items").getDocuments()).documents;
 
-    // int i = 0;
+  //   // int i = 0;
 
-    for (DocumentSnapshot snapshot in allItems) {
-      if (cart.itemsData.containsKey(snapshot.documentID)) {
-        storeItems.add(StoreItem.fromMap(snapshot.data));
-      }
-    }
+  //   for (DocumentSnapshot snapshot in allItems) {
+  //     if (cart.itemsData.containsKey(snapshot.documentID)) {
+  //       storeItems.add(StoreItem.fromMap(snapshot.data));
+  //     }
+  //   }
 
-    cart.items = storeItems;
-    Session.data.update("cart", (value) {
-      return cart;
-    }, ifAbsent: () {
-      return cart;
-    });
-  }
+  //   cart.items = storeItems;
+  //   Session.data.update("cart", (value) {
+  //     return cart;
+  //   }, ifAbsent: () {
+  //     return cart;
+  //   });
+  // }
 }
 
 bool verifyPassword(String message) {

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:bot_toast/bot_toast.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,10 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/order_details.dart';
+import 'package:sennit/partner_store/manage_stocks.dart';
+import 'package:sennit/rx_models/rx_config.dart';
 
 class OrderedItemsList extends StatefulWidget {
   final FirebaseMessaging _fcm = FirebaseMessaging();
@@ -211,6 +215,22 @@ class OrderedItemsListState extends State<OrderedItemsList> {
   void initState() {
     super.initState();
     store = Session.data['partnerStore'];
+    Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+    if (config['maintenanceNotice'] != null) {
+      try {
+        BotToast.showNotification(
+          align: Alignment.topCenter,
+          title: (fn) => Text('Maintenance Notice'),
+          duration: Duration(seconds: 5),
+          crossPage: true,
+          subtitle: (fn) => Text(
+            'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+          ),
+        );
+      } catch (ex) {
+        print(ex.toString());
+      }
+    }
   }
 
   @override
@@ -269,8 +289,21 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                 },
                 leading: Icon(Icons.receipt),
                 title: Text('Current Orders'),
-                trailing: Icon(
-                  Icons.navigate_next,
+                trailing: Stack(
+                  children: <Widget>[
+                    Icon(
+                      Icons.navigate_next,
+                    ),
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Icon(
+                        Icons.access_time,
+                        size: 8,
+                        color: Colors.yellow,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Divider(
@@ -283,7 +316,20 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   selectedTab = 1;
                   setState(() {});
                 },
-                leading: Icon(Icons.receipt),
+                leading: Stack(
+                  children: <Widget>[
+                    Icon(Icons.receipt),
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 8,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
                 title: Text('Served Orders'),
                 trailing: Icon(
                   Icons.navigate_next,
@@ -299,8 +345,24 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                   selectedTab = 2;
                   setState(() {});
                 },
-                leading: Icon(Icons.receipt),
+                leading: Icon(FontAwesomeIcons.hamburger),
                 title: Text('Completed Orders By Items'),
+                trailing: Icon(
+                  Icons.navigate_next,
+                ),
+              ),
+              Divider(
+                height: 4,
+              ),
+              ListTile(
+                selected: selectedTab == 4,
+                onTap: () {
+                  Navigator.pop(context);
+                  selectedTab = 4;
+                  setState(() {});
+                },
+                leading: Icon(FontAwesomeIcons.shoppingBasket),
+                title: Text('Manage Items'),
                 trailing: Icon(
                   Icons.navigate_next,
                 ),
@@ -311,7 +373,7 @@ class OrderedItemsListState extends State<OrderedItemsList> {
               ListTile(
                 onTap: () {
                   Navigator.pop(context);
-                  selectedTab = 2;
+                  selectedTab = 3;
                   setState(() {});
                 },
                 leading: Icon(Icons.receipt),
@@ -341,7 +403,9 @@ class OrderedItemsListState extends State<OrderedItemsList> {
           title: Text(
             selectedTab == 0
                 ? 'Pending Orders'
-                : selectedTab == 1 ? 'Served Orders' : 'Item Orders',
+                : selectedTab == 1
+                    ? 'Served Orders'
+                    : selectedTab == 2 ? 'Item Orders' : 'Manage Items',
           ),
           centerTitle: true,
           actions: <Widget>[
@@ -396,276 +460,298 @@ class OrderedItemsListState extends State<OrderedItemsList> {
                       ),
                     ],
                   )
-                : FutureBuilder<QuerySnapshot>(
-                    future: Firestore.instance
-                        .collection('stores')
-                        .document(
-                            (Session.data['partnerStore'] as Store).storeId)
-                        .collection('orderedItems')
-                        .getDocuments()
-                        .then(
-                      (value) async {
-                        if (!Session.data.containsKey('partnerStore')) {
-                          final partnerStoreId = await FirebaseAuth.instance
-                              .currentUser()
-                              .then((user) => user.uid);
-                          final data = await Firestore.instance
-                              .collection("partnerStores")
-                              .document(partnerStoreId)
-                              .get()
-                              .then(
-                                (dataSnapshot) => dataSnapshot.data,
+                : selectedTab == 2
+                    ? FutureBuilder<QuerySnapshot>(
+                        future: Firestore.instance
+                            .collection('stores')
+                            .document(
+                                (Session.data['partnerStore'] as Store).storeId)
+                            .collection('orderedItems')
+                            .getDocuments()
+                            .then(
+                          (value) async {
+                            if (!Session.data.containsKey('partnerStore')) {
+                              final partnerStoreId = await FirebaseAuth.instance
+                                  .currentUser()
+                                  .then((user) => user.uid);
+                              final data = await Firestore.instance
+                                  .collection("partnerStores")
+                                  .document(partnerStoreId)
+                                  .get()
+                                  .then(
+                                    (dataSnapshot) => dataSnapshot.data,
+                                  );
+                              Session.data.putIfAbsent(
+                                'partnerStore',
+                                () => Store.fromMap(data),
                               );
-                          Session.data.putIfAbsent(
-                            'partnerStore',
-                            () => Store.fromMap(data),
-                          );
-                        }
-                        // keys = Session.data['partnerStore'].keys;
-                        return value;
-                      },
-                    ),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      } else if (snapshot.data.documents.length == 0) {
-                        return Center(
-                          child: Text(
-                            'No Orders yet!',
-                            style:
-                                Theme.of(context).textTheme.headline6.copyWith(
+                            }
+                            // keys = Session.data['partnerStore'].keys;
+                            return value;
+                          },
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          } else if (snapshot.data.documents.length == 0) {
+                            return Center(
+                              child: Text(
+                                'No Orders yet!',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline6
+                                    .copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
-                          ),
-                        );
-                      }
-                      List<DocumentSnapshot> data = snapshot.data.documents;
-                      TextTheme textTheme = Theme.of(context).textTheme;
-                      return ListView.builder(
-                          itemCount: data.length,
-                          itemBuilder: (context, index) {
-                            DocumentSnapshot snapshot = data[index];
-                            int numberOfOrders = snapshot.data.length;
-                            return FutureBuilder<Map<String, dynamic>>(
-                              future: Firestore.instance
-                                  .collection('items')
-                                  .document(snapshot.documentID)
-                                  .get()
-                                  .then((data) {
-                                return data.data;
-                              }),
-                              builder: (context, itemSnapshot) {
-                                if (itemSnapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return Container(
-                                    margin: EdgeInsets.all(40),
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                }
-                                return Card(
-                                  elevation: 4,
-                                  margin: EdgeInsets.only(
-                                    top: 16,
-                                    bottom: 14,
-                                  ),
-                                  child: Container(
-                                    // padding: EdgeInsets.all(4),
-                                    child: InkWell(
-                                      splashColor: Theme.of(context)
-                                          .primaryColor
-                                          .withAlpha(200),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) {
-                                              return ItemOrdersRoute(
-                                                data: data[index].data,
-                                                imageUrls: List<String>.from(
-                                                  itemSnapshot.data['images'],
+                              ),
+                            );
+                          }
+                          List<DocumentSnapshot> data = snapshot.data.documents;
+                          TextTheme textTheme = Theme.of(context).textTheme;
+                          return ListView.builder(
+                              itemCount: data.length,
+                              itemBuilder: (context, index) {
+                                DocumentSnapshot snapshot = data[index];
+                                int numberOfOrders = snapshot.data.length;
+                                return FutureBuilder<Map<String, dynamic>>(
+                                  future: Firestore.instance
+                                      .collection('items')
+                                      .document(snapshot.documentID)
+                                      .get()
+                                      .then((data) {
+                                    return data.data;
+                                  }),
+                                  builder: (context, itemSnapshot) {
+                                    if (itemSnapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Container(
+                                        margin: EdgeInsets.all(40),
+                                        child: Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    }
+                                    return Card(
+                                      elevation: 4,
+                                      margin: EdgeInsets.only(
+                                        top: 16,
+                                        bottom: 14,
+                                      ),
+                                      child: Container(
+                                        // padding: EdgeInsets.all(4),
+                                        child: InkWell(
+                                          splashColor: Theme.of(context)
+                                              .primaryColor
+                                              .withAlpha(200),
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) {
+                                                  return ItemOrdersRoute(
+                                                    data: data[index].data,
+                                                    imageUrls:
+                                                        List<String>.from(
+                                                      itemSnapshot
+                                                          .data['images'],
+                                                    ),
+                                                  );
+                                                },
+                                                maintainState: false,
+                                              ),
+                                            );
+                                          },
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: <Widget>[
+                                              Container(
+                                                color: Colors.black,
+                                                child: FadeInImage.assetNetwork(
+                                                  placeholder:
+                                                      'assets/images/logo.png',
+                                                  image: itemSnapshot
+                                                      .data['images'][0],
+                                                  width: 90,
+                                                  height: 90,
+                                                  fit: BoxFit.contain,
                                                 ),
-                                              );
-                                            },
-                                            maintainState: false,
-                                          ),
-                                        );
-                                      },
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Container(
-                                            color: Colors.black,
-                                            child: FadeInImage.assetNetwork(
-                                              placeholder:
-                                                  'assets/images/logo.png',
-                                              image: itemSnapshot.data['images']
-                                                  [0],
-                                              width: 90,
-                                              height: 90,
-                                              fit: BoxFit.contain,
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            width: 10,
-                                          ),
-                                          Container(
-                                            // color: Colors.pink,
-                                            child: Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.start,
-                                                // mainAxisSize: MainAxisSize.min,
-                                                children: <Widget>[
-                                                  SizedBox(
-                                                    height: 4,
-                                                  ),
-                                                  Text(
-                                                    itemSnapshot
-                                                        .data['itemName'],
-                                                    style: textTheme.headline6
-                                                        .copyWith(
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold),
-                                                  ),
-                                                  // SizedBox(
-                                                  //   height: 2,
-                                                  // ),
-                                                  Row(
+                                              ),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Container(
+                                                // color: Colors.pink,
+                                                child: Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.start,
+                                                    // mainAxisSize: MainAxisSize.min,
                                                     children: <Widget>[
-                                                      Text(
-                                                        'Total Orders: ',
-                                                        style: textTheme
-                                                            .subtitle1
-                                                            .copyWith(
-                                                          fontSize: 16,
-                                                        ),
+                                                      SizedBox(
+                                                        height: 4,
                                                       ),
                                                       Text(
-                                                        '$numberOfOrders',
+                                                        itemSnapshot
+                                                            .data['itemName'],
                                                         style: textTheme
-                                                            .subtitle2
+                                                            .headline6
                                                             .copyWith(
-                                                          fontSize: 16,
-                                                        ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold),
                                                       ),
+                                                      // SizedBox(
+                                                      //   height: 2,
+                                                      // ),
+                                                      Row(
+                                                        children: <Widget>[
+                                                          Text(
+                                                            'Total Orders: ',
+                                                            style: textTheme
+                                                                .subtitle1
+                                                                .copyWith(
+                                                              fontSize: 16,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            '$numberOfOrders',
+                                                            style: textTheme
+                                                                .subtitle2
+                                                                .copyWith(
+                                                              fontSize: 16,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .bottomRight,
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .end,
+                                                          children: <Widget>[
+                                                            Text(
+                                                              'Price: ',
+                                                              strutStyle:
+                                                                  StrutStyle(
+                                                                      height:
+                                                                          1),
+                                                              style: textTheme
+                                                                  .headline6
+                                                                  .copyWith(
+                                                                      // fontWeight: FontWeight.bold,
+                                                                      ),
+                                                            ),
+                                                            Text(
+                                                              '${itemSnapshot.data['price']}  ',
+                                                              style: textTheme
+                                                                  .headline6
+                                                                  .copyWith(
+                                                                      // fontSize: 18,
+                                                                      ),
+                                                              strutStyle:
+                                                                  StrutStyle(
+                                                                      height:
+                                                                          1.5),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      )
                                                     ],
                                                   ),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.bottomRight,
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment.end,
-                                                      children: <Widget>[
-                                                        Text(
-                                                          'Price: ',
-                                                          strutStyle:
-                                                              StrutStyle(
-                                                                  height: 1),
-                                                          style: textTheme
-                                                              .headline6
-                                                              .copyWith(
-                                                                  // fontWeight: FontWeight.bold,
-                                                                  ),
-                                                        ),
-                                                        Text(
-                                                          '${itemSnapshot.data['price']}  ',
-                                                          style: textTheme
-                                                              .headline6
-                                                              .copyWith(
-                                                                  // fontSize: 18,
-                                                                  ),
-                                                          strutStyle:
-                                                              StrutStyle(
-                                                                  height: 1.5),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  )
-                                                ],
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
 
-                                    // ListTile(
-                                    //   contentPadding: EdgeInsets.all(0),
-                                    //   leading: Container(
-                                    //     height: 1000,
-                                    //     color: Colors.black,
-                                    //     child: FadeInImage.assetNetwork(
-                                    //       placeholder: 'assets/images/logo.png',
-                                    //       image: itemSnapshot.data['images'][0],
-                                    //       width: 80,
-                                    //       fit: BoxFit.fitWidth,
-                                    //     ),
-                                    //   ),
-                                    //   title: Text(itemSnapshot.data['itemName']),
-                                    //   subtitle: Container(
-                                    //     child: Column(
-                                    //       mainAxisSize: MainAxisSize.min,
-                                    //       children: [
-                                    //         Row(
-                                    //           mainAxisSize: MainAxisSize.min,
-                                    //           children: <Widget>[
-                                    //             Text(
-                                    //               'Total Orders',
-                                    //               style: textTheme.subtitle1,
-                                    //             ),
-                                    //             Text('$numberOfOrders'),
-                                    //           ],
-                                    //         ),
-                                    //         SizedBox(
-                                    //           height: 10,
-                                    //         ),
-                                    //         Row(
-                                    //           mainAxisSize: MainAxisSize.min,
-                                    //           mainAxisAlignment: MainAxisAlignment.end,
-                                    //           children: <Widget>[
-                                    //             Text(
-                                    //               'Price: ',
-                                    //               style: textTheme.subtitle1,
-                                    //             ),
-                                    //             Text('${itemSnapshot.data['price']}'),
-                                    //           ],
-                                    //         ),
-                                    //       ],
-                                    //     ),
-                                    //   ),
-                                    //   trailing: Icon(Icons.navigate_next),
-                                    //   onTap: () {
-                                    //     Navigator.push(
-                                    //       context,
-                                    //       MaterialPageRoute(
-                                    //         builder: (context) {
-                                    //           return ItemOrdersRoute(
-                                    //             data: data[index].data,
-                                    //             imageUrls: List<String>.from(
-                                    //               itemSnapshot.data['images'],
-                                    //             ),
-                                    //           );
-                                    //         },
-                                    //       ),
-                                    //     );
-                                    //   },
-                                    // ),
-                                  ),
+                                        // ListTile(
+                                        //   contentPadding: EdgeInsets.all(0),
+                                        //   leading: Container(
+                                        //     height: 1000,
+                                        //     color: Colors.black,
+                                        //     child: FadeInImage.assetNetwork(
+                                        //       placeholder: 'assets/images/logo.png',
+                                        //       image: itemSnapshot.data['images'][0],
+                                        //       width: 80,
+                                        //       fit: BoxFit.fitWidth,
+                                        //     ),
+                                        //   ),
+                                        //   title: Text(itemSnapshot.data['itemName']),
+                                        //   subtitle: Container(
+                                        //     child: Column(
+                                        //       mainAxisSize: MainAxisSize.min,
+                                        //       children: [
+                                        //         Row(
+                                        //           mainAxisSize: MainAxisSize.min,
+                                        //           children: <Widget>[
+                                        //             Text(
+                                        //               'Total Orders',
+                                        //               style: textTheme.subtitle1,
+                                        //             ),
+                                        //             Text('$numberOfOrders'),
+                                        //           ],
+                                        //         ),
+                                        //         SizedBox(
+                                        //           height: 10,
+                                        //         ),
+                                        //         Row(
+                                        //           mainAxisSize: MainAxisSize.min,
+                                        //           mainAxisAlignment: MainAxisAlignment.end,
+                                        //           children: <Widget>[
+                                        //             Text(
+                                        //               'Price: ',
+                                        //               style: textTheme.subtitle1,
+                                        //             ),
+                                        //             Text('${itemSnapshot.data['price']}'),
+                                        //           ],
+                                        //         ),
+                                        //       ],
+                                        //     ),
+                                        //   ),
+                                        //   trailing: Icon(Icons.navigate_next),
+                                        //   onTap: () {
+                                        //     Navigator.push(
+                                        //       context,
+                                        //       MaterialPageRoute(
+                                        //         builder: (context) {
+                                        //           return ItemOrdersRoute(
+                                        //             data: data[index].data,
+                                        //             imageUrls: List<String>.from(
+                                        //               itemSnapshot.data['images'],
+                                        //             ),
+                                        //           );
+                                        //         },
+                                        //       ),
+                                        //     );
+                                        //   },
+                                        // ),
+                                      ),
+                                    );
+                                  },
                                 );
-                              },
-                            );
-                          });
-                    },
-                  ),
+                              });
+                        },
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Expanded(
+                            child: ManageItemsRoute(),
+                          ),
+                        ],
+                      ),
       ),
     );
   }
@@ -685,195 +771,244 @@ class ItemOrdersRoute extends StatelessWidget {
         title: Text('Details'),
         centerTitle: true,
       ),
-      body: Column(
-        children: <Widget>[
-          // SizedBox(
-          //   height: 10,
-          // ),
-          Container(
-            height: 200,
-            // margin: EdgeInsets.all(10),
-            // color: Colors.white,
-            width: MediaQuery.of(context).size.width,
-            child: CarouselSlider(
-              autoPlay: true,
-              height: 200,
-              enlargeCenterPage: true,
-              // borderRadius: false,
-              // showIndicator: false,
-              // boxFit: BoxFit.contain,
-              items: List.generate(
-                imageUrls.length,
-                (index) {
-                  return FadeInImage.assetNetwork(
-                    placeholder: 'assets/images/logo.png',
-                    image: imageUrls[index],
-                    height: 250,
-                    // width: MediaQuery.of(context).size.width-80,
-                    fit: BoxFit.contain,
-                  );
-                },
-              ),
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: List.generate(
-                  keys.length,
+      body: SingleChildScrollView(
+        physics: BouncingScrollPhysics(),
+        child: Column(
+          children: <Widget>[
+            Container(
+              height: 190,
+              // margin: EdgeInsets.all(10),
+              // color: Colors.white,
+              // width: MediaQuery.of(context).size.width*0.8,
+              child: CarouselSlider(
+                // autoPlay: true,
+                // height: 200,
+                // enlargeCenterPage: true,
+                // borderRadius: false,
+                // showIndicator: false,
+                // boxFit: BoxFit.contain,
+                options: CarouselOptions(
+                  viewportFraction: 0.6,
+                  // height: 200,
+                  enlargeCenterPage: true,
+                  autoPlay: true,
+                  enableInfiniteScroll: true,
+                  pauseAutoPlayOnManualNavigate: true,
+                  pauseAutoPlayOnTouch: true,
+                ),
+                items: List.generate(
+                  imageUrls.length,
                   (index) {
-                    return Column(
-                      children: <Widget>[
-                        SizedBox(
-                          height: 10,
-                        ),
-                        Card(
-                          elevation: 8,
-                          child: ListTile(
-                            isThreeLine: true,
-                            // contentPadding: EdgeInsets.all(4),
-                            leading: Icon(
-                              Icons.shopping_basket,
-                              color: Theme.of(context).primaryColor,
-                              size: 40,
-                            ),
-                            // title: Text('Order'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Text(
-                                      'ID: ',
-                                      style: textTheme.subtitle1
-                                          .copyWith(fontSize: 16),
-                                    ),
-                                    Text(
-                                      keys[index],
-                                      style: textTheme.subtitle2
-                                          .copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Text(
-                                      'Date Ordered: ',
-                                      style: textTheme.subtitle1
-                                          .copyWith(fontSize: 16),
-                                    ),
-                                    Text(
-                                      DateFormat.yMMMd().format(
-                                        DateTime.fromMillisecondsSinceEpoch(
-                                          data[keys[index]]['dateOrdered'],
-                                        ),
-                                      ),
-                                      style: textTheme.subtitle2
-                                          .copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Text(
-                                      'Date Delivered: ',
-                                      style: textTheme.subtitle1
-                                          .copyWith(fontSize: 16),
-                                    ),
-                                    Text(
-                                      DateFormat.yMMMd().format(
-                                        DateTime.fromMillisecondsSinceEpoch(
-                                          data[keys[index]]['dateDelivered'],
-                                        ),
-                                      ),
-                                      style: textTheme.subtitle2
-                                          .copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Text(
-                                      'Quantity: ',
-                                      style: textTheme.subtitle1
-                                          .copyWith(fontSize: 16),
-                                    ),
-                                    Text(
-                                      '${data[keys[index]]['quantity']}',
-                                      style: textTheme.subtitle2
-                                          .copyWith(fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  // mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Text(
-                                      'Delivered To: ',
-                                      style: textTheme.subtitle1
-                                          .copyWith(fontSize: 16),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        data[keys[index]]['deliveredTo'],
-                                        style: textTheme.subtitle2
-                                            .copyWith(fontSize: 14),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 4,
-                                ),
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      Text(
-                                        'Price: ',
-                                        style: textTheme.headline6.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${data[keys[index]]['price']} per Item',
-                                        style: textTheme.subtitle2
-                                            .copyWith(fontSize: 18),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    return FadeInImage.assetNetwork(
+                      placeholder: 'assets/images/logo.png',
+                      image: imageUrls[index],
+                      height: 250,
+                      // width: MediaQuery.of(context).size.width-80,
+                      fit: BoxFit.contain,
                     );
                   },
                 ),
               ),
             ),
-          )
-        ],
+            Column(
+              children: List.generate(
+                keys.length,
+                (index) {
+                  return Column(
+                    children: <Widget>[
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Card(
+                        elevation: 8,
+                        child: ListTile(
+                          isThreeLine: true,
+                          // contentPadding: EdgeInsets.all(4),
+                          leading: Icon(
+                            Icons.shopping_basket,
+                            color: Theme.of(context).primaryColor,
+                            size: 40,
+                          ),
+                          // title: Text('Order'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  SizedBox(
+                                    width: 90,
+                                    child: Text(
+                                      'Full Order ID: ',
+                                      style: textTheme.subtitle1
+                                          .copyWith(fontSize: 16),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      keys[index],
+                                      style: textTheme.subtitle2
+                                          .copyWith(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Short ID: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Text(
+                                    data[keys[index]]['shortId'] ?? '',
+                                    style: textTheme.subtitle2
+                                        .copyWith(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Customer Name: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Text(
+                                    data[keys[index]]['userName'] ?? '',
+                                    style: textTheme.subtitle2
+                                        .copyWith(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Date Ordered: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Text(
+                                    DateFormat.yMMMd().format(
+                                      DateTime.fromMillisecondsSinceEpoch(
+                                        data[keys[index]]['dateOrdered'],
+                                      ),
+                                    ),
+                                    style: textTheme.subtitle2
+                                        .copyWith(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Date Delivered: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Text(
+                                    DateFormat.yMMMd().format(
+                                      DateTime.fromMillisecondsSinceEpoch(
+                                        data[keys[index]]['dateDelivered'],
+                                      ),
+                                    ),
+                                    style: textTheme.subtitle2
+                                        .copyWith(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Quantity: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Text(
+                                    '${data[keys[index]]['quantity']}',
+                                    style: textTheme.subtitle2
+                                        .copyWith(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Row(
+                                // mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Delivered To: ',
+                                    style: textTheme.subtitle1
+                                        .copyWith(fontSize: 16),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      data[keys[index]]['deliveredTo'],
+                                      style: textTheme.subtitle2
+                                          .copyWith(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                height: 4,
+                              ),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      'Price: ',
+                                      style: textTheme.headline6.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${data[keys[index]]['price']} per Item',
+                                      style: textTheme.subtitle2
+                                          .copyWith(fontSize: 18),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              height: 40,
+            ),
+          ],
+        ),
       ),
     );
     //     CustomScrollView(
@@ -933,9 +1068,10 @@ class PastOrdersRoute extends StatelessWidget {
     return Scaffold(
       body: StreamBuilder<QuerySnapshot>(
         stream: Firestore.instance
-            .collection('stores')
-            .document(partnerStoreId)
-            .collection(isCompleted ? 'servedOrders' : 'pendingOrderedItems')
+            .collection('orders')
+            .where('stores', arrayContains: partnerStoreId)
+            // .document(partnerStoreId)
+            // .collection(isCompleted ? 'servedOrders' : 'pendingOrderedItems')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -952,7 +1088,27 @@ class PastOrdersRoute extends StatelessWidget {
               ),
             );
           } else {
-            final documents = snapshot.data.documents;
+            final documents = [];
+            for (var document in snapshot.data.documents) {
+              if (isCompleted) {
+                if (document.data.containsKey(partnerStoreId)) {
+                  documents.add(document);
+                }
+              } else {
+                if (!document.data.containsKey(partnerStoreId)) {
+                  documents.add(document);
+                }
+              }
+            }
+            if (documents.length <= 0) {
+              return Center(
+                child: Text(
+                  isCompleted
+                      ? 'No Orders Served Yet'
+                      : 'No Pending Orders Yet',
+                ),
+              );
+            }
             return SingleChildScrollView(
               physics: BouncingScrollPhysics(),
               child: Column(
@@ -964,11 +1120,6 @@ class PastOrdersRoute extends StatelessWidget {
                       isStore: true,
                       isCompleted: isCompleted,
                       status: isCompleted ? 'Served' : "Preparing",
-                      userOrderRef: Firestore.instance
-                          .collection('users')
-                          .document(documents[index].data['userId'])
-                          .collection('orders')
-                          .document(documents[index].data['userId']),
                     );
                   },
                 ),
@@ -977,6 +1128,144 @@ class PastOrdersRoute extends StatelessWidget {
           }
         },
       ),
+    );
+  }
+}
+
+class ItemInStock extends StatelessWidget {
+  void showChangeStockDialog(
+      BuildContext context, bool isAddStock, Function(int) addToStock) {
+    GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final textController = TextEditingController(text: '0');
+    showDialog(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text(isAddStock ? 'Add Item To Stock' : 'Remove From Stock'),
+            actions: <Widget>[
+              RaisedButton(
+                onPressed: () {},
+                child: Text('Add'),
+              ),
+              RaisedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel'),
+              ),
+            ],
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: textController,
+                inputFormatters: [
+                  WhitelistingTextInputFormatter.digitsOnly,
+                ],
+              ),
+            ),
+          );
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var store = (Session.data['partnerStore'] as Store);
+    var itemsData = store.items;
+    var storeItems = store.storeItems;
+
+    return ListView.builder(
+      itemCount: itemsData.length,
+      itemBuilder: (ctx, index) {
+        return Card(
+          margin: EdgeInsets.all(6.0),
+          child: Container(
+            height: 200,
+            padding: EdgeInsets.all(4.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: Row(
+                    children: <Widget>[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/logo.png',
+                          image: storeItems[index].images[0],
+                        ),
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            storeItems[index].itemName,
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Text(
+                            storeItems[index].description,
+                          ),
+                        ],
+                      ),
+                      Spacer(),
+                      StreamBuilder(
+                          initialData: storeItems[index],
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Text('ERR');
+                            } else if (snapshot.hasData) {
+                              return Text(snapshot.data['quantity']);
+                            } else {
+                              return Text('${snapshot.data}');
+                            }
+                          }),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: <Widget>[
+                    RaisedButton(
+                      color: Theme.of(context).primaryColor,
+                      child: Text('Add To Stock'),
+                      onPressed: () async {
+                        showDialog(
+                            context: ctx,
+                            builder: (ctx) {
+                              return AlertDialog(
+                                actions: <Widget>[],
+                              );
+                            });
+                        double count;
+                        Firestore.instance.runTransaction((transaction) async {
+                          var documentRef = Firestore.instance
+                              .collection('items')
+                              .document(store.storeItems[index].itemId);
+                          transaction.set(documentRef, {
+                            'quantity': count,
+                          });
+                        });
+                      },
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    RaisedButton(
+                      color: Theme.of(context).primaryColor,
+                      child: Text('Remove From Stock'),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -8,7 +8,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:geocoder/geocoder.dart';
+import 'package:get_it/get_it.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/rx_models/rx_address.dart';
+import 'package:sennit/rx_models/rx_config.dart';
+import 'package:sennit/rx_models/rx_receiveit_tab.dart';
 import 'package:sennit/user/receiveit.dart';
 
 class UserHomeRoute extends StatelessWidget {
@@ -37,6 +42,7 @@ class UserHomeRoute extends StatelessWidget {
 
   UserHomeRoute({Key key, this.initializeCart = false}) : super(key: key) {
     initializeNotifications();
+    GetIt.I.get<RxReceiveItTab>().index.add(0);
     // if (initializeCart) {
     //   FirebaseAuth.instance.currentUser().then((user) async {
     //     String userId = user.uid;
@@ -54,6 +60,22 @@ class UserHomeRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+    if (config['maintenanceNotice'] != null) {
+      try {
+        BotToast.showNotification(
+          align: Alignment.topCenter,
+          title: (fn) => Text('Maintenance Notice'),
+          duration: Duration(seconds: 15),
+          crossPage: true,
+          subtitle: (fn) => Text(
+            'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+          ),
+        );
+      } catch (ex) {
+        print(ex.toString());
+      }
+    }
     return WillPopScope(
       onWillPop: () async {
         if (_willExit) {
@@ -86,7 +108,49 @@ class UserHomeRoute extends StatelessWidget {
             ),
           ],
         ),
-        body: UserHomeBody(MediaQuery.of(context).size),
+        body: StreamBuilder<Map<String, Address>>(
+            stream: GetIt.I.get<RxAddress>().stream$,
+            builder: (context, snapshot) {
+              Widget popup;
+              bool ignorePointer = false;
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  snapshot?.data['fromAddress'] == null) {
+                ignorePointer = true;
+                popup = Card(
+                  margin: EdgeInsets.all(16),
+                  elevation: 20,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        SizedBox(height: 20),
+                        Icon(Icons.location_searching, size: 30),
+                        SizedBox(height: 20),
+                        Text(
+                          'Searching For Location ......',
+                          style: Theme.of(context).textTheme.subtitle1,
+                        ),
+                        SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                );
+              } else {
+                ignorePointer = false;
+              }
+              return IgnorePointer(
+                ignoring: ignorePointer,
+                child: Stack(
+                  children: <Widget>[
+                    UserHomeBody(MediaQuery.of(context).size),
+                    Center(
+                      child: popup ?? Opacity(opacity: 0),
+                    ),
+                  ],
+                ),
+              );
+            }),
         backgroundColor: Colors.white,
       ),
     );
