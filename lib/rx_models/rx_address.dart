@@ -28,6 +28,10 @@ class RxAddress {
       }
       var result = await location.requestPermission();
       if (result != PermissionStatus.granted) {
+        if (result == PermissionStatus.deniedForever) {
+          Utils.showSnackBarError(null,
+              'Permission Denied Forever. Please change permission in settings and restart the app.');
+        }
         return null;
       }
     } else if (!(await location.serviceEnabled())) {
