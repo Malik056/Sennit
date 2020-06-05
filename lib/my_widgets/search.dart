@@ -2,12 +2,14 @@ import 'package:flappy_search_bar/flappy_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:sennit/models/models.dart' as model;
+import 'package:sennit/rx_models/rx_receiveit_tab.dart';
 import 'package:sennit/rx_models/rx_storesAndItems.dart';
 import 'package:sennit/user/receiveit.dart';
 
 class SearchWidget extends StatefulWidget {
   final bool demo;
-  SearchWidget({@required this.demo});
+  final Function() backPressed;
+  SearchWidget({@required this.demo, this.backPressed});
   @override
   State<StatefulWidget> createState() {
     return SearchWidgetState();
@@ -110,196 +112,209 @@ class SearchWidgetState extends State<SearchWidget>
   @override
   Widget build(BuildContext context) {
     RxStoresAndItems storesAndItems = GetIt.I.get<RxStoresAndItems>();
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child:
-              // StreamBuilder<Map<String, dynamic>>(
-              //     stream: storesAndItems.stores$,
-              //     builder: (context, snapshot) {
-              // if (snapshot.connectionState == ConnectionState.waiting) {
-              //   return Center(
-              //     child: CircularProgressIndicator(),
-              //   );
-              // } else if (snapshot.data == null) {
-              //   return Center(
-              //     child: Column(
-              //       mainAxisSize: MainAxisSize.min,
-              //       children: <Widget>[
-              //         Icon(Icons.replay),
-              //         SizedBox(
-              //           height: 4,
-              //         ),
-              //         GestureDetector(
-              //           child: Text('Tap to reload'),
-              //           onTap: () {
-              //             setState(() {});
-              //           },
-              //         ),
-              //       ],
-              //     ),
-              //   );
-              // } else if (snapshot.data.length == 0) {
-              //   return Center(
-              //       child: Text(
-              //     'No Items Found Near You!',
-              //     style: Theme.of(context).textTheme.headline6.copyWith(
-              //           fontWeight: FontWeight.bold,
-              //         ),
-              //   ));
-              // }
-              // items = stores.c
-              // stores = snapshot.data['stores'];
-              Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              TabBar(
-                indicatorColor: Theme.of(context).primaryColor,
-                unselectedLabelColor: Colors.grey,
-                labelColor: Theme.of(context).primaryColor,
-                controller: controller,
-                tabs: <Widget>[
-                  Tab(
-                    child: Text('Search Store'),
-                  ),
-                  Tab(
-                    child: Text('Search Item'),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
+    return WillPopScope(
+      onWillPop: () async {
+        // GetIt.I.get<RxReceiveItTab>().index.add(0);
+        widget.backPressed();
+        return false;
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child:
+                // StreamBuilder<Map<String, dynamic>>(
+                //     stream: storesAndItems.stores$,
+                //     builder: (context, snapshot) {
+                // if (snapshot.connectionState == ConnectionState.waiting) {
+                //   return Center(
+                //     child: CircularProgressIndicator(),
+                //   );
+                // } else if (snapshot.data == null) {
+                //   return Center(
+                //     child: Column(
+                //       mainAxisSize: MainAxisSize.min,
+                //       children: <Widget>[
+                //         Icon(Icons.replay),
+                //         SizedBox(
+                //           height: 4,
+                //         ),
+                //         GestureDetector(
+                //           child: Text('Tap to reload'),
+                //           onTap: () {
+                //             setState(() {});
+                //           },
+                //         ),
+                //       ],
+                //     ),
+                //   );
+                // } else if (snapshot.data.length == 0) {
+                //   return Center(
+                //       child: Text(
+                //     'No Items Found Near You!',
+                //     style: Theme.of(context).textTheme.headline6.copyWith(
+                //           fontWeight: FontWeight.bold,
+                //         ),
+                //   ));
+                // }
+                // items = stores.c
+                // stores = snapshot.data['stores'];
+                Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                TabBar(
+                  indicatorColor: Theme.of(context).primaryColor,
+                  unselectedLabelColor: Colors.grey,
+                  labelColor: Theme.of(context).primaryColor,
                   controller: controller,
-                  children: [
-                    SearchBar<model.Store>(
-                      onSearch: searchStore,
-                      hintText: "Search Store",
-                      emptyWidget: Center(
-                        child: Text(
-                          'No Store Found',
-                          style: Theme.of(context).textTheme.headline6,
-                        ),
-                      ),
-                      loader: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                      placeHolder: StreamBuilder<Map<String, model.Store>>(
-                          stream: storesAndItems.stores$,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-                            final keys = snapshot.data?.keys?.toList() ?? [];
-                            return ListView(
-                              physics: BouncingScrollPhysics(),
-                              children: List<Widget>.generate(keys.length, (i) {
-                                String index = keys[i];
-                                return GestureDetector(
-                                  child: StoreItem(
-                                    store: snapshot.data[index],
-                                  ),
-                                  onTap: () {
-                                    Navigator.push(context,
-                                        MaterialPageRoute(builder: (context) {
-                                      return StoreMainPage(
-                                        demo: widget.demo,
-                                        store: snapshot.data[index],
-                                      );
-                                    }));
-                                  },
-                                );
-                              }),
-                            );
-                          }),
-                      onItemFound: (model.Store item, index) {
-                        return GestureDetector(
-                          child: /** */ StoreItem(store: item),
-                          // MenuItem(item: item),
-                          // onTap: () {
-                          //   Navigator.push(
-                          //     context,
-                          //     MaterialPageRoute(
-                          //       builder: (context) {
-                          //         return ItemDetailsRoute(
-                          //           item: items[index],
-                          //         );
-                          //       },
-                          //     ),
-                          //   );
-                          // },
-                        );
-                      },
+                  tabs: <Widget>[
+                    Tab(
+                      child: Text('Search Store'),
                     ),
-                    SearchBar<model.StoreItem>(
-                      onSearch: search,
-                      hintText: "Search",
-                      emptyWidget: Center(
-                        child: Text(
-                          'No Items Found',
-                          style: Theme.of(context).textTheme.headline6,
-                        ),
-                      ),
-                      loader: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                      placeHolder: StreamBuilder<Map<String, model.StoreItem>>(
-                          stream: storesAndItems.items$,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Center(child: CircularProgressIndicator());
-                            }
-                            final keys = snapshot?.data?.keys?.toList() ?? [];
-                            return ListView(
-                              physics: BouncingScrollPhysics(),
-                              children: List<Widget>.generate(keys.length, (i) {
-                                String index = keys[i];
-                                return GestureDetector(
-                                  child: MenuItem(
-                                    item: snapshot.data[index],
-                                  ),
-                                  onTap: () {
-                                    Navigator.push(context,
-                                        MaterialPageRoute(builder: (context) {
-                                      return ItemDetailsRoute(
-                                        item: snapshot.data[index],
-                                        isDemo: widget.demo,
-                                      );
-                                    }));
-                                  },
-                                );
-                              }),
-                            );
-                          }),
-                      onItemFound: (model.StoreItem item, index) {
-                        return GestureDetector(
-                          child: MenuItem(item: item),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) {
-                                  return ItemDetailsRoute(
-                                    item: item,
-                                    isDemo: widget.demo,
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        );
-                      },
+                    Tab(
+                      child: Text('Search Item'),
                     ),
                   ],
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabBarView(
+                    controller: controller,
+                    children: [
+                      SearchBar<model.Store>(
+                        onSearch: searchStore,
+                        hintText: "Search Store",
+                        emptyWidget: Center(
+                          child: Text(
+                            'No Store Found',
+                            style: Theme.of(context).textTheme.headline6,
+                          ),
+                        ),
+                        loader: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        placeHolder: StreamBuilder<Map<String, model.Store>>(
+                            stream: storesAndItems.stores$,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+                              final keys = snapshot.data?.keys?.toList() ?? [];
+                              return ListView(
+                                physics: BouncingScrollPhysics(),
+                                children:
+                                    List<Widget>.generate(keys.length, (i) {
+                                  String index = keys[i];
+                                  return GestureDetector(
+                                    child: StoreItem(
+                                      store: snapshot.data[index],
+                                    ),
+                                    onTap: () {
+                                      Navigator.push(context,
+                                          MaterialPageRoute(builder: (context) {
+                                        return StoreMainPage(
+                                          demo: widget.demo,
+                                          store: snapshot.data[index],
+                                        );
+                                      }));
+                                    },
+                                  );
+                                }),
+                              );
+                            }),
+                        onItemFound: (model.Store item, index) {
+                          return GestureDetector(
+                            child: /** */ StoreItem(store: item),
+                            // MenuItem(item: item),
+                            // onTap: () {
+                            //   Navigator.push(
+                            //     context,
+                            //     MaterialPageRoute(
+                            //       builder: (context) {
+                            //         return ItemDetailsRoute(
+                            //           item: items[index],
+                            //         );
+                            //       },
+                            //     ),
+                            //   );
+                            // },
+                          );
+                        },
+                      ),
+                      SearchBar<model.StoreItem>(
+                        onSearch: search,
+                        hintText: "Search",
+                        emptyWidget: Center(
+                          child: Text(
+                            'No Items Found',
+                            style: Theme.of(context).textTheme.headline6,
+                          ),
+                        ),
+                        loader: Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        placeHolder:
+                            StreamBuilder<Map<String, model.StoreItem>>(
+                                stream: storesAndItems.items$,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                  final keys =
+                                      snapshot?.data?.keys?.toList() ?? [];
+                                  return ListView(
+                                    physics: BouncingScrollPhysics(),
+                                    children:
+                                        List<Widget>.generate(keys.length, (i) {
+                                      String index = keys[i];
+                                      return GestureDetector(
+                                        child: MenuItem(
+                                          item: snapshot.data[index],
+                                        ),
+                                        onTap: () {
+                                          Navigator.push(context,
+                                              MaterialPageRoute(
+                                                  builder: (context) {
+                                            return ItemDetailsRoute(
+                                              item: snapshot.data[index],
+                                              isDemo: widget.demo,
+                                            );
+                                          }));
+                                        },
+                                      );
+                                    }),
+                                  );
+                                }),
+                        onItemFound: (model.StoreItem item, index) {
+                          return GestureDetector(
+                            child: MenuItem(item: item),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) {
+                                    return ItemDetailsRoute(
+                                      item: item,
+                                      isDemo: widget.demo,
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // }),
           ),
-          // }),
         ),
       ),
     );

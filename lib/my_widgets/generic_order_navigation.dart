@@ -494,6 +494,13 @@ class OrderNavigationRouteState extends State<OrderNavigationRoute> {
                     //     .collection('orders')
                     //     .document(widget.data['orderId']);
                     final snapshot = await trx.get(ref);
+                    if (snapshot.data['driverId'] != null) {
+                      BotToast.closeAllLoading();
+                      Utils.showInfoDialog(
+                          'The Order has already picked by other driver');
+                      documentStream.cancel();
+                      return;
+                    }
                     Map<String, dynamic> data =
                         Map<String, dynamic>.from(snapshot.data);
                     data.update('orderId', (old) => widget.data['orderId'],
@@ -935,31 +942,6 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                             // crossAxisAlignment: CrossAxisAlignment.center,
                             children: <Widget>[
                               SizedBox(width: 10),
-                              SizedBox(
-                                height: 110,
-                                width: 150,
-                                child: Text.rich(
-                                  TextSpan(
-                                    children: [
-                                      TextSpan(
-                                          text: 'Address: ',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .subtitle2),
-                                      TextSpan(
-                                        text: store.storeAddress,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyText2,
-                                      ),
-                                    ],
-                                  ),
-                                  strutStyle: StrutStyle(
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 10),
                               Expanded(
                                 child: Container(
                                   height: 110,
@@ -968,9 +950,35 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                                     scrollDirection: Axis.horizontal,
                                     // dragStartBehavior: DragStartBehavior.start,
                                     physics: BouncingScrollPhysics(),
-                                    itemCount: itemKeysOfCurrentStore
-                                        .length, // TODO://Fix it,
+                                    itemCount: itemKeysOfCurrentStore.length,
                                     itemBuilder: (context, index) {
+                                      if (index == 0) {
+                                        return SizedBox(
+                                          height: 110,
+                                          width: 150,
+                                          child: Text.rich(
+                                            TextSpan(
+                                              children: [
+                                                TextSpan(
+                                                    text: 'Address: ',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .subtitle2),
+                                                TextSpan(
+                                                  text: store.storeAddress,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyText2,
+                                                ),
+                                              ],
+                                            ),
+                                            strutStyle: StrutStyle(
+                                              height: 1,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      index -= 1;
                                       StoreItem item =
                                           items[itemKeysOfCurrentStore[index]];
                                       ReceiveItOrderItemDetails
@@ -1248,7 +1256,7 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                       //       scrollDirection: Axis.horizontal,
                       //       // dragStartBehavior: DragStartBehavior.start,
                       //       physics: BouncingScrollPhysics(),
-                      //       itemCount: 10, // TODO://Fix it,
+                      //       itemCount: 10,
                       //       itemBuilder: (context, index) {
                       //         return Column(
                       //           mainAxisSize: MainAxisSize.min,

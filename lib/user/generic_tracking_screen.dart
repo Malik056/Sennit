@@ -203,7 +203,7 @@ class __MyStatefulAppBarState extends State<_MyStatefulAppBar> {
                 opacity: 0,
               )
             : FlatButton(
-                child: Text('Done'),
+                child: Text('OTP'),
                 onPressed: !isButtonEnabled
                     ? null
                     : () {
@@ -926,9 +926,20 @@ class _MySolidBottomSheetForReceiveItState
                     SizedBox(
                       height: 16,
                     ),
-                    Text('Phone: ${order.phoneNumber}'),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                              text: 'Phone: ',
+                              style: Theme.of(context).textTheme.subtitle1),
+                          TextSpan(
+                              text: order.phoneNumber,
+                              style: Theme.of(context).textTheme.subtitle2),
+                        ],
+                      ),
+                    ),
                     SizedBox(
-                      height: 16,
+                      height: 4.0,
                     ),
                     (order.house ?? '') != ''
                         ? Text.rich(
@@ -946,7 +957,11 @@ class _MySolidBottomSheetForReceiveItState
                             ),
                           )
                         : Opacity(opacity: 0),
-                    SizedBox(height: 6),
+                    (order.house ?? '') != ''
+                        ? SizedBox(height: 4.0)
+                        : Opacity(
+                            opacity: 0,
+                          ),
                     Text(
                       order.dropToDoor
                           ? 'Bring Order to Door'
@@ -1011,31 +1026,6 @@ class _MySolidBottomSheetForReceiveItState
                             // crossAxisAlignment: CrossAxisAlignment.center,
                             children: <Widget>[
                               SizedBox(width: 10),
-                              SizedBox(
-                                height: 110,
-                                width: 150,
-                                child: Text.rich(
-                                  TextSpan(
-                                    children: [
-                                      TextSpan(
-                                          text: 'Address: ',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .subtitle2),
-                                      TextSpan(
-                                        text: store.storeAddress,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyText2,
-                                      ),
-                                    ],
-                                  ),
-                                  strutStyle: StrutStyle(
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 10),
                               Expanded(
                                 child: Container(
                                   height: 110,
@@ -1044,9 +1034,40 @@ class _MySolidBottomSheetForReceiveItState
                                     scrollDirection: Axis.horizontal,
                                     // dragStartBehavior: DragStartBehavior.start,
                                     physics: BouncingScrollPhysics(),
-                                    itemCount: itemKeysOfCurrentStore
-                                        .length, // TODO://Fix it,
+                                    itemCount:
+                                        itemKeysOfCurrentStore.length + 1,
                                     itemBuilder: (context, index) {
+                                      if (index == 0) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              right: 10.0),
+                                          child: SizedBox(
+                                            height: 110,
+                                            width: 150,
+                                            child: Text.rich(
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                      text: 'Address: ',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .subtitle2),
+                                                  TextSpan(
+                                                    text: store.storeAddress,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyText2,
+                                                  ),
+                                                ],
+                                              ),
+                                              strutStyle: StrutStyle(
+                                                height: 1,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      index -= 1;
                                       StoreItem item =
                                           items[itemKeysOfCurrentStore[index]];
                                       ReceiveItOrderItemDetails
@@ -2130,17 +2151,71 @@ class _VerificationCodePopUpState extends State<_VerificationCodePopUp> {
                     elevation: 8,
                     child: AnimatedContainer(
                       width: width,
-                      height: height,
+                      height: height + 40,
                       margin: EdgeInsets.all(4),
-                      padding: EdgeInsets.all(8),
+                      padding: EdgeInsets.fromLTRB(8, 8, 8, 2),
                       duration: Duration(milliseconds: 500),
                       child: Center(
-                        child: Text(
-                          'Verification Code\n' + widget.verificationCode,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headline6.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                        child: Column(
+                          children: <Widget>[
+                            Text(
+                              'Verification Code\n' + widget.verificationCode,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline6
+                                  .copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Spacer(),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: FlatButton(
+                                    onPressed: () {
+                                      isOverlayVisible = false;
+                                      hide();
+                                      setState(() {});
+                                    },
+                                    child: Text(
+                                      'Go Back',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .button
+                                          .copyWith(
+                                            color: Colors.black,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 20,
+                                  width: 2,
+                                  child: Container(color: Colors.black),
+                                ),
+                                Expanded(
+                                  child: FlatButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text(
+                                      'Done',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .button
+                                          .copyWith(
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       onEnd: () {

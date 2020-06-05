@@ -29,6 +29,26 @@ class OrderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double price = 0;
+    if (!data.containsKey('numberOfSleevesNeeded') ||
+        data['numberOfSleevesNeeded'] == null) {
+      if (isStore) {
+        Store store = Session.data['partnerStore'];
+        String storeId = store.storeId;
+        StoreToReceiveItOrderItems storeToReceiveItOrderItems =
+            StoreToReceiveItOrderItems.fromMap(data['itemsData']);
+        Map<String, ReceiveItOrderItemDetails> details =
+            storeToReceiveItOrderItems.itemDetails[storeId].itemDetails;
+        var itemIds = details.keys;
+        for (var itemId in itemIds) {
+          price += (details[itemId].quantity * details[itemId].price);
+        }
+      } else {
+        price = data['price'];
+      }
+    } else {
+      price = data['price'];
+    }
     return Card(
       child: ListTile(
         dense: true,
@@ -98,7 +118,7 @@ class OrderTile extends StatelessWidget {
           ),
         ),
         trailing: Text(
-          'R${(data['price'] as double).toStringAsFixed(2)}',
+          'R${price.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.subtitle1,
         ),
       ),
@@ -387,195 +407,313 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
       ),
       body: Column(
         children: <Widget>[
-          Expanded(
-            flex: 3,
-            child: Container(
-              // height: MediaQuery.of(context).size.height - 80,
-              padding: EdgeInsets.all(8.0),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      SizedBox(
-                        height: 20,
-                      ),
-                      // Center(
-                      //   child: Text(
-                      //     'ReceiveIt',
-                      //     style: textTheme.headline5,
-                      //   ),
-                      // ),
-                      SizedBox(
-                        height: 20,
-                      ),
-                      Row(
-                        children: <Widget>[
-                          Text(
-                            'OrderId: ',
-                            style: textTheme.subtitle1,
-                            strutStyle: StrutStyle(height: strutHeight),
-                          ),
-                          Text(
-                            '${data['shortId']}',
-                            strutStyle: StrutStyle(height: strutHeight),
-                          ),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      isStore
-                          ? Opacity(opacity: 0)
-                          : Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  'Delivered To: ',
-                                  style: textTheme.subtitle1,
-                                  strutStyle: StrutStyle(height: strutHeight),
-                                ),
-                                Expanded(
-                                  child: FutureBuilder<Address>(
-                                      future: _getAddressFromLatLng(
-                                        Utils.latLngFromString(
-                                          data['destination'],
-                                        ),
+          Container(
+            // height: MediaQuery.of(context).size.height - 80,
+            padding: EdgeInsets.all(8.0),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    SizedBox(
+                      height: 20,
+                    ),
+                    // Center(
+                    //   child: Text(
+                    //     'ReceiveIt',
+                    //     style: textTheme.headline5,
+                    //   ),
+                    // ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          'OrderId: ',
+                          style: textTheme.subtitle1,
+                          strutStyle: StrutStyle(height: strutHeight),
+                        ),
+                        Text(
+                          '${data['shortId']}',
+                          strutStyle: StrutStyle(height: strutHeight),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    isStore
+                        ? Opacity(opacity: 0)
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Delivered To: ',
+                                style: textTheme.subtitle1,
+                                strutStyle: StrutStyle(height: strutHeight),
+                              ),
+                              Expanded(
+                                child: FutureBuilder<Address>(
+                                    future: _getAddressFromLatLng(
+                                      Utils.latLngFromString(
+                                        data['destination'],
                                       ),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return Text(
-                                            'Loading .....',
-                                            strutStyle: StrutStyle(
-                                              height: strutHeight,
-                                            ),
-                                          );
-                                        }
+                                    ),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
                                         return Text(
-                                          '${data['house'] ?? ''}${((data['house'] != null && data['house'] != '') ? ', ' : '')}${snapshot.data.addressLine}',
+                                          'Loading .....',
                                           strutStyle: StrutStyle(
                                             height: strutHeight,
                                           ),
                                         );
-                                      }),
-                                ),
-                              ],
-                            ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Wrap(
-                        direction: Axis.horizontal,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        alignment: WrapAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Date: ',
-                            style: textTheme.subtitle1,
-                            strutStyle: StrutStyle(
-                              height: strutHeight,
-                            ),
-                          ),
-                          Text(
-                            '''${DateFormat(DateFormat.YEAR_ABBR_MONTH_DAY).format(
-                              DateTime.fromMillisecondsSinceEpoch(
-                                data['date'],
+                                      }
+                                      return Text(
+                                        '${data['house'] ?? ''}${((data['house'] != null && data['house'] != '') ? ', ' : '')}${snapshot.data.addressLine}',
+                                        strutStyle: StrutStyle(
+                                          height: strutHeight,
+                                        ),
+                                      );
+                                    }),
                               ),
-                            )}''',
-                            strutStyle: StrutStyle(
-                              height: strutHeight,
-                            ),
+                            ],
                           ),
-                          SizedBox(width: 20),
-                          Text(
-                            'Status: ',
-                            style: textTheme.subtitle1,
-                            strutStyle: StrutStyle(
-                              height: strutHeight,
-                            ),
+                    SizedBox(
+                      height: 6,
+                    ),
+                    Wrap(
+                      direction: Axis.horizontal,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Date: ',
+                          style: textTheme.subtitle1,
+                          strutStyle: StrutStyle(
+                            height: strutHeight,
                           ),
-                          Text(
-                            '${(data['status'] ?? status) == 'Accepted' ? 'Preparing' : (data['status'] ?? status)}',
-                            strutStyle: StrutStyle(
-                              height: strutHeight,
+                        ),
+                        Text(
+                          '''${DateFormat(DateFormat.YEAR_ABBR_MONTH_DAY).format(
+                            DateTime.fromMillisecondsSinceEpoch(
+                              data['date'],
                             ),
+                          )}''',
+                          strutStyle: StrutStyle(
+                            height: strutHeight,
                           ),
-                          data['driverName'] == null || data['driverName'] == ''
-                              ? Opacity(
-                                  opacity: 0,
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: <Widget>[
-                                    Text(
-                                      'Driver: ',
-                                      style: textTheme.subtitle1,
-                                      strutStyle: StrutStyle(
-                                        height: strutHeight,
-                                      ),
+                        ),
+                        SizedBox(width: 20),
+                        Text(
+                          'Status: ',
+                          style: textTheme.subtitle1,
+                          strutStyle: StrutStyle(
+                            height: strutHeight,
+                          ),
+                        ),
+                        Text(
+                          '${(data['status'] ?? status) == 'Accepted' ? 'Preparing' : (data['status'] ?? status)}',
+                          strutStyle: StrutStyle(
+                            height: strutHeight,
+                          ),
+                        ),
+                        data['driverName'] == null || data['driverName'] == ''
+                            ? Opacity(
+                                opacity: 0,
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    'Driver: ',
+                                    style: textTheme.subtitle1,
+                                    strutStyle: StrutStyle(
+                                      height: strutHeight,
                                     ),
-                                    Text(
-                                      '${data['driverName'] ?? 'N/A'}',
-                                      strutStyle: StrutStyle(
-                                        height: strutHeight,
-                                      ),
+                                  ),
+                                  Text(
+                                    '${data['driverName'] ?? 'N/A'}',
+                                    strutStyle: StrutStyle(
+                                      height: strutHeight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ],
+                    ),
+                    // SizedBox(
+                    //   height: 10,
+                    // ),
+                    FutureBuilder<Map<String, StoreItem>>(
+                      future: getItemDetails(isStore),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final order = OrderFromReceiveIt.fromMap(data);
+                        Map<String, Store> storesMap =
+                            GetIt.I.get<RxStoresAndItems>().stores.value;
+                        Map<String, StoreItem> itemsMap = snapshot.data;
+                        StoreToReceiveItOrderItems storeToReceiveItOrderItems =
+                            order.itemsData;
+
+                        List<Widget> widgets = [];
+
+                        if (!isStore) {
+                          for (String storeId
+                              in storeToReceiveItOrderItems.itemDetails.keys) {
+                            Store store = storesMap[storeId];
+                            widgets.add(SizedBox(
+                              height: 32.0,
+                            ));
+                            widgets.add(Text(
+                              store?.storeName ?? 'storeName',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .subtitle2
+                                  .copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ));
+                            widgets.add(SizedBox(
+                              height: 16.0,
+                            ));
+                            Map<String, ReceiveItOrderItemDetails> orderItems =
+                                storeToReceiveItOrderItems
+                                    .itemDetails[storeId].itemDetails;
+                            for (String itemId in orderItems.keys) {
+                              StoreItem item = itemsMap[itemId];
+                              ReceiveItOrderItemDetails details =
+                                  orderItems[itemId];
+                              widgets.add(
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8.0),
+                                            child: Container(
+                                              height: 80,
+                                              width: 80,
+                                              color: Colors.black,
+                                              child: Image.network(
+                                                item.images[0],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 6.0,
+                                        ),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.max,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: <Widget>[
+                                              Row(
+                                                children: <Widget>[
+                                                  Text(
+                                                    item.itemName,
+                                                    style: textTheme.subtitle1,
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(
+                                                height: 2.0,
+                                              ),
+                                              Text(
+                                                'Flavour: ${(details?.flavour ?? '') == '' ? 'N/A' : details.flavour}',
+                                              ),
+                                              SizedBox(
+                                                height: 2.0,
+                                              ),
+                                              Text(
+                                                'Quantity: ${(details.quantity)}',
+                                              ),
+                                              SizedBox(
+                                                height: 2.0,
+                                              ),
+                                              Row(children: [
+                                                Spacer(),
+                                                Text(
+                                                  '''Price: R${item.price.toStringAsFixed(1)} R x ${details.quantity} = ${(item.price * details.quantity).toStringAsFixed(1)} R''',
+                                                  style: textTheme.subtitle1,
+                                                ),
+                                              ]),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(
+                                      height: 8,
+                                      width: 100,
+                                    ),
+                                    Text.rich(
+                                      TextSpan(children: [
+                                        TextSpan(
+                                          text: "Description: ",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyText2
+                                              .copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                              "${item.description ?? 'No Description'}",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyText2,
+                                        ),
+                                      ]),
                                     ),
                                   ],
                                 ),
-                        ],
-                      ),
-                      SizedBox(
-                        height: 40,
-                      ),
-                      FutureBuilder<Map<String, StoreItem>>(
-                        future: getItemDetails(isStore),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-                          final order = OrderFromReceiveIt.fromMap(data);
-                          Map<String, Store> storesMap =
-                              GetIt.I.get<RxStoresAndItems>().stores.value;
-                          Map<String, StoreItem> itemsMap = snapshot.data;
-                          StoreToReceiveItOrderItems
-                              storeToReceiveItOrderItems = order.itemsData;
-
-                          List<Widget> widgets = [];
-
-                          if (!isStore) {
-                            for (String storeId in storeToReceiveItOrderItems
-                                .itemDetails.keys) {
-                              Store store = storesMap[storeId];
-                              widgets.add(SizedBox(
-                                height: 32.0,
-                              ));
-                              widgets.add(Text(
-                                store?.storeName ?? 'storeName',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .subtitle2
-                                    .copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ));
+                              );
                               widgets.add(SizedBox(
                                 height: 16.0,
                               ));
-                              Map<String, ReceiveItOrderItemDetails>
-                                  orderItems = storeToReceiveItOrderItems
-                                      .itemDetails[storeId].itemDetails;
-                              for (String itemId in orderItems.keys) {
-                                StoreItem item = itemsMap[itemId];
-                                ReceiveItOrderItemDetails details =
-                                    orderItems[itemId];
-                                widgets.add(
+                            }
+                          }
+                        } else {
+                          String storeId = Session.data['partnerStore'].storeId;
+
+                          ReceiveItOrderItem receiveItOrderItem =
+                              storeToReceiveItOrderItems.itemDetails[storeId];
+                          widgets.add(SizedBox(
+                            height: 32.0,
+                          ));
+                          data.update('price', (value) => 0, ifAbsent: () => 0);
+                          for (String itemId
+                              in receiveItOrderItem.itemDetails.keys) {
+                            StoreItem item = itemsMap[itemId];
+                            ReceiveItOrderItemDetails details =
+                                receiveItOrderItem.itemDetails[itemId];
+                            data.update(
+                                'price',
+                                (old) =>
+                                    old += (details.price * details.quantity));
+                            widgets.add(
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
                                   Row(
                                     children: [
                                       Expanded(
@@ -609,27 +747,27 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                                   item.itemName,
                                                   style: textTheme.subtitle1,
                                                 ),
-                                                // Spacer(),
-                                                // Expanded(
-                                                //   child: Text(
-                                                //     item.storeName.substring(
-                                                //       0,
-                                                //       item.storeName.length > 24
-                                                //           ? 24
-                                                //           : item
-                                                //               .storeName.length,
+                                                //   Spacer(),
+                                                //   Expanded(
+                                                //     child: Text(
+                                                //       item.storeName.substring(
+                                                //         0,
+                                                //         item.storeName.length > 24
+                                                //             ? 24
+                                                //             : item.storeName.length,
+                                                //       ),
+                                                //       style: Theme.of(context)
+                                                //           .textTheme
+                                                //           .subtitle1
+                                                //           .copyWith(
+                                                //             fontSize: (22 -
+                                                //                 item.storeName
+                                                //                         .length /
+                                                //                     1.8),
+                                                //           ),
                                                 //     ),
-                                                //     style: Theme.of(context)
-                                                //         .textTheme
-                                                //         .subtitle1
-                                                //         .copyWith(
-                                                //           fontSize: (22 -
-                                                //               item.storeName
-                                                //                       .length /
-                                                //                   1.8),
-                                                //         ),
                                                 //   ),
-                                                // ),
+                                                //
                                               ],
                                             ),
                                             SizedBox(
@@ -638,10 +776,15 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                             Text(
                                               'Flavour: ${(details?.flavour ?? '') == '' ? 'N/A' : details.flavour}',
                                             ),
+                                            SizedBox(
+                                              height: 2.0,
+                                            ),
+                                            Text(
+                                                'Quantity: ${details?.quantity}'),
                                             Row(children: [
                                               Spacer(),
                                               Text(
-                                                '''Price: R${item.price.toStringAsFixed(1)} R x ${details.quantity} = ${(item.price * details.quantity).toStringAsFixed(1)} R''',
+                                                '''Price: R ${item.price.toStringAsFixed(1)} x ${details.quantity} = R ${(item.price * details.quantity).toStringAsFixed(1)}''',
                                                 style: textTheme.subtitle1,
                                               ),
                                             ]),
@@ -650,190 +793,113 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                );
-                                widgets.add(SizedBox(
-                                  height: 16.0,
-                                ));
-                              }
-                            }
-                          } else {
-                            String storeId =
-                                Session.data['partnerStore'].storeId;
-
-                            ReceiveItOrderItem receiveItOrderItem =
-                                storeToReceiveItOrderItems.itemDetails[storeId];
-                            widgets.add(SizedBox(
-                              height: 32.0,
-                            ));
-                            for (String itemId
-                                in receiveItOrderItem.itemDetails.keys) {
-                              StoreItem item = itemsMap[itemId];
-                              ReceiveItOrderItemDetails details =
-                                  receiveItOrderItem.itemDetails[itemId];
-                              widgets.add(
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: ClipRRect(
-                                        borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Container(
-                                          height: 80,
-                                          width: 80,
-                                          color: Colors.black,
-                                          child: Image.network(
-                                            item.images[0],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 6.0,
-                                    ),
-                                    Expanded(
-                                      flex: 5,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.max,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Row(
-                                            children: <Widget>[
-                                              Text(
-                                                item.itemName,
-                                                style: textTheme.subtitle1,
-                                              ),
-                                              //   Spacer(),
-                                              //   Expanded(
-                                              //     child: Text(
-                                              //       item.storeName.substring(
-                                              //         0,
-                                              //         item.storeName.length > 24
-                                              //             ? 24
-                                              //             : item.storeName.length,
-                                              //       ),
-                                              //       style: Theme.of(context)
-                                              //           .textTheme
-                                              //           .subtitle1
-                                              //           .copyWith(
-                                              //             fontSize: (22 -
-                                              //                 item.storeName
-                                              //                         .length /
-                                              //                     1.8),
-                                              //           ),
-                                              //     ),
-                                              //   ),
-                                              //
-                                            ],
-                                          ),
-                                          SizedBox(
-                                            height: 2.0,
-                                          ),
-                                          Text(
-                                            'Flavour: ${(details?.flavour ?? '') == '' ? 'N/A' : details.flavour}',
-                                          ),
-                                          Row(children: [
-                                            Spacer(),
-                                            Text(
-                                              '''Price: R${item.price.toStringAsFixed(1)} R x ${details.quantity} = ${(item.price * details.quantity).toStringAsFixed(1)} R''',
-                                              style: textTheme.subtitle1,
+                                  SizedBox(height: 10),
+                                  Text.rich(
+                                    TextSpan(children: [
+                                      TextSpan(
+                                        text: "Description: ",
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2
+                                            .copyWith(
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                          ]),
-                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              widgets.add(SizedBox(
-                                height: 16.0,
-                              ));
-                            }
+                                      TextSpan(
+                                        text:
+                                            "${item.description ?? 'No Description'}",
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText2,
+                                      ),
+                                    ]),
+                                  ),
+                                ],
+                              ),
+                            );
                             widgets.add(SizedBox(
-                              height: 14.0,
+                              height: 16.0,
                             ));
                           }
-
-                          return Container(
-                            constraints: BoxConstraints.loose(Size(
-                                MediaQuery.of(context).size.width,
-                                MediaQuery.of(context).size.height * 0.3)),
-                            child: SingleChildScrollView(
-                              physics: BouncingScrollPhysics(),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: widgets,
-                              ),
+                          widgets.add(
+                            SizedBox(
+                              height: 14.0,
                             ),
                           );
-                        },
-                      ),
-                      SizedBox(
-                        height: 20,
-                      ),
-                      // Align(
-                      //   alignment: Alignment.bottomRight,
-                      //   child: Text(
-                      //     'Total: R${data['price']}',
-                      //     style: textTheme.title,
-                      //   ),
-                      // ),
-                      isStore
-                          ? Opacity(
-                              opacity: 0,
-                            )
-                          : Row(
-                              children: <Widget>[
-                                SizedBox(
-                                  width: 10,
-                                ),
-                                (data['status'] != null &&
-                                        (data['status'] as String)
-                                                .toUpperCase() !=
-                                            'Delivered'.toUpperCase())
-                                    ? RaisedButton(
-                                        onPressed: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  OrderTracking(
-                                                type: OrderTrackingType
-                                                    .RECEIVE_IT,
-                                                data: Map<String, dynamic>.from(
-                                                    data),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Text(
-                                          'Track Your Order',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .subtitle2
-                                              .copyWith(
-                                                color: Colors.white,
-                                              ),
-                                        ),
-                                      )
-                                    : Spacer(),
-                                Spacer(),
-                                Text(
-                                  'Total: R${(data['price'] as double).toStringAsFixed(2)}',
-                                  style: textTheme.headline6,
-                                ),
-                                SizedBox(
-                                  width: 10,
-                                ),
-                              ],
+                        }
+
+                        return Container(
+                          constraints: BoxConstraints.loose(Size(
+                              MediaQuery.of(context).size.width,
+                              MediaQuery.of(context).size.height * 0.3)),
+                          child: SingleChildScrollView(
+                            physics: BouncingScrollPhysics(),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: widgets,
                             ),
-                    ],
-                  ),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    // Align(
+                    //   alignment: Alignment.bottomRight,
+                    //   child: Text(
+                    //     'Total: R${data['price']}',
+                    //     style: textTheme.title,
+                    //   ),
+                    // ),
+                    Row(
+                      children: <Widget>[
+                        SizedBox(
+                          width: 10,
+                        ),
+                        (data['status'] != null &&
+                                (data['status'] as String).toUpperCase() !=
+                                    'Delivered'.toUpperCase() &&
+                                !isStore)
+                            ? RaisedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => OrderTracking(
+                                        type: OrderTrackingType.RECEIVE_IT,
+                                        data: Map<String, dynamic>.from(data),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Track Your Order',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .subtitle2
+                                      .copyWith(
+                                        color: Colors.white,
+                                      ),
+                                ),
+                              )
+                            : Spacer(),
+                        Spacer(),
+                        Text(
+                          'Total: R${(data['price'] as double).toStringAsFixed(2)}',
+                          style: textTheme.headline6,
+                        ),
+                        SizedBox(
+                          width: 10,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+          Spacer(),
           StreamBuilder<DocumentSnapshot>(
               stream: Firestore.instance
                   .collection('orders')
@@ -850,9 +916,11 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
                       child: Center(
                         heightFactor: 2,
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
                             Text(
                               ' Fetching Driver Details .... ',
+                              textAlign: TextAlign.center,
                               style: Theme.of(context)
                                   .textTheme
                                   .headline6
@@ -981,6 +1049,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
     Map<String, StoreItem> result = {};
     // result.putIfAbsent('items', () => []);
     if (isStore) {
+      double price = 0;
       String storeId = (Session.data['partnerStore'] as Store).storeId;
       Map<String, ReceiveItOrderItemDetails> itemsData =
           order.itemsData.itemDetails[storeId].itemDetails;
@@ -995,12 +1064,15 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
         } else {
           result.putIfAbsent(itemId, () => itemsMap[itemId]);
         }
+        price += itemsData[itemId].price;
         // result.update(
         //   itemId,
         //   (old) => itemsData[itemId],
         //   ifAbsent: () => itemsData[itemId],
         // );
       }
+      order.price = price;
+      data.update('price', (value) => price, ifAbsent: () => price);
     } else {
       Map<String, ReceiveItOrderItem> storeToOrderItem =
           order.itemsData.itemDetails;
@@ -1016,6 +1088,7 @@ class ReceiveItOrderDetailsRoute extends StatelessWidget {
           } else {
             result.putIfAbsent(itemId, () => itemsMap[itemId]);
           }
+
           // result.update(
           //   itemId,
           //   (old) => itemsData[itemId],

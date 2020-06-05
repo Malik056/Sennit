@@ -67,7 +67,11 @@ class RxConnectivity {
               },
             );
           } else {
-            BotToast.closeAllLoading();
+            try {
+              BotToast.closeAllLoading();
+            } catch (_) {
+              print(_);
+            }
           }
         },
       );

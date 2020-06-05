@@ -42,7 +42,6 @@ class UserHomeRoute extends StatelessWidget {
 
   UserHomeRoute({Key key, this.initializeCart = false}) : super(key: key) {
     initializeNotifications();
-    GetIt.I.get<RxReceiveItTab>().index.add(0);
     // if (initializeCart) {
     //   FirebaseAuth.instance.currentUser().then((user) async {
     //     String userId = user.uid;
@@ -446,6 +445,7 @@ class UserHomeState extends State<UserHomeBody> {
                   },
                   onTapUp: (tap) {
                     setState(() {
+                      GetIt.I.get<RxReceiveItTab>().index.add(0);
                       Navigator.push(
                         context,
                         MaterialPageRoute(

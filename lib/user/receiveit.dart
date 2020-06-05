@@ -90,9 +90,15 @@ class ReceiveItRoute extends StatelessWidget {
               isDemo: demo,
             ),
           )
-          ..add(SearchWidget(
-            demo: demo,
-          ));
+          ..add(
+            SearchWidget(
+              demo: demo,
+              backPressed: () {
+                GetIt.I.get<RxReceiveItTab>().index.add(0);
+                _BodyState._controller?.animateTo(0);
+              },
+            ),
+          );
       });
     } else {
       drawerNameController.text = ((Session.data['user']) as User).fullName;
@@ -106,9 +112,27 @@ class ReceiveItRoute extends StatelessWidget {
         )
         ..add(SearchWidget(
           demo: demo,
+          backPressed: () {
+            GetIt.I.get<RxReceiveItTab>().index.add(0);
+            _BodyState._controller?.animateTo(0);
+          },
         ))
-        ..add(UserNotificationWidget())
-        ..add(PastOrdersRoute());
+        ..add(
+          UserNotificationWidget(
+            backPressed: () {
+              GetIt.I.get<RxReceiveItTab>().index.add(0);
+              _BodyState._controller?.animateTo(0);
+            },
+          ),
+        )
+        ..add(
+          PastOrdersRoute(
+            backPressed: () {
+              GetIt.I.get<RxReceiveItTab>().index.add(0);
+              _BodyState._controller?.animateTo(0);
+            },
+          ),
+        );
     }
   }
 
@@ -831,6 +855,7 @@ class StoreItem extends StatelessWidget {
                           itemCount:
                               store.items.length > 5 ? 5 : store.items.length,
                           itemBuilder: (context, index) {
+                            print(store.toString());
                             return GestureDetector(
                               child: Card(
                                 child: ClipRRect(
@@ -1280,7 +1305,8 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                   bool isWaiting = false;
                   bool error = false;
                   model.StoreItem item;
-                  if (itemSnapshot.connectionState == ConnectionState.waiting) {
+                  if (itemSnapshot.connectionState == ConnectionState.waiting &&
+                      !itemSnapshot.hasData) {
                     isWaiting = true;
                   } else if (!itemSnapshot.hasData || itemSnapshot.hasError) {
                     error = true;
@@ -1290,10 +1316,14 @@ class BottomSheetButtonState extends State<BottomSheetButton> {
                   bool inStock = (item?.remainingInStock ?? 0) > 0;
                   return InkWell(
                     child: Container(
-                      color: ((store?.isOpened ?? false) && !error && inStock)
+                      color: (store?.isOpened ?? false)
                           ? isWaiting
-                              ? Colors.yellow
-                              : isInCart ? Colors.green : Colors.white
+                              ? Colors.white
+                              : error
+                                  ? Colors.red
+                                  : !inStock
+                                      ? Colors.red
+                                      : isInCart ? Colors.green : Colors.white
                           : Colors.red,
                       padding: EdgeInsets.all(10),
                       alignment: Alignment.center,
@@ -1984,11 +2014,13 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
   @override
   Widget build(BuildContext context) {
     Address toAddress = GetIt.I.get<RxAddress>().currentToAddress;
+    Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
     return Scaffold(
       key: widget._key,
       appBar: AppBar(
         actions: <Widget>[
-          (widget.demo == null || !widget.demo)
+          ((widget.demo == null || !widget.demo) &&
+                  config['maintenanceNotice'] == null)
               ? FlatButton(
                   onPressed: () async {
                     try {
@@ -2079,7 +2111,180 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
 
                         return;
                       }
+                      Utils.showLoadingDialog(context);
+                      var trxResult = await Firestore.instance
+                          .runTransaction(
+                            (trx) async {
+                              UserCart cart = Session.data['cart'];
+                              if (cart == null ||
+                                  (cart.itemsData?.itemDetails?.length ?? 0) <=
+                                      0) {
+                                throw {
+                                  'error': true,
+                                  'message': 'Nothing is in your cart.'
+                                };
+                              }
+                              Map<String, ReceiveItOrderItem>
+                                  storeIdToItsItems =
+                                  cart.itemsData.itemDetails;
+                              // Map<String, dynamic> requests = {};
+                              Map<String, model.StoreItem> storeItems = {};
 
+                              for (var storeId in storeIdToItsItems.keys) {
+                                for (var itemId in storeIdToItsItems[storeId]
+                                    .itemDetails
+                                    .keys) {
+                                  DocumentReference itemRef = Firestore.instance
+                                      .collection('items')
+                                      .document(itemId);
+                                  final data = await trx.get(itemRef);
+                                  if (!data.exists) {
+                                    trx.set(itemRef, data.data);
+                                    throw {
+                                      'error': true,
+                                      'message':
+                                          "Couldn't Fetch Data from Server"
+                                    };
+                                  }
+                                  storeItems.putIfAbsent(
+                                    data.documentID,
+                                    () => model.StoreItem.fromMap(data.data),
+                                  );
+                                  if (storeIdToItsItems[storeId]
+                                          .itemDetails[itemId]
+                                          .quantity >
+                                      (storeItems[itemId].remainingInStock ??
+                                          0)) {
+                                    trx.set(itemRef, data.data);
+                                    throw {
+                                      'error': true,
+                                      'message':
+                                          '${storeItems[itemId].itemName} stock is less than quantity ordered.',
+                                    };
+                                  }
+                                  var item = storeItems[itemId];
+                                  item.remainingInStock -=
+                                      storeIdToItsItems[storeId]
+                                          .itemDetails[itemId]
+                                          .quantity;
+                                  trx.set(
+                                    itemRef,
+                                    item.toMap(),
+                                  );
+                                  // requests.putIfAbsent(
+                                  //   'itemId',
+                                  //   () => {
+                                  //     'storeId': storeId,
+                                  //     'request': request
+                                  //   },
+                                  // );
+                                }
+                              }
+                              // var keys = requests.keys;
+                              // for (var itemId in keys) {
+                              //   var data = await requests[itemId]['request'];
+                              //   if (!data.exists) {
+                              //     throw {
+                              //       'error': true,
+                              //       'message': "Couldn't Fetch Data from Server"
+                              //     };
+                              //   }
+                              //   storeItems.putIfAbsent(
+                              //     data.documentID,
+                              //     () => model.StoreItem.fromMap(data.data),
+                              //   );
+                              //   if (storeIdToItsItems[requests[itemId]
+                              //               ['storeId']]
+                              //           .itemDetails[itemId]
+                              //           .quantity <
+                              //       (storeItems[itemId].remainingInStock ??
+                              //           0)) {
+                              //     throw {
+                              //       'error': true,
+                              //       'message':
+                              //           '${storeItems[itemId].itemName} stock is less than quantity ordered.',
+                              //     };
+                              //   }
+                              //   var item = storeItems[itemId];
+                              //   item.remainingInStock -= storeIdToItsItems[
+                              //           requests[itemId]['storeId']]
+                              //       .itemDetails[itemId]
+                              //       .quantity;
+                              //   trx.update(
+                              //     Firestore.instance
+                              //         .collection('items')
+                              //         .document(itemId),
+                              //     item.toMap(),
+                              //   );
+                              // }
+
+                              // for (var storeId in storeIdToItsItems.keys) {
+                              //   for (var itemId in storeIdToItsItems[storeId]
+                              //       .itemDetails
+                              //       .keys) {
+                              //     if (storeIdToItsItems[storeId]
+                              //             .itemDetails[itemId]
+                              //             .quantity <
+                              //         (storeItems[itemId].remainingInStock ??
+                              //             0)) {
+                              //       throw {
+                              //         'error': true,
+                              //         'message':
+                              //             '${storeItems[itemId].itemName} stock is less than quantity ordered.',
+                              //       };
+                              //     }
+                              //   }
+                              // }
+
+                              // for (var storeId in storeIdToItsItems.keys) {
+                              //   for (var itemId in storeIdToItsItems[storeId]
+                              //       .itemDetails
+                              //       .keys) {
+                              //     var item = storeItems[itemId];
+                              //     item.remainingInStock -=
+                              //         storeIdToItsItems[storeId]
+                              //             .itemDetails[itemId]
+                              //             .quantity;
+                              //     trx.update(
+                              //       Firestore.instance
+                              //           .collection('items')
+                              //           .document(itemId),
+                              //       item.toMap(),
+                              //     );
+                              //   }
+                              // }
+                              return {};
+                            },
+                            timeout: Duration(seconds: 10),
+                          )
+                          .then((value) => {
+                                'error': false,
+                                'message': "All good",
+                              })
+                          .catchError((error) {
+                            Utils.showSnackBarError(
+                              context,
+                              error.runtimeType == PlatformException
+                                  ? error.message
+                                  : error.runtimeType == Map
+                                      ? (error['message']?.toString() ??
+                                          "An Error Occurred")
+                                      : error.toString(),
+                            );
+                            return {
+                              'error': true,
+                              "message": error.runtimeType == PlatformException
+                                  ? error.message
+                                  : error.runtimeType == Map
+                                      ? (error['message']?.toString() ??
+                                          "An Error Occurred")
+                                      : error.toString(),
+                            };
+                          });
+                      BotToast.closeAllLoading();
+                      if (trxResult['error'] ?? false) {
+                        return;
+                      }
                       double totalCharges =
                           state.totalPrice + state.totalDeliveryCharges;
                       Map<String, dynamic> result = await performTransaction(
@@ -2095,6 +2300,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                         Utils.showSnackBarWarningUsingKey(
                             null, 'Payment Cancelled');
                         // navigator.pop();
+                        await fixStock();
                         BotToast.closeAllLoading();
                         return;
                       } else if (result['status'] == RaveStatus.error) {
@@ -2102,6 +2308,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                           null,
                           result['errorMessage'],
                         );
+                        await fixStock();
                         BotToast.closeAllLoading();
                         return;
                       } else {
@@ -2130,6 +2337,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                         for (var itemId in itemsData
                             .itemDetails[storeId].itemDetails.keys) {
                           model.StoreItem item = itemsMap[itemId];
+                          itemsData.itemDetails[storeId].itemDetails[itemId]
+                              .price = item.price;
                           // price += item.price *
                           //     (itemsData.itemDetails[item.itemId]
                           //             .itemDetails['quantity'] as num)
@@ -2161,52 +2370,52 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       String otp = randomAlphaNumeric(6).toUpperCase();
                       var url =
                           "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                      var response = await post(
+                      var response = post(
                         url,
                       ).catchError((_) {
                         print(_.toString());
                       });
                       // final response = Response('', 200);
 
-                      if (response.statusCode == 200 ||
-                          response.statusCode == 201 ||
-                          response.statusCode == 202) {
-                      } else {
-                        int count = 0;
-                        while (response.statusCode != 200 &&
-                            response.statusCode != 201 &&
-                            response.statusCode != 202 &&
-                            count < 0) {
-                          count++;
-                          Utils.showSnackBarErrorUsingKey(
-                              null, 'Unable to send OTP! Retrying!');
-                          BotToast.showNotification(
-                            title: (_) {
-                              return Text("Otp Sending Failed");
-                            },
-                            duration: Duration(seconds: 4),
-                            align: Alignment.bottomCenter,
-                            subtitle: (_) => Text("Retrying Attempt: $count"),
-                          );
+                      // if (response.statusCode == 200 ||
+                      //     response.statusCode == 201 ||
+                      //     response.statusCode == 202) {
+                      // } else {
+                      //   int count = 0;
+                      //   while (response.statusCode != 200 &&
+                      //       response.statusCode != 201 &&
+                      //       response.statusCode != 202 &&
+                      //       count < 0) {
+                      //     count++;
+                      //     Utils.showSnackBarErrorUsingKey(
+                      //         null, 'Unable to send OTP! Retrying!');
+                      //     BotToast.showNotification(
+                      //       title: (_) {
+                      //         return Text("Otp Sending Failed");
+                      //       },
+                      //       duration: Duration(seconds: 4),
+                      //       align: Alignment.bottomCenter,
+                      //       subtitle: (_) => Text("Retrying Attempt: $count"),
+                      //     );
 
-                          var url =
-                              "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
-                          response = await post(
-                            url,
-                          ).catchError((_) {});
-                        }
-                        if (count >= 1) {
-                          BotToast.showNotification(
-                            title: (_) {
-                              return Text("Otp Sending Failed");
-                            },
-                            duration: Duration(seconds: 4),
-                            align: Alignment.bottomCenter,
-                            subtitle: (_) => Text(
-                                "Please Manually send the OTP\nYour OTP is $otp."),
-                          );
-                        }
-                      }
+                      //     var url =
+                      //         "https://www.budgetmessaging.com/sendsms.ashx?user=sennit2020&password=29200613&cell=${order.phoneNumber}&msg=Hello Your Sennit OTP is \n$otp\n";
+                      //     response = await post(
+                      //       url,
+                      //     ).catchError((_) {});
+                      //   }
+                      //   if (count >= 1) {
+                      //     BotToast.showNotification(
+                      //       title: (_) {
+                      //         return Text("Otp Sending Failed");
+                      //       },
+                      //       duration: Duration(seconds: 4),
+                      //       align: Alignment.bottomCenter,
+                      //       subtitle: (_) => Text(
+                      //           "Please Manually send the OTP\nYour OTP is $otp."),
+                      //     );
+                      //   }
+                      // }
 
                       var now = DateTime.now().toUtc();
                       String orderId =
@@ -2269,7 +2478,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       await request;
 
                       BotToast.closeAllLoading();
-
+                      await response;
+                      cart.itemsData.itemDetails.clear();
                       try {
                         navigator.pushAndRemoveUntil(
                           MaterialPageRoute(
@@ -2488,6 +2698,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       // }
 
                     } on dynamic catch (ex) {
+                      print(ex.toString());
+                      debugPrint(ex.toString());
                       BotToast.showText(
                           text: ex.toString(), duration: Duration(seconds: 10));
                     }
@@ -2628,6 +2840,24 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
       'errorMessage': response.message,
     };
   }
+
+  Future<void> fixStock() async {
+    UserCart cart = Session.getCart();
+    Map<String, ReceiveItOrderItem> storeIdToItsItems =
+        cart.itemsData.itemDetails;
+    await Firestore.instance.runTransaction((trx) async {
+      for (var storeId in storeIdToItsItems.keys) {
+        for (var itemId in storeIdToItsItems[storeId].itemDetails.keys) {
+          var itemRef = Firestore.instance.collection('items').document(itemId);
+          var data = await trx.get(itemRef);
+          model.StoreItem item = model.StoreItem.fromMap(data.data);
+          item.remainingInStock +=
+              storeIdToItsItems[storeId].itemDetails[itemId].quantity;
+          trx.set(itemRef, item.toMap());
+        }
+      }
+    });
+  }
 }
 
 class ShoppingCartRouteBody extends StatefulWidget {
@@ -2663,6 +2893,7 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   bool boxSizeLarge = false;
   bool sleeveNeeded = false;
   bool demo;
+  bool newOrdersClosed = false;
 
   double totalDeliveryCharges = 0;
   double totalPrice = 0;
@@ -2685,14 +2916,14 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   @override
   void initState() {
     super.initState();
-    initializeCart = initialize();
     Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
     if (config['maintenanceNotice'] != null) {
+      newOrdersClosed = true;
       try {
         BotToast.showNotification(
           align: Alignment.topCenter,
           title: (fn) => Text('Maintenance Notice'),
-          duration: Duration(seconds: 5),
+          duration: Duration(seconds: 10),
           crossPage: true,
           subtitle: (fn) => Text(
             'This App is undergoing maintenance on ${config['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
@@ -2701,6 +2932,8 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
       } catch (ex) {
         print(ex.toString());
       }
+    } else {
+      initializeCart = initialize();
     }
   }
 
@@ -2829,6 +3062,26 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
 
   @override
   Widget build(BuildContext context) {
+    TextTheme textTheme = Theme.of(context).textTheme;
+    if (newOrdersClosed ?? false) {
+      Map<String, dynamic> config = GetIt.I.get<RxConfig>().config.value;
+      return Center(
+          child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            'Sorry',
+            style: textTheme.headline5,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'App is Soon going under maintenance on ${config['maintenanceNotice']}. New Orders are closed. We will be back in __ hours', //TODO: Fille ____ up.
+            style: textTheme.subtitle1,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ));
+    }
     return FutureBuilder<void>(
         future: initializeCart,
         builder: (context, snapshot) {
@@ -3093,6 +3346,21 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
   // List<model.StoreItem> items;
   // Map<String, Map<String, dynamic>> itemsData;
 
+  closeStore(Store store) {
+    UserCart cart = Session.getCart();
+    model.StoreToReceiveItOrderItems storeToItsItemsMap = cart.itemsData;
+    storeToItsItemsMap.itemDetails.remove(store.storeId);
+    controllersAndConfigs.remove(store.storeId);
+    Utils.showSnackBarWarning(
+      context,
+      "Removed all items of ${store.storeName} from cart. Because the store is now Closed.",
+      Duration(seconds: 12),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      if (mounted) setState(() {});
+    });
+  }
+
   Widget _getCartItems() {
     return StreamBuilder<Map<String, Address>>(
         stream: GetIt.I.get<RxAddress>().stream$,
@@ -3152,32 +3420,51 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
               height: 16.0,
             ));
             cartItems.add(
-              Row(
-                children: <Widget>[
-                  Text(
-                    '   ${store.storeName}',
-                    style: Theme.of(context).textTheme.subtitle2.copyWith(
-                          fontWeight: FontWeight.bold,
+              StreamBuilder<DocumentSnapshot>(
+                  stream: Firestore.instance
+                      .collection('stores')
+                      .document(store.storeId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    Store newStore;
+                    if (!snapshot.hasData ||
+                        snapshot.hasError ||
+                        snapshot.data?.data == null) {
+                      newStore = store;
+                    } else {
+                      newStore = Store.fromMap(snapshot.data.data);
+                    }
+                    store = newStore;
+                    if (!(store.isOpened ?? false)) {
+                      closeStore(store);
+                    }
+                    return Row(
+                      children: <Widget>[
+                        Text(
+                          '   ${store.storeName}',
+                          style: Theme.of(context).textTheme.subtitle2.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
-                  ),
-                  Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Transform.rotate(
-                      angle: 45,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.navigation,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    ' $distance',
-                    style: Theme.of(context).textTheme.caption,
-                  ),
-                ],
-              ),
+                        Spacer(),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Transform.rotate(
+                            angle: 45,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.navigation,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ' $distance',
+                          style: Theme.of(context).textTheme.caption,
+                        ),
+                      ],
+                    );
+                  }),
             );
             cartItems.add(SizedBox(
               height: 8.0,
@@ -3194,83 +3481,142 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
                   itemsData[storeId].itemDetails[itemId].quantity;
               Widget widget = Stack(
                 children: <Widget>[
-                  CartItem(
-                    key: cartItemKey,
-                    onDelete: () {
-                      controllersAndConfigs[storeId][itemId].update(
-                        'animationVisible',
-                        (old) => true,
-                        ifAbsent: () => true,
-                      );
-                      Future.delayed(Duration(milliseconds: 100)).then(
-                        (_) {
-                          controllersAndConfigs[storeId][itemId].update(
-                            'itemDeletionVisible',
-                            (old) => true,
-                            ifAbsent: () => true,
-                          );
-                          // isItemDeleteConfirmationVisibleList[index] = true;
-                          setState(() {});
-                        },
-                      );
-                      setState(() {});
-                    },
-                    onFlavourChange: (value) async {
-                      itemsData[storeId].itemDetails[itemId].flavour = value;
-                      // itemsData.update(items[index].itemId, (a) {
-                      //   return {
-                      //     'quantity': (items[index]?.quantity ?? 0) == 0
-                      //         ? 1
-                      //         : items[index].quantity,
-                      //     'flavour': value ?? '',
-                      //   };
-                      // }, ifAbsent: () {
-                      //   return {
-                      //     'quantity': (items[index]?.quantity ?? 0) == 0
-                      //         ? 1
-                      //         : items[index].quantity,
-                      //     'flavour': value ?? '',
-                      //   };
-                      // });
-                    },
-                    onQuantityChange: (value) async {
-                      if (value == null || value == 0) {
-                        return;
-                      }
-                      // items[index].quantity = value.toDouble();
-                      // itemsData.update(items[index].itemId, (a) {
-                      //   return {
-                      //     'quantity': value?.toDouble() ?? 1,
-                      //     'flavour': items[index].flavour ?? '',
-                      //   };
-                      // });
-                      itemsData[storeId].itemDetails[itemId].quantity = value;
-                      totalPrice = 0;
-
-                      for (var storeId in itemsData.keys) {
-                        for (var itemId
-                            in itemsData[storeId].itemDetails.keys) {
-                          model.StoreItem item = itemsMap[itemId];
-                          int quantity =
-                              itemsData[storeId].itemDetails[itemId].quantity;
-                          totalPrice += item.price * quantity;
+                  StreamBuilder<DocumentSnapshot>(
+                      stream: Firestore.instance
+                          .collection('items')
+                          .document(itemId)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        model.StoreItem item;
+                        if (!snapshot.hasData ||
+                            snapshot.hasError ||
+                            snapshot.data?.data == null) {
+                          item = itemsMap[itemId];
+                        } else {
+                          // itemsMap.update(itemId, (old) => item,
+                          //     ifAbsent: () => item);
+                          item = model.StoreItem.fromMap(snapshot.data.data);
                         }
-                      }
+                        if (item.remainingInStock <= 0) {
+                          cart.itemsData.itemDetails[storeId]?.itemDetails
+                              ?.remove(itemId);
+                          controllersAndConfigs[storeId].remove(itemId);
+                          if (controllersAndConfigs[storeId].length <= 0) {
+                            controllersAndConfigs?.remove(storeId);
+                            cart.itemsData?.itemDetails?.remove(storeId);
+                          }
+                          WidgetsBinding.instance
+                              .addPostFrameCallback((timeout) {
+                            if (mounted) setState(() {});
+                          });
+                          return Opacity(
+                            opacity: 0,
+                          );
+                        }
+                        return CartItem(
+                          key: cartItemKey,
+                          onDelete: ([silent, message]) {
+                            if (silent ?? false) {
+                              itemsData[storeId].itemDetails.remove(itemId);
+                              if (itemsData[storeId].itemDetails.length <= 0) {
+                                itemsData.remove(storeId);
+                              }
+                              setState(() {
+                                controllersAndConfigs[storeId].remove(itemId);
+                                if (controllersAndConfigs[storeId].length <=
+                                    0) {
+                                  controllersAndConfigs.remove(storeId);
+                                }
+                                // isButtonActiveList[index] =
+                                //     false;
+                                // isItemDeleteConfirmationVisibleList[
+                                //     index] = false;
+                                // // items.removeAt(index);
+                                // _controllers
+                                //     .removeAt(index);
+                                // _flavourControllers
+                                //     .removeAt(index);
+                              });
+                              return;
+                            }
+                            controllersAndConfigs[storeId][itemId].update(
+                              'animationVisible',
+                              (old) => true,
+                              ifAbsent: () => true,
+                            );
+                            Future.delayed(Duration(milliseconds: 100)).then(
+                              (_) {
+                                controllersAndConfigs[storeId][itemId].update(
+                                  'itemDeletionVisible',
+                                  (old) => true,
+                                  ifAbsent: () => true,
+                                );
+                                // isItemDeleteConfirmationVisibleList[index] = true;
+                                setState(() {});
+                              },
+                            );
+                            setState(() {});
+                          },
+                          onFlavourChange: (value) async {
+                            itemsData[storeId].itemDetails[itemId].flavour =
+                                value;
+                            // itemsData.update(items[index].itemId, (a) {
+                            //   return {
+                            //     'quantity': (items[index]?.quantity ?? 0) == 0
+                            //         ? 1
+                            //         : items[index].quantity,
+                            //     'flavour': value ?? '',
+                            //   };
+                            // }, ifAbsent: () {
+                            //   return {
+                            //     'quantity': (items[index]?.quantity ?? 0) == 0
+                            //         ? 1
+                            //         : items[index].quantity,
+                            //     'flavour': value ?? '',
+                            //   };
+                            // });
+                          },
+                          onQuantityChange: (value) async {
+                            if (value == null || value == 0) {
+                              return;
+                            }
+                            // items[index].quantity = value.toDouble();
+                            // itemsData.update(items[index].itemId, (a) {
+                            //   return {
+                            //     'quantity': value?.toDouble() ?? 1,
+                            //     'flavour': items[index].flavour ?? '',
+                            //   };
+                            // });
+                            itemsData[storeId].itemDetails[itemId].quantity =
+                                value;
+                            totalPrice = 0;
 
-                      // for (var item in items) {
-                      //   totalPrice +=
-                      //       item.price * itemsData[item.itemId]['quantity'];
-                      // }
-                      totalPrice += totalDeliveryCharges;
-                      setState(() {});
-                    },
-                    item: itemsMap[itemId],
-                    controller: controllersAndConfigs[storeId][itemId]
-                        ['quantityController'],
-                    flavourController: controllersAndConfigs[storeId][itemId]
-                        ['flavourController'],
-                    // itemIndex: index,
-                  ),
+                            for (var storeId in itemsData.keys) {
+                              for (var itemId
+                                  in itemsData[storeId].itemDetails.keys) {
+                                model.StoreItem item = itemsMap[itemId];
+                                int quantity = itemsData[storeId]
+                                    .itemDetails[itemId]
+                                    .quantity;
+                                totalPrice += item.price * quantity;
+                              }
+                            }
+
+                            // for (var item in items) {
+                            //   totalPrice +=
+                            //       item.price * itemsData[item.itemId]['quantity'];
+                            // }
+                            totalPrice += totalDeliveryCharges;
+                            setState(() {});
+                          },
+                          item: item,
+                          controller: controllersAndConfigs[storeId][itemId]
+                              ['quantityController'],
+                          flavourController: controllersAndConfigs[storeId]
+                              [itemId]['flavourController'],
+                          // itemIndex: index,
+                        );
+                      }),
                   controllersAndConfigs[storeId][itemId]['animationVisible'] ??
                           false
                       ? Positioned(
@@ -3800,7 +4146,7 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
 class CartItem extends StatefulWidget {
   final TextEditingController controller;
   final model.StoreItem item;
-  final Function onDelete;
+  final Function([bool silent, String message]) onDelete;
   // final int itemIndex;
   final Function(int value) onQuantityChange;
   final Function(String value) onFlavourChange;
@@ -3849,7 +4195,9 @@ class CartItemState extends State<CartItem> {
             .quantity = 1;
         widget.onQuantityChange(1);
       } else if (value > widget.item.remainingInStock) {
-        widget.controller.text = '$value';
+        Utils.showSnackBarWarning(
+            context, 'Cannot Order more Items than in Stock.');
+        widget.controller.text = '${widget.item.remainingInStock}';
         cartItemsGroupByStores[widget.item.storeId]
             .itemDetails[widget.item.itemId]
             .quantity = widget.item.remainingInStock;
@@ -3864,8 +4212,8 @@ class CartItemState extends State<CartItem> {
     widget._quantityFocusNode.addListener(() {
       if (widget.controller.text == '') {
         widget.controller.text = '1';
+        setState(() {});
       }
-      setState(() {});
     });
     widget._flavourFocusNode.addListener(() {
       if (!widget._flavourFocusNode.hasFocus) {
@@ -3920,6 +4268,7 @@ class CartItemState extends State<CartItem> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               flex: 8,
@@ -3940,93 +4289,133 @@ class CartItemState extends State<CartItem> {
                                 ],
                               ),
                             ),
-                            SizedBox(
-                              width: 80,
-                              child: Row(
+                            Expanded(
+                              flex: 8,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: <Widget>[
-                                  InkWell(
-                                    child: Text(
-                                      ' - ',
-                                      style: TextStyle(
-                                          color: Theme.of(context).accentColor,
-                                          fontStyle: FontStyle.normal,
-                                          fontSize: 28,
-                                          fontFamily: "Roboto"),
-                                    ),
-                                    onTap: () {
-                                      var value =
-                                          int.parse(widget.controller.text);
-                                      if (int.parse(widget.controller.text) ==
-                                          1) {
-                                        return;
-                                      }
-                                      setState(() {
-                                        widget.controller.text = '${value - 1}';
-                                      });
-                                    },
-                                  ),
-                                  Container(
-                                    width: 30,
-                                    child: TextField(
-                                      focusNode: widget._quantityFocusNode,
-                                      controller: widget.controller,
-                                      textAlign: TextAlign.center,
-                                      keyboardType: TextInputType.number,
-                                      style: TextStyle(
-                                        fontSize: 14,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: <Widget>[
+                                      Text(
+                                        'In Stock: ',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .subtitle2
+                                            .copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                       ),
-                                      inputFormatters: <TextInputFormatter>[
-                                        LengthLimitingTextInputFormatter(2),
-                                        WhitelistingTextInputFormatter
-                                            .digitsOnly,
-                                        BlacklistingTextInputFormatter
-                                            .singleLineFormatter,
-                                      ],
-                                    ),
+                                      Text(
+                                        '${widget.item.remainingInStock}',
+                                      ),
+                                    ],
                                   ),
-                                  InkWell(
-                                    child: Text(
-                                      ' + ',
-                                      style: TextStyle(
-                                          color: Theme.of(context).accentColor,
-                                          fontStyle: FontStyle.normal,
-                                          fontSize: 20,
-                                          fontFamily: "Roboto"),
-                                    ),
-                                    onTap: () {
-                                      var value =
-                                          int.parse(widget.controller.text);
-                                      if (int.parse(widget.controller.text) ==
-                                          99) {
-                                        return;
-                                      }
-                                      setState(() {
-                                        widget.controller.text = '${value + 1}';
-                                      });
-                                    },
+                                  Row(
+                                    children: <Widget>[
+                                      SizedBox(
+                                        width: 80,
+                                        child: Row(
+                                          children: <Widget>[
+                                            InkWell(
+                                              child: Text(
+                                                ' - ',
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .accentColor,
+                                                    fontStyle: FontStyle.normal,
+                                                    fontSize: 28,
+                                                    fontFamily: "Roboto"),
+                                              ),
+                                              onTap: () {
+                                                var value = int.parse(
+                                                    widget.controller.text);
+                                                if (int.parse(widget
+                                                        .controller.text) ==
+                                                    1) {
+                                                  return;
+                                                }
+                                                setState(() {
+                                                  widget.controller.text =
+                                                      '${value - 1}';
+                                                });
+                                              },
+                                            ),
+                                            Container(
+                                              width: 30,
+                                              child: TextField(
+                                                enabled: false,
+                                                focusNode:
+                                                    widget._quantityFocusNode,
+                                                controller: widget.controller,
+                                                textAlign: TextAlign.center,
+                                                keyboardType:
+                                                    TextInputType.number,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                ),
+                                                inputFormatters: <
+                                                    TextInputFormatter>[
+                                                  LengthLimitingTextInputFormatter(
+                                                      2),
+                                                  WhitelistingTextInputFormatter
+                                                      .digitsOnly,
+                                                  BlacklistingTextInputFormatter
+                                                      .singleLineFormatter,
+                                                ],
+                                              ),
+                                            ),
+                                            InkWell(
+                                              child: Text(
+                                                ' + ',
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .accentColor,
+                                                    fontStyle: FontStyle.normal,
+                                                    fontSize: 20,
+                                                    fontFamily: "Roboto"),
+                                              ),
+                                              onTap: () {
+                                                var value = int.parse(
+                                                    widget.controller.text);
+                                                if (int.parse(widget
+                                                        .controller.text) ==
+                                                    99) {
+                                                  return;
+                                                }
+                                                setState(() {
+                                                  widget.controller.text =
+                                                      '${value + 1}';
+                                                });
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: IconButton(
+                                          onPressed: () {
+                                            if (!isPressed) {
+                                              widget.onDelete();
+                                              isPressed = true;
+                                              Future.delayed(
+                                                      Duration(seconds: 1))
+                                                  .then((_) {
+                                                isPressed = false;
+                                              });
+                                            }
+                                          },
+                                          icon: Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                            Expanded(
-                              flex: 2,
-                              child: IconButton(
-                                onPressed: () {
-                                  if (!isPressed) {
-                                    widget.onDelete();
-                                    isPressed = true;
-                                    Future.delayed(Duration(seconds: 1))
-                                        .then((_) {
-                                      isPressed = false;
-                                    });
-                                  }
-                                },
-                                icon: Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            )
                           ],
                         ),
                         SizedBox(
@@ -4034,7 +4423,7 @@ class CartItemState extends State<CartItem> {
                         ),
                         Align(
                           child: Text(
-                            'Price: R${widget.item.price.toInt()} per Item',
+                            'Price: R${widget.item.price.toInt()} x ${int.tryParse(widget.controller.text) ?? '1'} = ${(widget.item.price * (int.tryParse(widget.controller.text) ?? 1)).toInt()}',
                             style: Theme.of(context).textTheme.subtitle1,
                           ),
                           alignment: Alignment.bottomRight,
@@ -4051,6 +4440,12 @@ class CartItemState extends State<CartItem> {
             TextField(
               controller: widget.flavourController,
               focusNode: widget._flavourFocusNode,
+              onEditingComplete: () {
+                widget.onFlavourChange(widget.flavourController.text ?? '');
+              },
+              onChanged: (value) {
+                widget.onFlavourChange(value ?? '');
+              },
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Flavour',

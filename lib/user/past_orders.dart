@@ -1,44 +1,59 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+
 import 'package:sennit/main.dart';
 import 'package:sennit/models/models.dart';
 import 'package:sennit/my_widgets/order_details.dart';
+import 'package:sennit/rx_models/rx_receiveit_tab.dart';
 
 class PastOrdersRoute extends StatelessWidget {
+  final Function() backPressed;
+  const PastOrdersRoute({
+    Key key,
+    this.backPressed,
+  }) : super(key: key);
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<QuerySnapshot>(
-      future: Firestore.instance
-          .collection("orders")
-          .where('userId', isEqualTo: (Session.data['user'] as User).userId)
-          .getDocuments(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
-        } else if (snapshot.data == null ||
-            !snapshot.hasData ||
-            snapshot.data.documents == null ||
-            snapshot.data.documents.isEmpty) {
-          return Center(
-            child: Text('No Past Orders Yet'),
-          );
-        } else {
-          final documents = snapshot.data.documents;
-          return SingleChildScrollView(
-            physics: BouncingScrollPhysics(),
-            child: Column(
-              children: List.generate(
-                documents.length,
-                (index) {
-                  return OrderTile(data: documents[index].data);
-                },
-              ),
-            ),
-          );
-        }
+    return WillPopScope(
+      onWillPop: () async {
+        // GetIt.I.get<RxReceiveItTab>().index.add(0);
+        backPressed();
+        return false;
       },
+      child: FutureBuilder<QuerySnapshot>(
+        future: Firestore.instance
+            .collection("orders")
+            .where('userId', isEqualTo: (Session.data['user'] as User).userId)
+            .getDocuments(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.data == null ||
+              !snapshot.hasData ||
+              snapshot.data.documents == null ||
+              snapshot.data.documents.isEmpty) {
+            return Center(
+              child: Text('No Past Orders Yet'),
+            );
+          } else {
+            final documents = snapshot.data.documents;
+            return SingleChildScrollView(
+              physics: BouncingScrollPhysics(),
+              child: Column(
+                children: List.generate(
+                  documents.length,
+                  (index) {
+                    return OrderTile(data: documents[index].data);
+                  },
+                ),
+              ),
+            );
+          }
+        },
+      ),
     );
   }
 }
