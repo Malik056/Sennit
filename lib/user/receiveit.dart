@@ -2129,7 +2129,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                         for (var itemId in itemIds) {
                           try {
                             var itemRef = Firestore.instance
-                                .collection(storeId)
+                                .collection('items')
                                 .document(itemId);
                             await Firestore.instance
                                 .runTransaction((transaction) async {
@@ -2138,13 +2138,15 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                                   .itemDetails[itemId]
                                   .quantity;
                               var data = await transaction.get(itemRef);
-                              if (!data.exists) {
-                                throw PlatformException(
-                                    code: "Transaction Failed",
-                                    message: "Couldn't Find Document");
-                              } else if (quantity >
-                                  (data.data['remainingInCart'] ?? 0)) {
-                                transaction.set(itemRef, data.data);
+                              print("Got Data:${data.data.toString()}");
+                              // if (!data.exists) {
+                              //   throw PlatformException(
+                              //     code: "Error finding Document",
+                              //     message: "Data not found",
+                              //   );
+                              // }
+                              if (quantity > (data.data['remainingInStock'])) {
+                                // transaction.set(itemRef, data.data);
                                 throw PlatformException(
                                   code: "Transaction Failed",
                                   message:
@@ -2154,10 +2156,11 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                                 model.StoreItem item =
                                     model.StoreItem.fromMap(data.data);
                                 item.remainingInStock -= quantity;
-                                await transaction
+                                transaction
                                     .set(itemRef, item.toMap())
                                     .then((value) => itemModified.add(item));
                               }
+                              return {};
                             });
                           } catch (ex) {
                             for (final item in itemModified) {
