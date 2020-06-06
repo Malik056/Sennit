@@ -551,7 +551,7 @@ class SennitNotificationTile extends StatelessWidget {
                         height: 6.0,
                       ),
                       Text(
-                        data['orderId'],
+                        data['shortId'],
                         textAlign: TextAlign.start,
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
@@ -829,7 +829,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
                           height: 6.0,
                         ),
                         Text(
-                          data['orderId'],
+                          data['shortId'],
                           textAlign: TextAlign.start,
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),

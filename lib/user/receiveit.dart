@@ -156,7 +156,13 @@ class ReceiveItRoute extends StatelessWidget {
             if (demo) {
               tabController?.animateTo(0);
             } else {
-              Navigator.pop(context);
+              RxReceiveItTab rxReceiveItTab = GetIt.I.get<RxReceiveItTab>();
+              if (rxReceiveItTab.currentIndex != 0) {
+                rxReceiveItTab.index.add(0);
+                _BodyState._controller.animateTo(0);
+              } else {
+                Navigator.of(context).pop();
+              }
             }
           },
           child: Icon(

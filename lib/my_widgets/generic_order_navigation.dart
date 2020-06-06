@@ -950,7 +950,7 @@ class ReceiveItSolidBottomSheetState extends State<ReceiveItSolidBottomSheet> {
                                     scrollDirection: Axis.horizontal,
                                     // dragStartBehavior: DragStartBehavior.start,
                                     physics: BouncingScrollPhysics(),
-                                    itemCount: itemKeysOfCurrentStore.length,
+                                    itemCount: itemKeysOfCurrentStore.length + 1,
                                     itemBuilder: (context, index) {
                                       if (index == 0) {
                                         return SizedBox(
@@ -2833,8 +2833,10 @@ class _OrderTile extends StatelessWidget {
                                 onSelectItem(pickup);
                               },
                               child: Container(
+                                height: 150,
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: <Widget>[

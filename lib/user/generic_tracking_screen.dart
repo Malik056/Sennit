@@ -2359,7 +2359,8 @@ class _OrderTileState extends State<_OrderTile> {
                               height: 200,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
                                 children: <Widget>[
                                   Container(
                                     decoration: ShapeDecoration(
@@ -2384,12 +2385,10 @@ class _OrderTileState extends State<_OrderTile> {
                                   ),
                                   Container(
                                     padding: EdgeInsets.all(8.0),
-                                    child:
-                                        Text('${widget.data['pickUpAddress']}'),
+                                    child: Text(
+                                        '${widget.data['pickUpAddress']}'),
                                   ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
+                                  Spacer(),
                                   Container(
                                     padding: EdgeInsets.only(left: 10),
                                     child: Text.rich(
@@ -2401,7 +2400,8 @@ class _OrderTileState extends State<_OrderTile> {
                                                 ? '${getDistanceFromYourLocation(driverLatLng, pickup)?.toStringAsFixed(1) ?? 'N/A'} Km\n'
                                                 : 'Waiting for Driver\n',
                                             style: TextStyle(
-                                              fontWeight: FontWeight.normal,
+                                              fontWeight:
+                                                  FontWeight.normal,
                                             ),
                                           ),
                                         ],
@@ -2510,37 +2510,42 @@ class _OrderTileState extends State<_OrderTile> {
                                           fontSize: 14),
                                     ),
                                   ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: Text(
-                                        '${widget.data['dropOffAddress']}'),
-                                  ),
-                                  SizedBox(
-                                    height: 4,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.only(left: 10),
-                                    child: Text.rich(
-                                      TextSpan(
-                                        text: 'Distance: ',
-                                        children: [
-                                          TextSpan(
-                                            text: driverLatLng == null
-                                                ? 'Waiting for driver\n'
-                                                : '${getDistanceFromYourLocation(driverLatLng, destination)?.toStringAsFixed(1) ?? 'N/A'} Km\n',
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        SizedBox(
+                                          height: 4,
+                                        ),
+                                        Container(
+                                          padding: EdgeInsets.all(8.0),
+                                          child: Text(
+                                              '${widget.data['dropOffAddress']}'),
+                                        ),
+                                        Spacer(),
+                                        Container(
+                                          padding: EdgeInsets.only(left: 10),
+                                          child: Text.rich(
+                                            TextSpan(
+                                              text: 'Distance: ',
+                                              children: [
+                                                TextSpan(
+                                                  text: driverLatLng == null
+                                                      ? 'Waiting for driver\n'
+                                                      : '${getDistanceFromYourLocation(driverLatLng, destination)?.toStringAsFixed(1) ?? 'N/A'} Km\n',
+                                                  style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                             style: TextStyle(
-                                              fontWeight: FontWeight.normal,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],

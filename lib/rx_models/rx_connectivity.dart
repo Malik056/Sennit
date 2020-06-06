@@ -57,20 +57,24 @@ class RxConnectivity {
           }
 
           if (!hasConnection) {
-            BotToast.showCustomLoading(
-              align: Alignment.center,
-              allowClick: false,
-              clickClose: false,
-              crossPage: true,
-              toastBuilder: (fn) {
-                return CustomWifiLoadingWidget();
-              },
-            );
+            try {
+              BotToast.showCustomLoading(
+                align: Alignment.center,
+                allowClick: false,
+                clickClose: false,
+                crossPage: true,
+                toastBuilder: (fn) {
+                  return CustomWifiLoadingWidget();
+                },
+              );
+            } catch (_) {
+              print(_.toString());
+            }
           } else {
             try {
               BotToast.closeAllLoading();
             } catch (_) {
-              print(_);
+              print(_.toString());
             }
           }
         },

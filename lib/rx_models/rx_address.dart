@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:location/location.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sennit/main.dart';
@@ -11,13 +12,19 @@ class RxAddress {
   StreamSubscription subscription;
 
   Future<Object> init() async {
+    Geolocator geolocator = Geolocator()..forceAndroidLocationManager;
+    var status = await geolocator.checkGeolocationPermissionStatus();
+
     Location location = Location();
-    location.changeSettings(
-      interval: 4000,
-      distanceFilter: 50,
-    );
-    if (await location.hasPermission() != PermissionStatus.granted) {
-      bool serviceResult = await location.requestService();
+    // location.changeSettings(
+    //   interval: 4000,
+    //   distanceFilter: 50,
+    // );
+    if (status == GeolocationStatus.denied) {
+      bool serviceResult = await geolocator.isLocationServiceEnabled();
+      if (!serviceResult) {
+        serviceResult = await location.requestService();
+      }
       if (!serviceResult) {
         BotToast.showText(
           text:
@@ -29,12 +36,17 @@ class RxAddress {
       var result = await location.requestPermission();
       if (result != PermissionStatus.granted) {
         if (result == PermissionStatus.deniedForever) {
-          Utils.showSnackBarError(null,
-              'Permission Denied Forever. Please change permission in settings and restart the app.');
+          Utils.showSnackBarError(
+            null,
+            'Permission Denied Forever. Please change permission in settings and restart the app.',
+            duration: Duration(
+              seconds: 20,
+            ),
+          );
         }
         return null;
       }
-    } else if (!(await location.serviceEnabled())) {
+    } else if (!(await geolocator.isLocationServiceEnabled())) {
       bool serviceResult = false;
       try {
         serviceResult = await location.requestService().then((value) {
@@ -45,12 +57,27 @@ class RxAddress {
         print(ex.toString());
       }
       if (!serviceResult) {
-        SystemNavigator.pop();
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+        return null;
+      }
+    }
+    var permissionStatus = await geolocator.checkGeolocationPermissionStatus();
+    if (permissionStatus != GeolocationStatus.granted) {
+      if (permissionStatus == GeolocationStatus.disabled) {
+        Utils.showSnackBarError(
+          null,
+          'Permission Denied Forever. Please change permission in settings and restart the app. Exiting....',
+          duration: Duration(
+            seconds: 20,
+          ),
+        );
+        await Future.delayed(Duration(seconds: 5));
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
         return null;
       }
     }
 
-    LocationData data = await location.getLocation();
+    Position data = await geolocator.getCurrentPosition();
     if (data == null) {
       return null;
     }
@@ -70,7 +97,7 @@ class RxAddress {
       return null;
     }
     subscription?.cancel();
-    subscription = location.onLocationChanged.listen((event) async {
+    subscription = geolocator.getPositionStream().listen((event) async {
       Address address = (await Geocoder.google(await Utils.getAPIKey())
           .findAddressesFromCoordinates(
               Coordinates(event.latitude, event.longitude)))[0];
