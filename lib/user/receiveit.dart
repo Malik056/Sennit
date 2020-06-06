@@ -2112,179 +2112,84 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                         return;
                       }
                       Utils.showLoadingDialog(context);
-                      var trxResult = await Firestore.instance
-                          .runTransaction(
-                            (trx) async {
-                              UserCart cart = Session.data['cart'];
-                              if (cart == null ||
-                                  (cart.itemsData?.itemDetails?.length ?? 0) <=
-                                      0) {
-                                throw {
-                                  'error': true,
-                                  'message': 'Nothing is in your cart.'
-                                };
-                              }
-                              Map<String, ReceiveItOrderItem>
-                                  storeIdToItsItems =
-                                  cart.itemsData.itemDetails;
-                              // Map<String, dynamic> requests = {};
-                              Map<String, model.StoreItem> storeItems = {};
 
-                              for (var storeId in storeIdToItsItems.keys) {
-                                for (var itemId in storeIdToItsItems[storeId]
-                                    .itemDetails
-                                    .keys) {
-                                  DocumentReference itemRef = Firestore.instance
-                                      .collection('items')
-                                      .document(itemId);
-                                  final data = await trx.get(itemRef);
-                                  if (!data.exists) {
-                                    trx.set(itemRef, data.data);
-                                    throw {
-                                      'error': true,
-                                      'message':
-                                          "Couldn't Fetch Data from Server"
-                                    };
-                                  }
-                                  storeItems.putIfAbsent(
-                                    data.documentID,
-                                    () => model.StoreItem.fromMap(data.data),
-                                  );
-                                  if (storeIdToItsItems[storeId]
-                                          .itemDetails[itemId]
-                                          .quantity >
-                                      (storeItems[itemId].remainingInStock ??
-                                          0)) {
-                                    trx.set(itemRef, data.data);
-                                    throw {
-                                      'error': true,
-                                      'message':
-                                          '${storeItems[itemId].itemName} stock is less than quantity ordered.',
-                                    };
-                                  }
-                                  var item = storeItems[itemId];
-                                  item.remainingInStock -=
-                                      storeIdToItsItems[storeId]
-                                          .itemDetails[itemId]
+                      model.StoreToReceiveItOrderItems
+                          storeToReceiveItOrderItems = cart.itemsData;
+
+                      var storeIds =
+                          storeToReceiveItOrderItems.itemDetails.keys;
+
+                      List<model.StoreItem> itemModified = [];
+
+                      for (var storeId in storeIds) {
+                        Map<String, model.ReceiveItOrderItemDetails> details =
+                            storeToReceiveItOrderItems
+                                .itemDetails[storeId].itemDetails;
+                        final itemIds = details.keys;
+                        for (var itemId in itemIds) {
+                          try {
+                            var itemRef = Firestore.instance
+                                .collection(storeId)
+                                .document(itemId);
+                            await Firestore.instance
+                                .runTransaction((transaction) async {
+                              int quantity = storeToReceiveItOrderItems
+                                  .itemDetails[storeId]
+                                  .itemDetails[itemId]
+                                  .quantity;
+                              var data = await transaction.get(itemRef);
+                              if (!data.exists) {
+                                throw PlatformException(
+                                    code: "Transaction Failed",
+                                    message: "Couldn't Find Document");
+                              } else if (quantity >
+                                  (data.data['remainingInCart'] ?? 0)) {
+                                transaction.set(itemRef, data.data);
+                                throw PlatformException(
+                                  code: "Transaction Failed",
+                                  message:
+                                      "Available items are less than items Ordered",
+                                );
+                              } else {
+                                model.StoreItem item =
+                                    model.StoreItem.fromMap(data.data);
+                                item.remainingInStock -= quantity;
+                                await transaction
+                                    .set(itemRef, item.toMap())
+                                    .then((value) => itemModified.add(item));
+                              }
+                            });
+                          } catch (ex) {
+                            for (final item in itemModified) {
+                              Firestore.instance
+                                  .runTransaction((transaction) async {
+                                final itemRef = Firestore.instance
+                                    .collection('items')
+                                    .document(item.itemId);
+                                var data = await transaction.get(itemRef);
+                                if (data.exists) {
+                                  model.StoreItem newItem =
+                                      model.StoreItem.fromMap(data.data);
+                                  newItem.remainingInStock +=
+                                      storeToReceiveItOrderItems
+                                          .itemDetails[item.storeId]
+                                          .itemDetails[item.itemId]
                                           .quantity;
-                                  trx.set(
-                                    itemRef,
-                                    item.toMap(),
-                                  );
-                                  // requests.putIfAbsent(
-                                  //   'itemId',
-                                  //   () => {
-                                  //     'storeId': storeId,
-                                  //     'request': request
-                                  //   },
-                                  // );
+                                  transaction.set(itemRef, newItem.toMap());
                                 }
-                              }
-                              // var keys = requests.keys;
-                              // for (var itemId in keys) {
-                              //   var data = await requests[itemId]['request'];
-                              //   if (!data.exists) {
-                              //     throw {
-                              //       'error': true,
-                              //       'message': "Couldn't Fetch Data from Server"
-                              //     };
-                              //   }
-                              //   storeItems.putIfAbsent(
-                              //     data.documentID,
-                              //     () => model.StoreItem.fromMap(data.data),
-                              //   );
-                              //   if (storeIdToItsItems[requests[itemId]
-                              //               ['storeId']]
-                              //           .itemDetails[itemId]
-                              //           .quantity <
-                              //       (storeItems[itemId].remainingInStock ??
-                              //           0)) {
-                              //     throw {
-                              //       'error': true,
-                              //       'message':
-                              //           '${storeItems[itemId].itemName} stock is less than quantity ordered.',
-                              //     };
-                              //   }
-                              //   var item = storeItems[itemId];
-                              //   item.remainingInStock -= storeIdToItsItems[
-                              //           requests[itemId]['storeId']]
-                              //       .itemDetails[itemId]
-                              //       .quantity;
-                              //   trx.update(
-                              //     Firestore.instance
-                              //         .collection('items')
-                              //         .document(itemId),
-                              //     item.toMap(),
-                              //   );
-                              // }
-
-                              // for (var storeId in storeIdToItsItems.keys) {
-                              //   for (var itemId in storeIdToItsItems[storeId]
-                              //       .itemDetails
-                              //       .keys) {
-                              //     if (storeIdToItsItems[storeId]
-                              //             .itemDetails[itemId]
-                              //             .quantity <
-                              //         (storeItems[itemId].remainingInStock ??
-                              //             0)) {
-                              //       throw {
-                              //         'error': true,
-                              //         'message':
-                              //             '${storeItems[itemId].itemName} stock is less than quantity ordered.',
-                              //       };
-                              //     }
-                              //   }
-                              // }
-
-                              // for (var storeId in storeIdToItsItems.keys) {
-                              //   for (var itemId in storeIdToItsItems[storeId]
-                              //       .itemDetails
-                              //       .keys) {
-                              //     var item = storeItems[itemId];
-                              //     item.remainingInStock -=
-                              //         storeIdToItsItems[storeId]
-                              //             .itemDetails[itemId]
-                              //             .quantity;
-                              //     trx.update(
-                              //       Firestore.instance
-                              //           .collection('items')
-                              //           .document(itemId),
-                              //       item.toMap(),
-                              //     );
-                              //   }
-                              // }
-                              return {};
-                            },
-                            timeout: Duration(seconds: 10),
-                          )
-                          .then((value) => {
-                                'error': false,
-                                'message': "All good",
-                              })
-                          .catchError((error) {
-                            Utils.showSnackBarError(
-                              context,
-                              error.runtimeType == PlatformException
-                                  ? error.message
-                                  : error.runtimeType == Map
-                                      ? (error['message']?.toString() ??
-                                          "An Error Occurred")
-                                      : error.toString(),
-                            );
-                            return {
-                              'error': true,
-                              "message": error.runtimeType == PlatformException
-                                  ? error.message
-                                  : error.runtimeType == Map
-                                      ? (error['message']?.toString() ??
-                                          "An Error Occurred")
-                                      : error.toString(),
-                            };
-                          });
-                      BotToast.closeAllLoading();
-                      if (trxResult['error'] ?? false) {
-                        return;
+                              });
+                            }
+                            Utils.showSnackBarError(context, ex.toString());
+                            print(ex.runtimeType == PlatformException
+                                ? ex.message
+                                : ex.toString());
+                            return;
+                          }
+                        }
                       }
+
+                      BotToast.closeAllLoading();
+
                       double totalCharges =
                           state.totalPrice + state.totalDeliveryCharges;
                       Map<String, dynamic> result = await performTransaction(
@@ -2431,8 +2336,8 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       //   'stores',
                       //   () => order.itemsData.itemDetails.keys.toList(),
                       // );
-                      StoreToReceiveItOrderItems storeToReceiveItOrderItems =
-                          order.itemsData;
+                      // StoreToReceiveItOrderItems storeToReceiveItOrderItems =
+                      //     order.itemsData;
                       Map<String, Store> allStores =
                           GetIt.I.get<RxStoresAndItems>().stores.value;
                       List<String> deviceTokens = [];
