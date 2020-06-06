@@ -218,7 +218,7 @@ class ItemWidget extends StatelessWidget {
                           }
                           Firestore.instance
                               .collection('items')
-                              .document('itemId')
+                              .document(item.itemId)
                               .setData(
                             {'itemName': newName},
                             merge: true,
@@ -253,7 +253,7 @@ class ItemWidget extends StatelessWidget {
                           }
                           Firestore.instance
                               .collection('items')
-                              .document('itemId')
+                              .document(item.itemId)
                               .setData(
                             {
                               'description': description,
@@ -299,7 +299,7 @@ class ItemWidget extends StatelessWidget {
                     }
                     Firestore.instance
                         .collection('items')
-                        .document('itemId')
+                        .document(item.itemId)
                         .setData(
                       {
                         'remainingInStock': newStock,
