@@ -12,13 +12,13 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:geocoder/geocoder.dart';
 // import 'package:geocoder/geocoder.dart' as geocoder;
 import 'package:geocoder/model.dart';
+import 'package:geotools/geotools.dart';
 import 'package:get_it/get_it.dart';
 import 'package:google_map_location_picker/google_map_location_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_map_location_picker/generated/i18n.dart'
     as location_picker;
-import 'package:latlong/latlong.dart' as latlong;
 import 'package:location/location.dart' as location;
 import 'package:rxdart/rxdart.dart';
 import 'package:rxdart/subjects.dart';
@@ -1423,10 +1423,14 @@ class Utils {
   }
 
   static double calculateDistance(LatLng latLng1, LatLng latLng2) {
-    latlong.LatLng latlng1 =
-        latlong.LatLng(latLng1.latitude, latLng1.longitude);
-    latlong.LatLng latlng2 =
-        latlong.LatLng(latLng2.latitude, latLng2.longitude);
+    // latlong.LatLng latlng1 =
+    //     latlong.LatLng(latLng1.latitude, latLng1.longitude);
+    // latlong.LatLng latlng2 =
+    //     latlong.LatLng(latLng2.latitude, latLng2.longitude);
+    return GeoUtils.distanceInMeters(
+            LatLong.fromDecimal(latLng1.latitude, latLng1.longitude),
+            LatLong.fromDecimal(latLng2.latitude, latLng2.longitude)) /
+        1000;
     // var p = 0.017453292519943295;
     // var c = cos;
     // var a = 0.5 -
@@ -1436,10 +1440,10 @@ class Utils {
     //         (1 - c((latlng2.longitude - latlng1.longitude) * p)) /
     //         2;
     // return (12742 * asin(sqrt(a))).abs();
-    latlong.Distance distance = latlong.Distance();
-    double distanceInKilometers =
-        distance.as(latlong.LengthUnit.Kilometer, latlng1, latlng2);
-    return distanceInKilometers;
+    // latlong.Distance distance = latlong.Distance();
+    // double distanceInKilometers =
+    //     distance.as(latlong.LengthUnit.Kilometer, latlng1, latlng2);
+    // return distanceInKilometers;
   }
 
   static double calculateDistanceFromCoordinates(
