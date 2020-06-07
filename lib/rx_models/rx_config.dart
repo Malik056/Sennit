@@ -4,6 +4,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:sennit/main.dart';
 
 class RxConfig {
   BehaviorSubject<Map<String, dynamic>> config =
@@ -15,6 +16,7 @@ class RxConfig {
     'receiveItPriceFor5Km': 30,
     'driverMinimumOrderTakingDistance': 10,
     'compulsory': false,
+    'closedForMaintenance': false,
   });
   // BehaviorSubject<String> versionName = BehaviorSubject<String>.seeded('2.2.5');
   // BehaviorSubject<int> versionCode = BehaviorSubject<int>.seeded(45);
@@ -92,15 +94,30 @@ class RxConfig {
         .document('version1.0')
         .snapshots()
         .listen((event) {
-      if (event['maintenanceNotice'] != null) {
+      try {
+        if (event['closedForMaintenance'] != null &&
+            event['closedForMaintenance']) {
+          if ((config?.value['closedForMaintenance'] ?? false) !=
+              event.data['closedForMaintenance']) {
+            setConfigData(event.data);
+            MyAppState.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+                MyApp.closedForMaintenance, (route) => false);
+          }
+        }
+      } catch (ex) {
+        print(ex.toString());
+      }
+      if (event.data['maintenanceNotice'] != null &&
+          !(event['closedForMaintenance'] != null &&
+              event['closedForMaintenance'])) {
         try {
           BotToast.showNotification(
             align: Alignment.topCenter,
             title: (fn) => Text('Maintenance Notice'),
-            duration: Duration(seconds: 5),
+            duration: Duration(seconds: 10),
             crossPage: true,
             subtitle: (fn) => Text(
-              'This App is undergoing maintenance on ${event['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
+              '${event['maintenanceNotice']}.\n Please Don\'t make any new orders.\n For More Details Contact Customer Support.',
             ),
           );
         } catch (ex) {

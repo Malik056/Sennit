@@ -2029,6 +2029,12 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                   config['maintenanceNotice'] == null)
               ? FlatButton(
                   onPressed: () async {
+                    RxConfig config = GetIt.I.get<RxConfig>();
+                    if (config.config.value['maintenanceNotice'] != null) {
+                      Utils.showInfoDialog(
+                          "We Are Sorry!\n${config.config.value['maintenanceNotice']}.");
+                      return;
+                    }
                     try {
                       bool networkState =
                           GetIt.I.get<RxConnectivity>().currentState;
@@ -4033,14 +4039,21 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
       });
     }
 
+    Map<String, dynamic> configValues = GetIt.I.get<RxConfig>()?.config?.value;
+
+    double deliveryChargesForEachKilometerExtra =
+        (configValues ?? {})['receiveItPricePerExtraKilometer'] ?? 4.5;
+    double deliveryChargesFor5Km =
+        (configValues ?? {})['receiveItPriceFor5Km'] ?? 30;
     uniqueStores.forEach((k, v) {
       final distance = v['distance'];
-      double charges = 30;
+      double charges = deliveryChargesFor5Km;
       final tempDistance = distance - 5;
       if (tempDistance <= 0) {
         v.putIfAbsent('charges', () => charges);
       } else {
-        charges += ((tempDistance as double) * 4.5);
+        charges +=
+            ((tempDistance as double) * deliveryChargesForEachKilometerExtra);
         v.putIfAbsent('charges', () => charges);
       }
 

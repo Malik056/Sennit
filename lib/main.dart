@@ -48,6 +48,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shortid/shortid.dart';
 import 'driver/signup.dart';
 import 'models/models.dart';
+import 'my_widgets/closed_for_maintenance.dart';
 import 'user/user_startpage.dart';
 
 // Future<dynamic> myBackgroundMessageHandler(Map<String, dynamic> message) {
@@ -124,6 +125,7 @@ class MyApp extends StatefulWidget with WidgetsBindingObserver {
   static const String driverSignin = '$driverStartPage/driverSignin';
   static const String verifyEmailRoute = 'verifyEmailRoute';
   static const String userHome = 'userHome';
+  static const String closedForMaintenance = 'closedForMaintenance';
   static const String selectFromAddress = 'sendItSourceRoute';
   static const String deliverToAddresses = 'sendItDestinationRoute';
   static const String addAddressFrom = 'addAddressFrom';
@@ -659,6 +661,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
             ),
         MyApp.startPage: (context) => StartPage(),
         MyApp.driverHome: (context) => HomeScreenDriver(),
+        MyApp.closedForMaintenance: (context)=> ClosedForMaintenance(),
         MyApp.userSignup: (context) => UserSignUpRoute(),
         MyApp.userSignIn: (context) => UserSignInRoute(),
         MyApp.userStartPage: (context) => UserStartPage(),
@@ -777,24 +780,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 return UpdateNoticeRoute();
               } else if (rxConfig?.config?.value['closedForMaintenance'] ??
                   false) {
-                return Center(
-                  child: Column(
-                    children: <Widget>[
-                      Icon(FontAwesomeIcons.tools, size: 40),
-                      SizedBox(height: 10),
-                      Text(
-                        'Sorry For Inconvenience! The App is Closed for Maintenance',
-                        style: Theme.of(context).textTheme.subtitle1,
-                      ),
-                      Text(
-                        rxConfig?.config?.value['waitTime'] != null
-                            ? 'We Will be back in ${rxConfig.config.value['waitTime']}'
-                            : '',
-                        style: Theme.of(context).textTheme.caption,
-                      ),
-                    ],
-                  ),
-                );
+                return ClosedForMaintenance();
               }
               statusBehavior.add('Initializing Data .... 0%');
               Future<String> initialRoute = initializeAndGetInitialRoute();
@@ -875,6 +861,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 ),
             MyApp.startPage: (context) => StartPage(),
             MyApp.driverHome: (context) => HomeScreenDriver(),
+            MyApp.closedForMaintenance: (context)=> ClosedForMaintenance(),
             MyApp.userSignup: (context) => UserSignUpRoute(),
             MyApp.userSignIn: (context) => UserSignInRoute(),
             MyApp.userStartPage: (context) => UserStartPage(),
