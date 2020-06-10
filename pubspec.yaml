@@ -1,7 +1,7 @@
 name: sennit
 description: Send Anything Anywhere
 
-version: 2.2.9+49
+version: 2.3.3+53
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
@@ -66,7 +66,7 @@ dependencies:
   connectivity: #^0.4.8+6
   shared_preferences: #'0.5.7+3'
   geotools:
-  permission_handler:
+  # permission_handler:
 
 dev_dependencies:
   flutter_test:

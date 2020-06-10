@@ -52,6 +52,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
   double btnPaddingRight;
   String dateInitialText;
   bool dateSelected = false;
+  bool _isConfirmPasswordObscure = true;
+  bool _isObscure = true;
 
   Color dateOfBirthHeadingColor;
   Color dateOfBirthTextColor;
@@ -157,9 +159,21 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                     ),
                     TextFormField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: _isObscure,
                       maxLines: 1,
-                      decoration: InputDecoration(labelText: 'Password'),
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        suffix: IconButton(
+                          icon: Icon(_isObscure
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () {
+                            setState(() {
+                              _isObscure = !_isObscure;
+                            });
+                          },
+                        ),
+                      ),
                       validator: (password) {
                         if (password.isEmpty) {
                           return "Please enter a password";
@@ -171,9 +185,22 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                       style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
-                      obscureText: true,
+                      obscureText: _isConfirmPasswordObscure,
                       maxLines: 1,
-                      decoration: InputDecoration(labelText: 'Retype Password'),
+                      decoration: InputDecoration(
+                        labelText: 'Retype Password',
+                        suffix: IconButton(
+                          icon: Icon(_isConfirmPasswordObscure
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmPasswordObscure =
+                                  !_isConfirmPasswordObscure;
+                            });
+                          },
+                        ),
+                      ),
                       validator: (rePassword) {
                         if (rePassword.isEmpty) {
                           return "Please confirm your password";
@@ -517,7 +544,8 @@ class UserSignUpRouteState extends State<UserSignUpRouteBody> {
                                       // Navigator.popUntil(context, (route) => route.isFirst);
                                       BotToast.closeAllLoading();
                                       // Navigator.pop(context);
-                                      SharedPreferences preferences = await SharedPreferences.getInstance();
+                                      SharedPreferences preferences =
+                                          await SharedPreferences.getInstance();
                                       preferences.setString('user', 'user');
                                       Navigator.of(context).pushAndRemoveUntil(
                                         MaterialPageRoute(

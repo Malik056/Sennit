@@ -41,8 +41,8 @@ android {
         applicationId "za.co.sennit"
         minSdkVersion 16
         targetSdkVersion 29
-        versionCode 49 //flutterVersionCode.toInteger()
-        versionName "2.2.9" //flutterVersionName
+        versionCode 53 //flutterVersionCode.toInteger()
+        versionName "2.3.3" //flutterVersionName
         multiDexEnabled true
     }
 

@@ -271,9 +271,10 @@ class Driver {
       homeLocationLatLng:
           Utils.latLngFromString(map['homeLocationLatLng'] ?? '0,0') ??
               LatLng(0, 0),
-      userCreatedOn: DateTime(map['userCreatedOn'] ?? 0),
+      userCreatedOn:
+          DateTime.fromMillisecondsSinceEpoch(map['userCreatedOn'] ?? 0),
       email: map['email'] ?? 'Couldn\'t Fetch',
-      licencePlateNumber: map['licencePlateNumber'] ?? "Couldn't Fetch",
+      licencePlateNumber: map['licencePlateNumber'] ?? "",
       phoneNumber: map['phoneNumber'] ?? "Can't Fetch",
       profilePicture: map['profilePicture'],
       dateOfBirth: DateTime.fromMillisecondsSinceEpoch(map['dateOfBirth'] ?? 0),
@@ -445,6 +446,7 @@ class OrderFromReceiveIt {
   String email;
   String phoneNumber;
   String house;
+  double deliveryCharges;
   List<LatLng> pickups = [];
   // List<double> quantities = [];
   List<String> stores = [];
@@ -482,6 +484,7 @@ class OrderFromReceiveIt {
     this.shortId,
     this.dropToDoor = true,
     this.otp,
+    this.deliveryCharges,
   });
 
   Map<String, dynamic> toMap() {
@@ -498,6 +501,7 @@ class OrderFromReceiveIt {
           ) ??
           [],
       'pricePerItem': pricePerItem ?? [],
+      'deliveryCharges': deliveryCharges,
       'totalPricePerItem': totalPricePerItem ?? [],
       // 'quantities': List<dynamic>.from(quantities.map((x) => x)),
       'stores': List<dynamic>.from(stores?.map((x) => x) ?? []) ?? [],
@@ -519,6 +523,7 @@ class OrderFromReceiveIt {
     return OrderFromReceiveIt(
       orderId: map['orderId'],
       status: map['status'],
+      deliveryCharges: (map['deliveryCharges'] as num).toDouble(),
       itemsData: StoreToReceiveItOrderItems.fromMap(map['itemsData']),
       email: map['email'],
       phoneNumber: map['phoneNumber'],

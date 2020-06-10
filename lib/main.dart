@@ -400,238 +400,310 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
     statusBehavior.add('Fetching User Data..... 75%');
     // });
 
-    final user = await FirebaseAuth.instance.currentUser().catchError((error) {
+    final firebaseUser =
+        await FirebaseAuth.instance.currentUser().catchError((error) {
       print(error.toString());
       return null;
     });
-    if (user == null) {
+    if (firebaseUser == null) {
       return MyApp.startPage;
     }
-    final result = await Firestore.instance
-        .collection('users')
-        .document(user.uid)
-        .get()
-        .catchError((error) {
-      print(error.toString());
-      return null;
-    });
-    if (result == null) {
-      statusBehavior.add('Couldn\'t Fetch User Data. Retrying ......');
-      return null;
-    }
     statusBehavior.add('Fetching User Data..... 85%');
-    User newUser;
     SharedPreferences preferences = await SharedPreferences.getInstance();
-    Driver newDriver;
-    if (result != null &&
-        result.data != null &&
-        result.data.length > 0 &&
-        result.exists) {
-      // Session.data.update('user', (a) {
-      //   return User.fromMap(result.data);
-      // }, ifAbsent: () {
-      //   return User.fromMap(result.data);
-      // });
-      newUser = User.fromMap(result.data);
-      // if (user.isEmailVerified) {
-      //   // MyApp.initialRoute = MyApp.userHome;
-      // } else {
-      //   // MyApp.initialRoute = MyApp.verifyEmailRoute;
-      // }
-    }
-    final driverResult = await Firestore.instance
-        .collection('drivers')
-        .document(user.uid)
-        .get()
-        .catchError((error) {
-      return null;
-    });
-    if (driverResult == null) {
-      statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
-      return null;
-    }
-    if ((driverResult.data?.length ?? 0) > 0 && driverResult.exists) {
-      newDriver = Driver.fromMap(driverResult.data);
-      newDriver.driverId = user.uid;
-      statusBehavior.add('Fetching User Data..... 90%');
-      // driverResult.data
-      //     .update('driverId', (old) => user.uid, ifAbsent: () => user.uid);
-      // Session.data.update('driver', (a) {
-      //   return Driver.fromMap(driverResult.data);
-      // }, ifAbsent: () {
-      //   return Driver.fromMap(driverResult.data);
-      // });
-      // if (user.isEmailVerified) {
-      //   MyApp.initialRoute = MyApp.driverHome;
-      // } else {
-      //   MyApp.initialRoute = MyApp.verifyEmailRoute;
-      // }
-
-      if (newUser != null) {
-        String userType = preferences.getString('user');
-        if ((userType ?? '') == 'user') {
-          statusBehavior.add('Done ..... 100%');
-          if (user.isEmailVerified) {
-            Session.data.putIfAbsent('user', () => newUser);
-            return MyApp.userHome;
-          } else {
-            return MyApp.verifyEmailRoute;
-          }
-        } else if ((userType ?? '') == 'driver') {
-          statusBehavior.add('Done ..... 100%');
-          if (user.isEmailVerified) {
-            Session.data.putIfAbsent('driver', () => newDriver);
-            return MyApp.driverHome;
-          } else {
-            return MyApp.verifyEmailRoute;
-          }
-        }
-        statusBehavior.add('Awaiting response .....');
-        String nextRoute = await showDialog<String>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) {
-              return AlertDialog(
-                title: Text('Login'),
-                insetPadding: EdgeInsets.all(0),
-                contentPadding: EdgeInsets.only(top: 20),
-                content: WillPopScope(
-                  onWillPop: () async => false,
-                  child: Center(
-                    heightFactor: 1,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        ListTile(
-                          // selected: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                          leading: Icon(FontAwesomeIcons.car),
-                          title: Text('Login as Driver'),
-                          trailing: Icon(Icons.navigate_next),
-                          onTap: () async {
-                            SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            prefs.setString('user', 'driver');
-                            Session.data.putIfAbsent('driver', () => newDriver);
-                            if (!user.isEmailVerified) {
-                              Navigator.pop(context, MyApp.verifyEmailRoute);
-                            }
-                            Navigator.pop(context, MyApp.driverHome);
-                          },
-                        ),
-                        SizedBox(
-                          height: 10,
-                        ),
-                        ListTile(
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                          // selected: true,
-                          leading: Icon(
-                            Icons.account_circle,
-                          ),
-                          title: Text('Login as User'),
-                          trailing: Icon(Icons.navigate_next),
-                          onTap: () async {
-                            SharedPreferences prefs =
-                                await SharedPreferences.getInstance();
-                            prefs.setString('user', 'user');
-                            Session.data.putIfAbsent('user', () => newUser);
-                            if (!user.isEmailVerified) {
-                              Navigator.pop(context, MyApp.verifyEmailRoute);
-                            }
-                            Navigator.pop(context, MyApp.userHome);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            });
-
-        statusBehavior.add('Done .... 100%');
-        return nextRoute;
-      } else {
-        statusBehavior.add('Done ..... 100%');
-        preferences.setString('user', 'driver');
-        Session.data.update(
-          'driver',
-          (old) => newDriver,
-          ifAbsent: () => newDriver,
-        );
-        if (user.isEmailVerified) {
-          // statusBehavior.add('Done .... 100%');
-          return MyApp.driverHome;
-        } else {
-          // statusBehavior.add('Done .... 100%');
-          return MyApp.verifyEmailRoute;
-        }
-      }
-    } else if (newUser != null) {
-      statusBehavior.add('Done .... 100%');
-      preferences.setString('user', 'user');
-      Session.data.update(
-        'user',
-        (old) => newUser,
-        ifAbsent: () => newUser,
-      );
-      if (user.isEmailVerified) {
-        return MyApp.userHome;
-      } else {
-        return MyApp.verifyEmailRoute;
-      }
-    }
-    final partnerStoreResult = await Firestore.instance
-        .collection('partnerStores')
-        .document(user.uid)
-        .get()
-        .catchError((error) {
-      return null;
-    });
-    if (partnerStoreResult == null) {
-      statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
-      return null;
-    }
-    if (partnerStoreResult.exists &&
-        (partnerStoreResult.data?.length ?? 0) > 0) {
-      var data = await Firestore.instance
-          .collection('stores')
-          .document(partnerStoreResult.data['storeId'])
+    String userType = preferences.getString('user');
+    print(firebaseUser.toString());
+    if (userType == null) {
+      return MyApp.startPage;
+    } else if (userType == 'user') {
+      final result = await Firestore.instance
+          .collection('users')
+          .document(firebaseUser.uid)
           .get()
           .catchError((error) {
         print(error.toString());
         return null;
       });
-      if (data == null) {
-        statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+      if (result == null || !result.exists) {
+        FirebaseAuth.instance.signOut();
+        return MyApp.startPage;
+      } else {
+        User user = User.fromMap(result.data);
+        Session.data.update('user', (old) => user, ifAbsent: () => user);
+        if (!firebaseUser.isEmailVerified) {
+          return MyApp.verifyEmailRoute;
+        }
+        return MyApp.userHome;
+      }
+    } else if (userType == 'driver') {
+      final result = await Firestore.instance
+          .collection('drivers')
+          .document(firebaseUser.uid)
+          .get()
+          .catchError((error) {
+        print(error.toString());
         return null;
-      }
-      if (data != null &&
-          data.exists &&
-          data.data != null &&
-          data.data.length > 0) {
-        Session.data.update('partnerStore', (a) {
-          return Store.fromMap(data.data)..storeId = data.documentID;
-        }, ifAbsent: () {
-          return Store.fromMap(data.data)..storeId = data.documentID;
-        });
-      }
-      statusBehavior.add('Done .... 100%');
-      preferences.setString('user', 'store');
-      return MyApp.partnerStoreHome;
-    } else {
-      bool error = false;
-      await FirebaseAuth.instance.signOut().catchError((error) {
-        error = true;
       });
-      if (error) {
-        return null;
+      if (result == null || !result.exists) {
+        FirebaseAuth.instance.signOut();
+        return MyApp.startPage;
+      } else {
+        Driver driver = Driver.fromMap(result.data);
+        driver.driverId = result.documentID;
+        Session.data.update('driver', (old) => driver, ifAbsent: () => driver);
+        return MyApp.driverHome;
       }
-      preferences.setString('user', null);
-      statusBehavior.add('Done .... 100%');
+    } else if (userType == 'store') {
+      final storeData = await Firestore.instance
+          .collection('partnerStores')
+          .document(firebaseUser.uid)
+          .get()
+          .then((value) async {
+        if (!value.exists) {
+          return null;
+        }
+        String storeId = value.data['storeId'];
+        if (storeId == null) {
+          return null;
+        }
+
+        final storeSnapshot = await Firestore.instance
+            .collection('stores')
+            .document(storeId)
+            .get()
+            .catchError((error) => null);
+        if (storeSnapshot != null || storeSnapshot.exists) {
+          return storeSnapshot;
+        } else {
+          return null;
+        }
+      }).catchError((error) {
+        print(error.toString());
+        return null;
+      });
+      print('${storeData?.toString()}');
+      if (storeData == null || !storeData.exists) {
+        FirebaseAuth.instance.signOut();
+        return MyApp.startPage;
+      } else {
+        Store store = Store.fromMap(storeData.data);
+        store.storeId = storeData.documentID;
+        Session.data
+            .update('partnerStore', (old) => store, ifAbsent: () => store);
+        return MyApp.partnerStoreHome;
+      }
+    } else {
       return MyApp.startPage;
     }
+    // Driver newDriver;
+    // if (result != null &&
+    //     result.data != null &&
+    //     result.data.length > 0 &&
+    //     result.exists) {
+    //   // Session.data.update('user', (a) {
+    //   //   return User.fromMap(result.data);
+    //   // }, ifAbsent: () {
+    //   //   return User.fromMap(result.data);
+    //   // });
+    //   newUser = User.fromMap(result.data);
+    //   // if (user.isEmailVerified) {
+    //   //   // MyApp.initialRoute = MyApp.userHome;
+    //   // } else {
+    //   //   // MyApp.initialRoute = MyApp.verifyEmailRoute;
+    //   // }
+    // }
+    // final driverResult = await Firestore.instance
+    //     .collection('drivers')
+    //     .document(user.uid)
+    //     .get()
+    //     .catchError((error) {
+    //   return null;
+    // });
+    // if (driverResult == null) {
+    //   statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+    //   return null;
+    // }
+    // if ((driverResult.data?.length ?? 0) > 0 && driverResult.exists) {
+    //   newDriver = Driver.fromMap(driverResult.data);
+    //   newDriver.driverId = user.uid;
+    //   statusBehavior.add('Fetching User Data..... 90%');
+    // driverResult.data
+    //     .update('driverId', (old) => user.uid, ifAbsent: () => user.uid);
+    // Session.data.update('driver', (a) {
+    //   return Driver.fromMap(driverResult.data);
+    // }, ifAbsent: () {
+    //   return Driver.fromMap(driverResult.data);
+    // });
+    // if (user.isEmailVerified) {
+    //   MyApp.initialRoute = MyApp.driverHome;
+    // } else {
+    //   MyApp.initialRoute = MyApp.verifyEmailRoute;
+    // }
+
+    //   if (newUser != null) {
+    //     String userType = preferences.getString('user');
+    //     if ((userType ?? '') == 'user') {
+    //       statusBehavior.add('Done ..... 100%');
+    //       if (user.isEmailVerified) {
+    //         Session.data.putIfAbsent('user', () => newUser);
+    //         return MyApp.userHome;
+    //       } else {
+    //         return MyApp.verifyEmailRoute;
+    //       }
+    //     } else if ((userType ?? '') == 'driver') {
+    //       statusBehavior.add('Done ..... 100%');
+    //       if (user.isEmailVerified) {
+    //         Session.data.putIfAbsent('driver', () => newDriver);
+    //         return MyApp.driverHome;
+    //       } else {
+    //         return MyApp.verifyEmailRoute;
+    //       }
+    //     }
+    //     statusBehavior.add('Awaiting response .....');
+    //     String nextRoute = await showDialog<String>(
+    //         context: context,
+    //         barrierDismissible: false,
+    //         builder: (context) {
+    //           return AlertDialog(
+    //             title: Text('Login'),
+    //             insetPadding: EdgeInsets.all(0),
+    //             contentPadding: EdgeInsets.only(top: 20),
+    //             content: WillPopScope(
+    //               onWillPop: () async => false,
+    //               child: Center(
+    //                 heightFactor: 1,
+    //                 child: Column(
+    //                   mainAxisSize: MainAxisSize.min,
+    //                   children: <Widget>[
+    //                     ListTile(
+    //                       // selected: true,
+    //                       contentPadding:
+    //                           EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+    //                       leading: Icon(FontAwesomeIcons.car),
+    //                       title: Text('Login as Driver'),
+    //                       trailing: Icon(Icons.navigate_next),
+    //                       onTap: () async {
+    //                         SharedPreferences prefs =
+    //                             await SharedPreferences.getInstance();
+    //                         prefs.setString('user', 'driver');
+    //                         Session.data.putIfAbsent('driver', () => newDriver);
+    //                         if (!user.isEmailVerified) {
+    //                           Navigator.pop(context, MyApp.verifyEmailRoute);
+    //                         }
+    //                         Navigator.pop(context, MyApp.driverHome);
+    //                       },
+    //                     ),
+    //                     SizedBox(
+    //                       height: 10,
+    //                     ),
+    //                     ListTile(
+    //                       contentPadding:
+    //                           EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+    //                       // selected: true,
+    //                       leading: Icon(
+    //                         Icons.account_circle,
+    //                       ),
+    //                       title: Text('Login as User'),
+    //                       trailing: Icon(Icons.navigate_next),
+    //                       onTap: () async {
+    //                         SharedPreferences prefs =
+    //                             await SharedPreferences.getInstance();
+    //                         prefs.setString('user', 'user');
+    //                         Session.data.putIfAbsent('user', () => newUser);
+    //                         if (!user.isEmailVerified) {
+    //                           Navigator.pop(context, MyApp.verifyEmailRoute);
+    //                         }
+    //                         Navigator.pop(context, MyApp.userHome);
+    //                       },
+    //                     ),
+    //                   ],
+    //                 ),
+    //               ),
+    //             ),
+    //           );
+    //         });
+
+    //     statusBehavior.add('Done .... 100%');
+    //     return nextRoute;
+    //   } else {
+    //     statusBehavior.add('Done ..... 100%');
+    //     preferences.setString('user', 'driver');
+    //     Session.data.update(
+    //       'driver',
+    //       (old) => newDriver,
+    //       ifAbsent: () => newDriver,
+    //     );
+    //     if (user.isEmailVerified) {
+    //       // statusBehavior.add('Done .... 100%');
+    //       return MyApp.driverHome;
+    //     } else {
+    //       // statusBehavior.add('Done .... 100%');
+    //       return MyApp.verifyEmailRoute;
+    //     }
+    //   }
+    // } else if (newUser != null) {
+    //   statusBehavior.add('Done .... 100%');
+    //   preferences.setString('user', 'user');
+    //   Session.data.update(
+    //     'user',
+    //     (old) => newUser,
+    //     ifAbsent: () => newUser,
+    //   );
+    //   if (user.isEmailVerified) {
+    //     return MyApp.userHome;
+    //   } else {
+    //     return MyApp.verifyEmailRoute;
+    //   }
+    // }
+    // final partnerStoreResult = await Firestore.instance
+    //     .collection('partnerStores')
+    //     .document(user.uid)
+    //     .get()
+    //     .catchError((error) {
+    //   return null;
+    // });
+    // if (partnerStoreResult == null) {
+    //   statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+    //   return null;
+    // }
+    // if (partnerStoreResult.exists &&
+    //     (partnerStoreResult.data?.length ?? 0) > 0) {
+    //   var data = await Firestore.instance
+    //       .collection('stores')
+    //       .document(partnerStoreResult.data['storeId'])
+    //       .get()
+    //       .catchError((error) {
+    //     print(error.toString());
+    //     return null;
+    //   });
+    //   if (data == null) {
+    //     statusBehavior.add('Couldn\'t Fetch User Data..... retrying');
+    //     return null;
+    //   }
+    //   if (data != null &&
+    //       data.exists &&
+    //       data.data != null &&
+    //       data.data.length > 0) {
+    //     Session.data.update('partnerStore', (a) {
+    //       return Store.fromMap(data.data)..storeId = data.documentID;
+    //     }, ifAbsent: () {
+    //       return Store.fromMap(data.data)..storeId = data.documentID;
+    //     });
+    //   }
+    //   statusBehavior.add('Done .... 100%');
+    //   preferences.setString('user', 'store');
+    //   return MyApp.partnerStoreHome;
+    // } else {
+    //   bool error = false;
+    //   await FirebaseAuth.instance.signOut().catchError((error) {
+    //     error = true;
+    //   });
+    //   if (error) {
+    //     return null;
+    //   }
+    //   preferences.setString('user', null);
+    //   statusBehavior.add('Done .... 100%');
+    //   return MyApp.startPage;
+    // }
   }
 
   Widget build(BuildContext context) {
@@ -661,7 +733,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
             ),
         MyApp.startPage: (context) => StartPage(),
         MyApp.driverHome: (context) => HomeScreenDriver(),
-        MyApp.closedForMaintenance: (context)=> ClosedForMaintenance(),
+        MyApp.closedForMaintenance: (context) => ClosedForMaintenance(),
         MyApp.userSignup: (context) => UserSignUpRoute(),
         MyApp.userSignIn: (context) => UserSignInRoute(),
         MyApp.userStartPage: (context) => UserStartPage(),
@@ -861,7 +933,7 @@ class MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 ),
             MyApp.startPage: (context) => StartPage(),
             MyApp.driverHome: (context) => HomeScreenDriver(),
-            MyApp.closedForMaintenance: (context)=> ClosedForMaintenance(),
+            MyApp.closedForMaintenance: (context) => ClosedForMaintenance(),
             MyApp.userSignup: (context) => UserSignUpRoute(),
             MyApp.userSignIn: (context) => UserSignInRoute(),
             MyApp.userStartPage: (context) => UserStartPage(),
@@ -1654,6 +1726,8 @@ class Utils {
     // Navigator.of(context).popUntil((route) => route.isFirst);
     FirebaseMessaging fcm = FirebaseMessaging();
     GetIt.I.get<RxReceiveItTab>().index.add(0);
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.clear();
     User user = Session.data['user'];
     if (user == null) {
       Session.data.clear();

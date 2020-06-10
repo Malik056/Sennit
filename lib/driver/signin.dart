@@ -450,7 +450,8 @@ class _DriverSignInState extends State<DriverSignIn> {
   }
 
   bool signInButtonEnabled = true;
-
+  bool _isObscure = true;
+  
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -488,12 +489,22 @@ class _DriverSignInState extends State<DriverSignIn> {
                 },
               ),
               TextFormField(
-                obscureText: true,
+                obscureText: _isObscure,
                 keyboardType: TextInputType.visiblePassword,
                 maxLines: 1,
                 decoration: InputDecoration(
                     labelText: 'Password',
-                    focusColor: Theme.of(context).accentColor),
+                    focusColor: Theme.of(context).accentColor,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isObscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isObscure = !_isObscure;
+                        });
+                      },
+                    )),
                 validator: (password) {
                   if (password.isEmpty) {
                     return "Please enter a password";
@@ -648,7 +659,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                                 },
                               );
                             } else {
-                              Navigator.pop(context);
+                              BotToast.closeAllLoading();
                               signInButtonEnabled = true;
                               SnackBar snackBar = SnackBar(
                                 content: Text(
@@ -666,7 +677,7 @@ class _DriverSignInState extends State<DriverSignIn> {
                           },
                         ).catchError(
                           (_) {
-                            Navigator.pop(context);
+                            BotToast.closeAllLoading();
                             signInButtonEnabled = true;
                             Utils.showSnackBarError(
                               context,
@@ -688,7 +699,8 @@ class _DriverSignInState extends State<DriverSignIn> {
                         // );
                       } on dynamic catch (_) {
                         print(_);
-                        Navigator.pop(context);
+                        // Navigator.pop(context);
+                        BotToast.closeAllLoading();
                         signInButtonEnabled = true;
                         Utils.showSnackBarError(
                           context,

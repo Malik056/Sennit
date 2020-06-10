@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreenDriver>
   Driver driver;
 
   initializeDriver(context) async {
-    await Utils.getLatestLocation();
+    // await Utils.getLatestLocation();
     if (!Session.data.containsKey('driver') || Session.data['driver'] == null) {
       await FirebaseAuth.instance.currentUser().then((user) {
         String driverId = user.uid;
@@ -140,195 +140,214 @@ class _HomeScreenState extends State<HomeScreenDriver>
         }
         return false;
       },
-      child: FutureBuilder<dynamic>(
-        future: initialize,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              appBar: AppBar(
-                title: Text(titles[index]),
-                centerTitle: true,
-                actions: <Widget>[
-                  IconButton(
-                    icon: Icon(Icons.exit_to_app),
-                    onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => StartPage(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(titles[index]),
-              centerTitle: true,
-              actions: <Widget>[
-                IconButton(
-                  icon: Icon(Icons.exit_to_app),
-                  onPressed: () {
-                    FirebaseAuth.instance.signOut();
-                    try {
-                      Navigator.pop(
-                        context,
-                      );
-                    } catch (ex) {
-                      print(ex);
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => StartPage(),
-                        settings: RouteSettings(
-                          name: MyApp.startPage,
-                        ),
-                      ),
-                    );
-                  },
+      child: StreamBuilder<Map<String, Address>>(
+          stream: GetIt.I.get<RxAddress>().stream$,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData ||
+                ((snapshot?.data ?? {})['myAddress']) == null) {
+              return Scaffold(
+                appBar: AppBar(title: Text('Orders')),
+                body: Center(
+                  child: CircularProgressIndicator(),
                 ),
-              ],
-            ),
-            bottomNavigationBar: (driver.licencePlateNumber != null &&
-                    driver.licencePlateNumber.isNotEmpty)
-                ? BottomAppBar(
-                    elevation: 10,
-                    child: TabBar(
-                      labelColor: Theme.of(context).accentColor,
-                      indicatorColor: Theme.of(context).accentColor,
-                      indicator:
-                          // BoxDecoration(
-                          //   border: Border(
-                          //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
-                          //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
-                          //   ),
-                          // ),
-                          UnderlineTabIndicator(
-                        insets:
-                            EdgeInsets.only(bottom: 47, left: 20, right: 20),
-                        borderSide: BorderSide(
-                          color: Theme.of(context).accentColor,
-                          width: 2,
-                        ),
-                      ),
-                      controller: controller,
-                      tabs: [
-                        Tab(
-                          icon: Icon(Icons.notifications),
-                          // child: Container(
-                          //   child: IconButton(
-                          //     icon: Center(
-                          //       child: Icon(Icons.notifications),
-                          //     ),
-                          //     onPressed: () {},
-                          //   ),
-                          //   decoration: BoxDecoration(
-                          //     border: Border(
-                          //         right: BorderSide(color: Theme.of(context).accentColor)),
-                          //   ),
-                          // ),
-                        ),
-                        Tab(
-                          icon: Icon(Icons.history),
-                          // child: Container(
-                          //   child: IconButton(
-                          //     icon: Center(
-                          //       child: Icon(Icons.history),
-                          //     ),
-                          //     onPressed: () {},
-                          //   ),
-                          //   decoration: BoxDecoration(
-                          //     border: Border(
-                          //         left: BorderSide(color: Theme.of(context).accentColor)),
-                          //   ),
-                          // ),
-                        ),
-                        Tab(
-                          icon: Icon(Icons.person),
+              );
+            }
+            return FutureBuilder<dynamic>(
+              future: initialize,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Scaffold(
+                    appBar: AppBar(
+                      title: Text(titles[index]),
+                      centerTitle: true,
+                      actions: <Widget>[
+                        IconButton(
+                          icon: Icon(Icons.exit_to_app),
+                          onPressed: () async {
+                            Session.data?.clear();
+                            await FirebaseAuth.instance.signOut();
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (_) => StartPage(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
-                  )
-                : null,
-            body: (driver.licencePlateNumber != null &&
-                    driver.licencePlateNumber.isNotEmpty)
-                ? TabBarView(
-                    controller: controller,
-                    children: <Widget>[
-                      _NotificationPage(),
-                      OrderHistory(),
-                      _ProfilePage(),
-                    ],
-                  )
-                : Center(
-                    child: GestureDetector(
-                      onTap: () async {
-                        Utils.showLoadingDialog(context, false);
-                        FirebaseUser user =
-                            await FirebaseAuth.instance.currentUser();
-                        if (user == null) {
-                          // Navigator.pop(context);
-                          BotToast.closeAllLoading();
-                          Session.data.clear();
-                          Utils.showSnackBarErrorUsingKey(
-                              null, 'Your Session Timed out');
-                          Navigator.popAndPushNamed(context, MyApp.startPage);
-                        } else {
-                          Firestore.instance
-                              .collection('drivers')
-                              .document(user.uid)
-                              .get(source: Source.server)
-                              .timeout(Duration(seconds: 20), onTimeout: () {
-                            Utils.showSnackBarError(
-                                context, 'Request Timed out');
-                            // Navigator.pop(context);
-                            BotToast.closeAllLoading();
-                            return;
-                          }).then((data) async {
-                            BotToast.closeAllLoading();
-                            if (!data.exists) {
-                              await FirebaseAuth.instance.signOut();
-                              Utils.showSnackBarWarning(
-                                  context, 'Please Login Again');
-                              Navigator.pushNamedAndRemoveUntil(
-                                  context, MyApp.driverSignin, (c) => true);
-                            } else {
-                              driver = Driver.fromMap(data.data);
-                              Session.data.update('driver', (old) => driver,
-                                  ifAbsent: () => driver);
-                              setState(() {});
-                            }
-                          });
-                        }
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            'Your Vehicle is not Registered!\nPlease contact chaseF@sennit.co.za.\n\nTap to Retry',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headline6,
-                          ),
-                          SizedBox(height: 10),
-                          Icon(
-                            Icons.replay,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ],
-                      ),
+                    body: Center(
+                      child: CircularProgressIndicator(),
                     ),
+                  );
+                }
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text(titles[index]),
+                    centerTitle: true,
+                    actions: <Widget>[
+                      IconButton(
+                        icon: Icon(Icons.exit_to_app),
+                        onPressed: () {
+                          Session.data?.clear();
+                          FirebaseAuth.instance.signOut();
+                          try {
+                            Navigator.pop(
+                              context,
+                            );
+                          } catch (ex) {
+                            print(ex);
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (ctx) => StartPage(),
+                              settings: RouteSettings(
+                                name: MyApp.startPage,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-          );
-        },
-      ),
+                  bottomNavigationBar: (driver.licencePlateNumber != null &&
+                          driver.licencePlateNumber.isNotEmpty)
+                      ? BottomAppBar(
+                          elevation: 10,
+                          child: TabBar(
+                            labelColor: Theme.of(context).accentColor,
+                            indicatorColor: Theme.of(context).accentColor,
+                            indicator:
+                                // BoxDecoration(
+                                //   border: Border(
+                                //     left: BorderSide(color: Theme.of(context).accentColor, width: 2), // provides to left side
+                                //     right: BorderSide(color: Theme.of(context).accentColor, width: 2), // for right side
+                                //   ),
+                                // ),
+                                UnderlineTabIndicator(
+                              insets: EdgeInsets.only(
+                                  bottom: 47, left: 20, right: 20),
+                              borderSide: BorderSide(
+                                color: Theme.of(context).accentColor,
+                                width: 2,
+                              ),
+                            ),
+                            controller: controller,
+                            tabs: [
+                              Tab(
+                                icon: Icon(Icons.notifications),
+                                // child: Container(
+                                //   child: IconButton(
+                                //     icon: Center(
+                                //       child: Icon(Icons.notifications),
+                                //     ),
+                                //     onPressed: () {},
+                                //   ),
+                                //   decoration: BoxDecoration(
+                                //     border: Border(
+                                //         right: BorderSide(color: Theme.of(context).accentColor)),
+                                //   ),
+                                // ),
+                              ),
+                              Tab(
+                                icon: Icon(Icons.history),
+                                // child: Container(
+                                //   child: IconButton(
+                                //     icon: Center(
+                                //       child: Icon(Icons.history),
+                                //     ),
+                                //     onPressed: () {},
+                                //   ),
+                                //   decoration: BoxDecoration(
+                                //     border: Border(
+                                //         left: BorderSide(color: Theme.of(context).accentColor)),
+                                //   ),
+                                // ),
+                              ),
+                              Tab(
+                                icon: Icon(Icons.person),
+                              ),
+                            ],
+                          ),
+                        )
+                      : null,
+                  body: (driver.licencePlateNumber != null &&
+                          driver.licencePlateNumber.isNotEmpty)
+                      ? TabBarView(
+                          controller: controller,
+                          children: <Widget>[
+                            _NotificationPage(),
+                            OrderHistory(),
+                            _ProfilePage(),
+                          ],
+                        )
+                      : Center(
+                          child: GestureDetector(
+                            onTap: () async {
+                              Utils.showLoadingDialog(context, false);
+                              FirebaseUser user =
+                                  await FirebaseAuth.instance.currentUser();
+                              if (user == null) {
+                                // Navigator.pop(context);
+                                BotToast.closeAllLoading();
+                                Session.data.clear();
+                                Utils.showSnackBarErrorUsingKey(
+                                    null, 'Your Session Timed out');
+                                Navigator.popAndPushNamed(
+                                    context, MyApp.startPage);
+                              } else {
+                                Firestore.instance
+                                    .collection('drivers')
+                                    .document(user.uid)
+                                    .get(source: Source.server)
+                                    .timeout(Duration(seconds: 20),
+                                        onTimeout: () {
+                                  Utils.showSnackBarError(
+                                      context, 'Request Timed out');
+                                  // Navigator.pop(context);
+                                  BotToast.closeAllLoading();
+                                  return;
+                                }).then((data) async {
+                                  BotToast.closeAllLoading();
+                                  if (!data.exists) {
+                                    Session.data?.clear();
+                                    await FirebaseAuth.instance.signOut();
+                                    Utils.showSnackBarWarning(
+                                        context, 'Please Login Again');
+                                    Navigator.pushNamedAndRemoveUntil(context,
+                                        MyApp.driverSignin, (c) => true);
+                                  } else {
+                                    driver = Driver.fromMap(data.data);
+                                    Session.data.update(
+                                        'driver', (old) => driver,
+                                        ifAbsent: () => driver);
+                                    setState(() {});
+                                  }
+                                });
+                              }
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Text(
+                                  'Your Vehicle is not Registered!\nPlease contact chaseF@sennit.co.za.\n\nTap to Retry',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.headline6,
+                                ),
+                                SizedBox(height: 10),
+                                Icon(
+                                  Icons.replay,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                );
+              },
+            );
+          }),
     );
   }
 }
@@ -868,7 +887,7 @@ class ReceiveItNotificationTile extends StatelessWidget {
                             height: 6.0,
                           ),
                           Text(
-                            "R${data['price']}",
+                            "R${((data['price'] as num)?.toDouble() ?? 0.0).toStringAsFixed(2)}",
                             style: TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ],

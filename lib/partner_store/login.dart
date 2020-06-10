@@ -46,6 +46,8 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
   final _formKey = GlobalKey<FormState>();
 
   bool signInButtonEnabled = true;
+  bool _isObscure = true;
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -79,12 +81,23 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                 },
               ),
               TextFormField(
-                obscureText: true,
+                obscureText: _isObscure,
                 keyboardType: TextInputType.visiblePassword,
                 maxLines: 1,
                 decoration: InputDecoration(
-                    labelText: 'Password',
-                    focusColor: Theme.of(context).accentColor),
+                  labelText: 'Password',
+                  focusColor: Theme.of(context).accentColor,
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isObscure = !_isObscure;
+                      });
+                    },
+                    icon: Icon(
+                      _isObscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                  ),
+                ),
                 validator: (password) {
                   if (password.isEmpty) {
                     return "Please enter a password";
@@ -147,7 +160,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                     .document(storeId)
                                     .get()
                                     .catchError((_) {
-                                  FirebaseAuth.instance.signOut();
+                                  // FirebaseAuth.instance.signOut();
                                   signInButtonEnabled = true;
                                   // Navigator.pop(context);
                                   BotToast.closeAllLoading();
@@ -158,7 +171,7 @@ class _PartnerStoreSignInBodyState extends State<PartnerStoreSignInBody> {
                                 }).timeout(
                                   Duration(seconds: 10),
                                   onTimeout: () {
-                                    FirebaseAuth.instance.signOut();
+                                    // FirebaseAuth.instance.signOut();
                                     signInButtonEnabled = true;
                                     setState(() {});
                                     BotToast.closeAllLoading();

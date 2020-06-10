@@ -4,9 +4,11 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get_it/get_it.dart';
 import 'package:location/location.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sennit/main.dart';
+import 'package:sennit/rx_models/rx_config.dart';
 
 class RxAddress {
   StreamSubscription subscription;
@@ -30,7 +32,7 @@ class RxAddress {
           text:
               'This App Needs to know your location in order to Work. Exiting .....',
         );
-        SystemNavigator.pop();
+        SystemChannels.platform.invokeMethod('SystemNavigator.pop');
         return null;
       }
       var result = await location.requestPermission();
@@ -96,19 +98,29 @@ class RxAddress {
     if (address == null) {
       return null;
     }
-    subscription?.cancel();
-    subscription = geolocator.getPositionStream().listen((event) async {
-      Address address = (await Geocoder.google(await Utils.getAPIKey())
-          .findAddressesFromCoordinates(
-              Coordinates(event.latitude, event.longitude)))[0];
-      if (currentFromAddress == null) {
-        this.address.value.update(
-              'fromAddress',
-              (old) => address,
-              ifAbsent: () => address,
-            );
-      }
-      setMyAddress(address);
+    setMyAddress(address);
+    RxConfig config = GetIt.I.get<RxConfig>();
+    config.config$.listen((event) {
+      subscription?.cancel();
+      subscription = geolocator
+          .getPositionStream(
+        LocationOptions(
+          distanceFilter: (event['updateLocationAfterMeters'] as num).toInt() ?? 50,
+        ),
+      )
+          .listen((event) async {
+        Address address = (await Geocoder.google(await Utils.getAPIKey())
+            .findAddressesFromCoordinates(
+                Coordinates(event.latitude, event.longitude)))[0];
+        if (currentFromAddress == null) {
+          this.address.value.update(
+                'fromAddress',
+                (old) => address,
+                ifAbsent: () => address,
+              );
+        }
+        setMyAddress(address);
+      });
     });
     return {};
   }

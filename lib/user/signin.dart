@@ -114,7 +114,8 @@ class _UserSignInState extends State<UserSignIn> {
   }
 
   bool signInButtonEnabled = true;
-
+  bool _isObscure = true;
+  
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -152,12 +153,23 @@ class _UserSignInState extends State<UserSignIn> {
                 },
               ),
               TextFormField(
-                obscureText: true,
+                obscureText: _isObscure,
                 keyboardType: TextInputType.visiblePassword,
                 maxLines: 1,
                 decoration: InputDecoration(
-                    labelText: 'Password',
-                    focusColor: Theme.of(context).accentColor),
+                  labelText: 'Password',
+                  focusColor: Theme.of(context).accentColor,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isObscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isObscure = !_isObscure;
+                      });
+                    },
+                  ),
+                ),
                 validator: (password) {
                   if (password.isEmpty) {
                     return "Please enter a password";

@@ -63,6 +63,8 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
   final passwordController = TextEditingController();
 
   bool pressed = false;
+  bool _isObscure = true;
+  bool _isConfirmPasswordObscure = true;
 
   Function onSignUpError;
   @override
@@ -155,9 +157,23 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                     ),
                     TextFormField(
                       controller: passwordController,
-                      obscureText: true,
+                      obscureText: _isObscure,
                       maxLines: 1,
-                      decoration: InputDecoration(labelText: 'Password'),
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _isObscure = !_isObscure;
+                            });
+                          },
+                          icon: Icon(
+                            _isObscure
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                        ),
+                      ),
                       validator: (password) {
                         if (password.isEmpty) {
                           return "Please enter a password";
@@ -169,9 +185,24 @@ class DriverSignUpRouteState extends State<DriverSignUpRouteBody> {
                       style: Theme.of(context).textTheme.bodyText2,
                     ),
                     TextFormField(
-                      obscureText: true,
+                      obscureText: _isConfirmPasswordObscure,
                       maxLines: 1,
-                      decoration: InputDecoration(labelText: 'Retype Password'),
+                      decoration: InputDecoration(
+                        labelText: 'Retype Password',
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _isConfirmPasswordObscure =
+                                  !_isConfirmPasswordObscure;
+                            });
+                          },
+                          icon: Icon(
+                            _isConfirmPasswordObscure
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                        ),
+                      ),
                       validator: (rePassword) {
                         if (rePassword.isEmpty) {
                           return "Please confirm your password";

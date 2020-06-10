@@ -271,63 +271,110 @@ class ItemWidget extends StatelessWidget {
               ),
               Align(
                 alignment: Alignment.bottomRight,
-                child: GestureDetector(
-                  onLongPress: () async {
-                    print('');
-                    String newStock = await showDialogWithParam(
-                      context,
-                      '${item.remainingInStock ?? '0'}',
-                      'Stock',
-                      TextInputType.text,
-                      '',
-                      4,
-                      'Update Number of Items in Stock',
-                      (text) {
-                        if (text?.isEmpty ?? true) {
-                          return 'Field Cannot be Empty';
-                        } else {
-                          int stock = int.tryParse(text);
-                          if (stock == null) {
-                            return 'Please Enter a Valid Number';
-                          }
-                          return null;
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  children: <Widget>[
+                    GestureDetector(
+                      onLongPress: () async {
+                        print('');
+                        String newStock = await showDialogWithParam(
+                          context,
+                          '${item.remainingInStock ?? '0'}',
+                          'Stock',
+                          TextInputType.text,
+                          '',
+                          4,
+                          'Update Number of Items in Stock',
+                          (text) {
+                            if (text?.isEmpty ?? true) {
+                              return 'Field Cannot be Empty';
+                            } else {
+                              int stock = int.tryParse(text);
+                              if (stock == null) {
+                                return 'Please Enter a Valid Number';
+                              }
+                              return null;
+                            }
+                          },
+                        );
+                        if (newStock == null) {
+                          return;
                         }
+                        Firestore.instance
+                            .collection('items')
+                            .document(item.itemId)
+                            .setData(
+                          {
+                            'remainingInStock': int.tryParse(newStock) ??
+                                (item.remainingInStock ?? 0),
+                          },
+                          merge: true,
+                        );
                       },
-                    );
-                    if (newStock == null) {
-                      return;
-                    }
-                    Firestore.instance
-                        .collection('items')
-                        .document(item.itemId)
-                        .setData(
-                      {
-                        'remainingInStock': newStock,
-                      },
-                      merge: true,
-                    );
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text(
-                        'In Stock: ${item.remainingInStock ?? 0}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(4.0, 0, 4.0, 10),
+                        child: Text(
+                          'In Stock: ${item?.remainingInStock ?? 0}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      SizedBox(
-                        height: 4.0,
+                    ),
+                    Spacer(),
+                    GestureDetector(
+                      onLongPress: () async {
+                        print('');
+                        String price = await showDialogWithParam(
+                          context,
+                          '${item.price ?? 0}',
+                          'Item Price',
+                          TextInputType.text,
+                          '',
+                          4,
+                          'Price',
+                          (text) {
+                            if (text?.isEmpty ?? true) {
+                              return 'Field Cannot be Empty';
+                            } else {
+                              double price = double.tryParse(text);
+                              if (price == null) {
+                                return 'Please Enter a Valid Number';
+                              }
+                              return null;
+                            }
+                          },
+                        );
+                        if (price == null) {
+                          return;
+                        }
+                        Firestore.instance
+                            .collection('items')
+                            .document(item.itemId)
+                            .setData(
+                          {
+                            'price':
+                                double.tryParse(price) ?? (item?.price ?? 0),
+                          },
+                          merge: true,
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(4.0, 10, 4.0, 0),
+                        child: Text(
+                          'Price: ${item.price ?? 0}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      // Text(
-                      //   '${item.remainingInStock ?? 0}',
-                      // ),
-                      SizedBox(
-                        height: 4.0,
-                      ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(
+                      height: 4.0,
+                    ),
+                  ],
                 ),
               ),
             ],

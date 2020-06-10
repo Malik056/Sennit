@@ -2032,7 +2032,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                     RxConfig config = GetIt.I.get<RxConfig>();
                     if (config.config.value['maintenanceNotice'] != null) {
                       Utils.showInfoDialog(
-                          "We Are Sorry!\n${config.config.value['maintenanceNotice']}.");
+                          "We Are Sorry!\nThe app is undergoing maintenance on ${config.config.value['maintenanceNotice']}. New Orders are closed.");
                       return;
                     }
                     try {
@@ -2112,9 +2112,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                           ),
                         );
                         return;
-                      } else if (toAddress == null ||
-                          ((toAddress.coordinates?.latitude ?? 0) == 0 &&
-                              (toAddress.coordinates?.longitude ?? 0) == 0)) {
+                      } else if (toAddress == null) {
                         Utils.showSnackBarError(
                           null,
                           'Please Select a Destination First!',
@@ -2206,7 +2204,7 @@ class ShoppingCartRouteState extends State<ShoppingCartRoute> {
                       BotToast.closeAllLoading();
 
                       double totalCharges =
-                          state.totalPrice + state.totalDeliveryCharges;
+                          state.totalPrice;
                       Map<String, dynamic> result = await performTransaction(
                         context,
                         totalCharges,
@@ -2995,7 +2993,7 @@ class ShoppingCartRouteBodyState extends State<ShoppingCartRouteBody> {
           ),
           SizedBox(height: 10),
           Text(
-            'App is Soon going under maintenance on ${config['maintenanceNotice']}. New Orders are closed. We will be back in __ hours', //TODO: Fille ____ up.
+            'App is Soon going under maintenance on ${config['maintenanceNotice']}. New Orders are closed.',
             style: textTheme.subtitle1,
             textAlign: TextAlign.center,
           ),
@@ -4078,7 +4076,7 @@ class CartItem extends StatefulWidget {
   final Function(int value) onQuantityChange;
   final Function(String value) onFlavourChange;
   final _quantityFocusNode = FocusNode();
-  final _flavourFocusNode = FocusNode();
+  // final _flavourFocusNode = FocusNode();
   final GlobalKey<CartItemState> key;
   final TextEditingController flavourController;
   CartItem({
@@ -4142,15 +4140,15 @@ class CartItemState extends State<CartItem> {
         setState(() {});
       }
     });
-    widget._flavourFocusNode.addListener(() {
-      if (!widget._flavourFocusNode.hasFocus) {
-        cartItemsGroupByStores[widget.item.storeId]
-            .itemDetails[widget.item.itemId]
-            .flavour = widget.flavourController?.text ?? '';
-        widget.onFlavourChange(widget.flavourController?.text ?? '');
-        setState(() {});
-      }
-    });
+    // widget._flavourFocusNode.addListener(() {
+    //   if (!widget._flavourFocusNode.hasFocus) {
+    //     cartItemsGroupByStores[widget.item.storeId]
+    //         .itemDetails[widget.item.itemId]
+    //         .flavour = widget.flavourController?.text ?? '';
+    //     widget.onFlavourChange(widget.flavourController?.text ?? '');
+    //     setState(() {});
+    //   }
+    // });
   }
 
   @override
@@ -4366,13 +4364,19 @@ class CartItemState extends State<CartItem> {
             ),
             TextField(
               controller: widget.flavourController,
-              focusNode: widget._flavourFocusNode,
-              onEditingComplete: () {
-                widget.onFlavourChange(widget.flavourController.text ?? '');
+              // focusNode: widget._flavourFocusNode,
+              onChanged: (text) {
+                Map<String, ReceiveItOrderItem> cartItemsGroupByStores =
+                    (Session.data['cart'] as UserCart).itemsData.itemDetails;
+                cartItemsGroupByStores[widget.item.storeId]
+                    .itemDetails[widget.item.itemId]
+                    .flavour = widget.flavourController?.text ?? '';
+                widget
+                    .onFlavourChange(/*widget.flavourController?.*/ text ?? '');
               },
-              onChanged: (value) {
-                widget.onFlavourChange(value ?? '');
-              },
+              // onChanged: (value) {
+              //   widget.onFlavourChange(value ?? '');
+              // },
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Flavour',
